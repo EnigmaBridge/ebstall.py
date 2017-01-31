@@ -110,7 +110,7 @@ class EBRegAuth(object):
 
 class Registration(object):
     """
-    Takes care about registration process
+    Takes care about EnigmaBridge registration process
     """
     def __init__(self, email=None, eb_config=None, config=None, debug=False, eb_settings=None, *args, **kwargs):
         self.email = email

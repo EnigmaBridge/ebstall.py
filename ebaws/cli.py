@@ -35,8 +35,6 @@ class Installer(InstallerBase):
     EnigmaBridge AWS command line interface
     """
 
-    PIP_NAME = 'ebins'
-
     def __init__(self, *args, **kwargs):
         """
         Init core
@@ -45,7 +43,6 @@ class Installer(InstallerBase):
         :return:
         """
         InstallerBase.__init__(self, *args, **kwargs)
-        self.core = Core()
         self.last_le_port_open = False
         self.last_is_vpc = False
 
@@ -57,6 +54,7 @@ class Installer(InstallerBase):
         self.syscfg = None
         self.eb_cfg = None
 
+        self.previous_registration_continue = False
         self.first_run = self.is_first_run()
 
         self.debug_simulate_vpc = False
@@ -100,6 +98,405 @@ class Installer(InstallerBase):
         """Alias for init"""
         self.do_init(line)
 
+    def init_load_settings(self):
+        """
+        Loads EB settings as a part of the init. If settings exist already, the backup is performed.
+        :return:
+        """
+        self.config = Core.read_configuration()
+        config_exists = self.config is not None and self.config.has_nonempty_config()
+        self.previous_registration_continue = False
+
+        # there may be 2-stage registration waiting to finish - continue with the registration
+        if config_exists and self.config.two_stage_registration_waiting:
+            self.tprint('\nThere is a previous unfinished registration for email: %s' % self.config.email)
+            should_continue = self.ask_proceed(question='Do you want to continue with this registration? (y/n): ',
+                                               support_non_interactive=True)
+            self.previous_registration_continue = should_continue
+
+        if config_exists and not self.previous_registration_continue:
+            self.tprint(self.t.red('\nWARNING! This is a destructive process!'))
+            self.tprint(self.t.red('WARNING! The previous installation will be overwritten.\n'))
+            should_continue = self.ask_proceed(support_non_interactive=True)
+            if not should_continue:
+                return self.return_code(1)
+
+            self.tprint('\nWARNING! Configuration already exists in the file %s' % (Core.get_config_file_path()))
+            self.tprint('The configuration will be overwritten by a new one (current config will be backed up)\n')
+            should_continue = self.ask_proceed(support_non_interactive=True)
+            if not should_continue:
+                return self.return_code(1)
+
+            # Backup the old config
+            fname = Core.backup_configuration(self.config)
+            self.tprint('Configuration has been backed up: %s\n' % fname)
+
+        return 0
+
+    def init_services(self):
+        """
+        Installer services initialization
+        :return:
+        """
+        self.eb_cfg = Core.get_default_eb_config()
+        if self.previous_registration_continue:
+            self.config.eb_config = self.eb_cfg
+        else:
+            self.config = Config(eb_config=self.eb_cfg)
+
+        # Determine the environment we are going to use in EB.
+        self.config.env = self.get_env()
+
+        # Initialize helper classes for registration & configuration.
+        self.reg_svc = Registration(email=self.config.email, config=self.config,
+                                    eb_config=self.eb_cfg, eb_settings=self.eb_settings)
+
+        self.soft_config = SoftHsmV1Config()
+        self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging)
+        self.syscfg = SysConfig(print_output=True)
+        return 0
+
+    def init_prompt_user_data(self):
+        """
+        Prompt user for initial data as a part of the initialisation process.
+        E.g., asks for the user e-mail.
+        Takes installation continuation into consideration.
+        :return:
+        """
+        if not self.previous_registration_continue:
+            # Ask for email if we don't have any (e.g., previous unfinished reg).
+            self.email = self.ask_for_email(is_required=self.reg_svc.is_email_required())
+            if isinstance(self.email, types.IntType):
+                return self.return_code(1, True)
+            else:
+                self.config.email = self.email
+
+            # Ask user explicitly if he wants to continue with the registration process.
+            # Terms & Conditions of the AMIs tells us to ask user whether we can connect to the servers.
+            self.init_print_intro()
+            should_continue = self.ask_proceed('Do you agree with the installation process '
+                                               'as outlined above? (Y/n): ',
+                                               support_non_interactive=True)
+            if not should_continue:
+                return self.return_code(1)
+
+            self.cli_separator()
+        else:
+            self.email = self.config.email
+
+        return 0
+
+    def init_test_environment(self):
+        """
+        Tests if the given environment corresponds to the profile set.
+        E.g., if the profile is AMI, then it should be ready for deployment ( - JBoss already installed)
+        TODO: extend with other profiles
+        :return: result
+        """
+        if not self.ejbca.test_environment():
+            self.tprint(self.t.red('\nError: Environment is damaged, some assets are missing for the key '
+                                   'management installation. Cannot continue.'))
+            return self.return_code(1)
+
+    def init_enigma_registration_prepare(self):
+        """
+        Prepares user registration to the EnigmaBridge - asks for the registration token, loads initial data.
+        Handles also continued installation - interrupted previously to wait for auth challenge.
+        :return: result
+        """
+        if self.previous_registration_continue:
+            tmp = 'Your validation challenge is in the ticket assigned to you in the ' \
+                  'system https://enigmabridge.freshdesk.com for account %s.' % self.email
+            self.tprint(self.wrap_term(single_string=True, max_width=self.get_term_width(), text=tmp))
+
+            self.reg_svc.reg_token = self.ask_for_token()
+
+        elif self.reg_svc.is_auth_needed():
+            self.reg_svc.init_auth()
+            Core.write_configuration(self.config)
+            self.init_print_challenge_intro()
+            self.reg_svc.reg_token = self.ask_for_token()
+
+        else:
+            # Init, but do not wait for token.
+            self.reg_svc.init_auth()
+        return 0
+
+    def init_enigma_registration(self):
+        """
+        Handles user registration to the EnigmaBridge. Performs the actual registration call.
+        :return: result, new_config
+        """
+        res = self.init_enigma_registration_prepare()
+        if res != 0:
+            return self.return_code(res)
+
+        # Creates a new RSA key-pair identity
+        # Identity relates to bound DNS names and username.
+        # Requests for DNS manipulation need to be signed with the private key.
+        self.reg_svc.new_identity(id_dir=CONFIG_DIR, backup_dir=CONFIG_DIR_OLD)
+
+        # New client registration (new username, password, apikey).
+        # This step may require email validation to continue.
+        new_config = None
+        try:
+            new_config = self.reg_svc.new_registration()
+        except Exception as e:
+            if self.debug:
+                traceback.print_exc()
+            logger.debug('Exception in registration: %s' % e)
+
+            if self.reg_svc.is_auth_needed():
+                self.tprint(self.t.red('Error in the registration, probably problem with the challenge. '))
+            else:
+                self.tprint(self.t.red('Error in the registration'))
+            self.tprint('Please, try again. If problem persists, '
+                        'please contact our support at https://enigmabridge.freshdesk.com')
+            return self.return_code(14), None
+
+        return 0, new_config
+
+    def init_install_os_hooks(self):
+        """
+        Install OS hooks - cronjob for cert checking, on boot service for dynamic DNS
+        :return: result
+        """
+        self.syscfg.install_onboot_check()
+        self.syscfg.install_cron_renew()
+        return 0
+
+    def init_softhsm(self, new_config):
+        """
+        Initializes SoftHSM component
+        :return: result
+        """
+        soft_config_backup_location = self.soft_config.backup_current_config_file()
+        if soft_config_backup_location is not None:
+            self.tprint('EnigmaBridge PKCS#11 token configuration has been backed up to: %s'
+                        % soft_config_backup_location)
+
+        self.soft_config.configure(new_config)
+        soft_config_file = self.soft_config.write_config()
+
+        self.tprint('New EnigmaBridge PKCS#11 token configuration has been written to: %s\n' % soft_config_file)
+
+        # Init the token
+        backup_dir = self.soft_config.backup_previous_token_dir()
+        if backup_dir is not None:
+            self.tprint('EnigmaBridge PKCS#11 previous token database moved to: %s' % backup_dir)
+
+        out, err = self.soft_config.init_token(user=self.ejbca.JBOSS_USER)
+        self.tprint('EnigmaBridge PKCS#11 token initialization: %s' % out)
+        return 0
+
+    def init_add_softhsm_token(self):
+        """
+        Adds SoftHSM crypto token to the EJBCA
+        :return:
+        """
+        print('\nAdding an EnigmaBridge crypto token to your PKI instance:')
+        ret, out, err = self.ejbca.ejbca_add_softhsm_token(softhsm=self.soft_config, name='EnigmaBridgeToken')
+        if ret != 0:
+            print('\nError in adding EnigmaBridge token to the PKI instance')
+            print('You can add it manually in the PKI (EJBCA) admin page later')
+            print('Pin for the EnigmaBridge token is 0000')
+        else:
+            print('\nEnigmaBridgeToken added to the PKI instance')
+        return 0
+
+    def init_create_new_eb_keys(self):
+        """
+        Creates a new keys in the SoftHSM token -> EB.
+        Ready for use in the EJBCA for CA.
+        :return:
+        """
+        self.tprint('\nEnigma Bridge service will generate keys for your crypto token:')
+        ret, out, err = self.ejbca.pkcs11_generate_default_key_set(softhsm=self.soft_config)
+        key_gen_cmds = [
+            self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
+                                                   bit_size=2048, alias='signKey', slot_id=0),
+            self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
+                                                   bit_size=2048, alias='defaultKey', slot_id=0),
+            self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
+                                                   bit_size=1024, alias='testKey', slot_id=0)
+        ]
+
+        if ret != 0:
+            self.tprint('\nError generating new keys')
+            self.tprint('You can do it later manually by calling')
+
+            for tmpcmd in key_gen_cmds:
+                self.tprint('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
+
+            self.tprint('\nError from the command:')
+            self.tprint(''.join(out))
+            self.tprint('\n')
+            self.tprint(''.join(err))
+        else:
+            self.tprint('\nEnigmaBridge tokens generated successfully')
+            self.tprint('You can use these newly generated keys for your CA or generate another ones with:')
+            for tmpcmd in key_gen_cmds:
+                self.tprint('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
+        return 0
+
+    def init_main_try(self):
+        """
+        Main installer block, called from the global try:
+        :return:
+        """
+        self.init_services()
+
+        # Get registration options and choose one - network call.
+        self.reg_svc.load_auth_types()
+
+        # Show email prompt and intro text only for new initializations.
+        res = self.init_prompt_user_data()
+        if res != 0:
+            self.return_code(res)
+
+        # System check proceeds (mem, network).
+        # We do this even if we continue with previous registration, to have fresh view on the system.
+        # Check if we have EJBCA resources on the drive
+        res = self.init_test_environment()
+        if res != 0:
+            self.return_code(res)
+
+        # Determine if we have enough RAM for the work.
+        # If not, a new swap file is created so the system has at least 2GB total memory space
+        # for compilation & deployment.
+        res = self.install_check_memory(syscfg=self.syscfg)
+        if res != 0:
+            return self.return_code(res)
+
+        # Preferred LE method? If set...
+        self.last_is_vpc = False
+
+        # Lets encrypt reachability test, if preferred method is DNS - do only one attempt.
+        # We test this to detect VPC also. If 443 is reachable, we are not in VPC
+        res, args_le_preferred_method = self.init_le_vpc_check(self.get_args_le_verification(),
+                                                               self.get_args_vpc(), reg_svc=self.reg_svc)
+        if res != 0:
+            return self.return_code(res)
+
+        # User registration may be multi-step process.
+        res, new_config = self.init_enigma_registration()
+        if res != 0:
+            return self.return_code(res)
+
+        # Custom hostname for EJBCA - not yet supported
+        new_config.ejbca_hostname_custom = False
+        new_config.is_private_network = self.last_is_vpc
+        new_config.le_preferred_verification = args_le_preferred_method
+
+        # Assign a new dynamic domain for the host
+        res, domain_is_ok = self.init_domains_check(reg_svc=self.reg_svc)
+        new_config = self.reg_svc.config
+        if res != 0:
+            return self.return_code(res)
+
+        # Install to the OS - cron job & on boot service
+        res = self.init_install_os_hooks()
+        if res != 0:
+            return self.return_code(res)
+
+        # Dump config & SoftHSM
+        conf_file = Core.write_configuration(new_config)
+        self.tprint('New configuration was written to: %s\n' % conf_file)
+
+        # SoftHSMv1 reconfigure
+        res = self.init_softhsm(new_config=new_config)
+        if res != 0:
+            return self.return_code(res)
+
+        # EJBCA configuration
+        self.tprint('Going to install PKI system')
+        self.tprint('  This may take 15 minutes or less. Please, do not interrupt the installation')
+        self.tprint('  and wait until the process completes.\n')
+
+        self.ejbca.set_config(new_config)
+        self.ejbca.set_domains(new_config.domains)
+        self.ejbca.reg_svc = self.reg_svc
+
+        self.ejbca.configure()
+
+        if self.ejbca.ejbca_install_result != 0:
+            self.tprint('\nPKI installation error. Please try again.')
+            return self.return_code(1)
+
+        Core.write_configuration(self.ejbca.config)
+        self.tprint('\nPKI installed successfully.')
+
+        # Generate new keys
+        res = self.init_create_new_eb_keys()
+        if res != 0:
+            return self.return_code(res)
+
+        # Add SoftHSM crypto token to EJBCA
+        res = self.init_add_softhsm_token()
+        if res != 0:
+            return self.return_code(res)
+
+        # LetsEncrypt enrollment
+        le_certificate_installed = self.le_install(self.ejbca)
+
+        print('\n')
+        self.cli_separator()
+        self.cli_sleep(3)
+
+        print(self.t.underline_green('[OK] System installation is completed'))
+        if le_certificate_installed == 0:
+            if not domain_is_ok:
+                print('  \nThere was a problem in registering new domain names for you system')
+                print('  Please get in touch with support@enigmabridge.com and we will try to resolve the problem')
+        else:
+            print('  \nTrusted HTTPS certificate was not installed, most likely reason is port '
+                  '443 being closed by a firewall')
+            print('  For more info please check https://enigmabridge.com/support/aws13073')
+            print('  We will keep re-trying every 5 minutes.')
+            print('\nMeantime, you can access the system at:')
+            print('     https://%s:%d/ejbca/adminweb/'
+                  % (self.reg_svc.info_loader.ami_public_hostname, self.ejbca.PORT))
+            print('WARNING: you will have to override web browser security alerts.')
+
+        self.cli_sleep(3)
+        self.cli_separator()
+        print('')
+        print(self.t.underline('Please setup your computer for secure connections to your PKI '
+                               'key management system:'))
+        time.sleep(0.5)
+
+        # Finalize, P12 file & final instructions
+        new_p12 = self.ejbca.copy_p12_file()
+        public_hostname = self.ejbca.hostname if domain_is_ok else self.reg_svc.info_loader.ami_public_hostname
+        print('\nDownload p12 file: %s' % new_p12)
+        print('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
+        print('  Key import password is: %s' % self.ejbca.superadmin_pass)
+        print('\nThe following page can guide you through p12 import: https://enigmabridge.com/support/aws13076')
+        print('Once you import the p12 file to your computer browser/keychain you can connect to the PKI '
+              'admin interface:')
+
+        if domain_is_ok:
+            for domain in new_config.domains:
+                print('  https://%s:%d/ejbca/adminweb/' % (domain, self.ejbca.PORT))
+        else:
+            print('  https://%s:%d/ejbca/adminweb/'
+                  % (self.reg_svc.info_loader.ami_public_hostname, self.ejbca.PORT))
+
+        # Test if EJBCA is reachable on outer interface
+        # The test is performed only if not in VPC. Otherwise it makes no sense to check public IP for 8443.
+        if not self.last_is_vpc:
+            ejbca_open = self.ejbca.test_port_open(host=self.reg_svc.info_loader.ami_public_ip)
+            if not ejbca_open:
+                self.cli_sleep(5)
+                print('\nWarning! The PKI port %d is not reachable on the public IP address %s'
+                      % (self.ejbca.PORT, self.reg_svc.info_loader.ami_public_ip))
+                print('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
+                      'AWS Security Groups')
+                print('Please get in touch with our support via https://enigmabridge/freshdesk.com')
+
+        self.cli_sleep(5)
+        return self.return_code(0)
+
     def do_init(self, line):
         """
         Initializes the EB client machine, new identity is assigned.
@@ -115,312 +512,19 @@ class Installer(InstallerBase):
         print('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
 
         # EB Settings read. Optional.
-        self.eb_settings, eb_aws_settings_path = Core.read_settings()
-        if self.eb_settings is not None:
-            self.user_reg_type = self.eb_settings.user_reg_type
-        if self.args.reg_type is not None:
-            self.user_reg_type = self.args.reg_type
-        if self.eb_settings is None:
-            self.eb_settings = EBSettings()
-        if self.user_reg_type is not None:
-            self.eb_settings.user_reg_type = self.user_reg_type
+        self.load_base_settings()
 
         # Configuration read, if any
-        self.config = Core.read_configuration()
-        config_exists = self.config is not None and self.config.has_nonempty_config()
-        previous_registration_continue = False
-
-        # there may be 2-stage registration waiting to finish - continue with the registration
-        if config_exists and self.config.two_stage_registration_waiting:
-            print('\nThere is a previous unfinished registration for email: %s' % self.config.email)
-            should_continue = self.ask_proceed(question='Do you want to continue with this registration? (y/n): ',
-                                               support_non_interactive=True)
-            previous_registration_continue = should_continue
-
-        if config_exists and not previous_registration_continue:
-            print(self.t.red('\nWARNING! This is a destructive process!'))
-            print(self.t.red('WARNING! The previous installation will be overwritten.\n'))
-            should_continue = self.ask_proceed(support_non_interactive=True)
-            if not should_continue:
-                return self.return_code(1)
-
-            print('\nWARNING! Configuration already exists in the file %s' % (Core.get_config_file_path()))
-            print('The configuration will be overwritten by a new one (current config will be backed up)\n')
-            should_continue = self.ask_proceed(support_non_interactive=True)
-            if not should_continue:
-                return self.return_code(1)
-
-            # Backup the old config
-            fname = Core.backup_configuration(self.config)
-            print('Configuration has been backed up: %s\n' % fname)
+        ret = self.init_load_settings()
+        if ret != 0:
+            self.return_code(ret)
 
         # Main try-catch block for the overall init operation.
         # noinspection PyBroadException
         try:
-            self.eb_cfg = Core.get_default_eb_config()
-            if previous_registration_continue:
-                self.config.eb_config = self.eb_cfg
-            else:
-                self.config = Config(eb_config=self.eb_cfg)
-
-            # Determine the environment we are going to use in EB.
-            self.config.env = self.get_env()
-
-            # Initialize helper classes for registration & configuration.
-            self.reg_svc = Registration(email=self.config.email, config=self.config,
-                                        eb_config=self.eb_cfg, eb_settings=self.eb_settings)
-
-            self.soft_config = SoftHsmV1Config()
-            self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging)
-            self.syscfg = SysConfig(print_output=True)
-
-            # Get registration options and choose one.
-            self.reg_svc.load_auth_types()
-
-            # Show email prompt and intro text only for new initializations.
-            if not previous_registration_continue:
-                # Ask for email if we don't have any (e.g., previous unfinished reg).
-                self.email = self.ask_for_email(is_required=self.reg_svc.is_email_required())
-                if isinstance(self.email, types.IntType):
-                    return self.return_code(1, True)
-                else:
-                    self.config.email = self.email
-
-                # Ask user explicitly if he wants to continue with the registration process.
-                # Terms & Conditions of the AMIs tells us to ask user whether we can connect to the servers.
-                self.init_print_intro()
-                should_continue = self.ask_proceed('Do you agree with the installation process '
-                                                   'as outlined above? (Y/n): ',
-                                                   support_non_interactive=True)
-                if not should_continue:
-                    return self.return_code(1)
-
-                print('-'*self.get_term_width())
-            else:
-                self.email = self.config.email
-
-            # System check proceeds (mem, network).
-            # We do this even if we continue with previous registration, to have fresh view on the system.
-            # Check if we have EJBCA resources on the drive
-            if not self.ejbca.test_environment():
-                print(self.t.red('\nError: Environment is damaged, some assets are missing for the key management '
-                                 'installation. Cannot continue.'))
-                return self.return_code(1)
-
-            # Determine if we have enough RAM for the work.
-            # If not, a new swap file is created so the system has at least 2GB total memory space
-            # for compilation & deployment.
-            ret = self.install_check_memory(syscfg=self.syscfg)
+            ret = self.init_main_try()
             if ret != 0:
-                return self.return_code(1)
-
-            # Preferred LE method? If set...
-            args_le_preferred_method = self.get_args_le_verification()
-            args_is_vpc = self.get_args_vpc()
-            self.last_is_vpc = False
-
-            # Lets encrypt reachability test, if preferred method is DNS - do only one attempt.
-            # We test this to detect VPC also. If 443 is reachable, we are not in VPC
-            res, args_le_preferred_method = self.init_le_vpc_check(args_le_preferred_method,
-                                                                   args_is_vpc, reg_svc=self.reg_svc)
-            if res != 0:
-                return self.return_code(res)
-
-            # User registration may be multi-step process.
-            if previous_registration_continue:
-                tmp = 'Your validation challenge is in the ticket assigned to you in the ' \
-                      'system https://enigmabridge.freshdesk.com for account %s.' % self.email
-                print(self.wrap_term(single_string=True, max_width=self.get_term_width(), text=tmp))
-
-                self.reg_svc.reg_token = self.ask_for_token()
-
-            elif self.reg_svc.is_auth_needed():
-                self.reg_svc.init_auth()
-                Core.write_configuration(self.config)
-                self.init_print_challenge_intro()
-                self.reg_svc.reg_token = self.ask_for_token()
-
-            else:
-                # Init, but do not wait for token.
-                self.reg_svc.init_auth()
-
-            new_config = self.config
-            # Creates a new RSA key-pair identity
-            # Identity relates to bound DNS names and username.
-            # Requests for DNS manipulation need to be signed with the private key.
-            self.reg_svc.new_identity(id_dir=CONFIG_DIR, backup_dir=CONFIG_DIR_OLD)
-
-            # New client registration (new username, password, apikey).
-            # This step may require email validation to continue.
-            try:
-                new_config = self.reg_svc.new_registration()
-            except Exception as e:
-                if self.debug:
-                    traceback.print_exc()
-                logger.debug('Exception in registration: %s' % e)
-
-                if self.reg_svc.is_auth_needed():
-                    print(self.t.red('Error in the registration, probably problem with the challenge. '))
-                else:
-                    print(self.t.red('Error in the registration'))
-                print('Please, try again. If problem persists, '
-                      'please contact our support at https://enigmabridge.freshdesk.com')
-                return self.return_code(14)
-
-            # Custom hostname for EJBCA - not yet supported
-            new_config.ejbca_hostname_custom = False
-            new_config.is_private_network = self.last_is_vpc
-            new_config.le_preferred_verification = args_le_preferred_method
-
-            # Assign a new dynamic domain for the host
-            res, domain_is_ok = self.init_domains_check(reg_svc=self.reg_svc)
-            new_config = self.reg_svc.config
-            if res != 0:
-                return self.return_code(res)
-
-            # Install to the OS
-            self.syscfg.install_onboot_check()
-            self.syscfg.install_cron_renew()
-
-            # Dump config & SoftHSM
-            conf_file = Core.write_configuration(new_config)
-            print('New configuration was written to: %s\n' % conf_file)
-
-            # SoftHSMv1 reconfigure
-            soft_config_backup_location = self.soft_config.backup_current_config_file()
-            if soft_config_backup_location is not None:
-                print('EnigmaBridge PKCS#11 token configuration has been backed up to: %s' % soft_config_backup_location)
-
-            self.soft_config.configure(new_config)
-            soft_config_file = self.soft_config.write_config()
-
-            print('New EnigmaBridge PKCS#11 token configuration has been written to: %s\n' % soft_config_file)
-
-            # Init the token
-            backup_dir = self.soft_config.backup_previous_token_dir()
-            if backup_dir is not None:
-                print('EnigmaBridge PKCS#11 previous token database moved to: %s' % backup_dir)
-
-            out, err = self.soft_config.init_token(user=self.ejbca.JBOSS_USER)
-            print('EnigmaBridge PKCS#11 token initialization: %s' % out)
-
-            # EJBCA configuration
-            print('Going to install PKI system')
-            print('  This may take 15 minutes or less. Please, do not interrupt the installation')
-            print('  and wait until the process completes.\n')
-
-            self.ejbca.set_config(new_config)
-            self.ejbca.set_domains(new_config.domains)
-            self.ejbca.reg_svc = self.reg_svc
-
-            self.ejbca.configure()
-
-            if self.ejbca.ejbca_install_result != 0:
-                print('\nPKI installation error. Please try again.')
-                return self.return_code(1)
-
-            Core.write_configuration(self.ejbca.config)
-            print('\nPKI installed successfully.')
-
-            # Generate new keys
-            print('\nEnigma Bridge service will generate keys for your crypto token:')
-            ret, out, err = self.ejbca.pkcs11_generate_default_key_set(softhsm=self.soft_config)
-            key_gen_cmds = [
-                    self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
-                                                           bit_size=2048, alias='signKey', slot_id=0),
-                    self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
-                                                           bit_size=2048, alias='defaultKey', slot_id=0),
-                    self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
-                                                           bit_size=1024, alias='testKey', slot_id=0)
-                ]
-
-            if ret != 0:
-                print('\nError generating new keys')
-                print('You can do it later manually by calling')
-
-                for tmpcmd in key_gen_cmds:
-                    print('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
-
-                print('\nError from the command:')
-                print(''.join(out))
-                print('\n')
-                print(''.join(err))
-            else:
-                print('\nEnigmaBridge tokens generated successfully')
-                print('You can use these newly generated keys for your CA or generate another ones with:')
-                for tmpcmd in key_gen_cmds:
-                    print('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
-
-            # Add SoftHSM crypto token to EJBCA
-            print('\nAdding an EnigmaBridge crypto token to your PKI instance:')
-            ret, out, err = self.ejbca.ejbca_add_softhsm_token(softhsm=self.soft_config, name='EnigmaBridgeToken')
-            if ret != 0:
-                print('\nError in adding EnigmaBridge token to the PKI instance')
-                print('You can add it manually in the PKI (EJBCA) admin page later')
-                print('Pin for the EnigmaBridge token is 0000')
-            else:
-                print('\nEnigmaBridgeToken added to the PKI instance')
-
-            # LetsEncrypt enrollment
-            le_certificate_installed = self.le_install(self.ejbca)
-
-            print('\n')
-            print('-'*self.get_term_width())
-            self.cli_sleep(3)
-
-            print(self.t.underline_green('[OK] System installation is completed'))
-            if le_certificate_installed == 0:
-                if not domain_is_ok:
-                    print('  \nThere was a problem in registering new domain names for you system')
-                    print('  Please get in touch with support@enigmabridge.com and we will try to resolve the problem')
-            else:
-                print('  \nTrusted HTTPS certificate was not installed, most likely reason is port '
-                      '443 being closed by a firewall')
-                print('  For more info please check https://enigmabridge.com/support/aws13073')
-                print('  We will keep re-trying every 5 minutes.')
-                print('\nMeantime, you can access the system at:')
-                print('     https://%s:%d/ejbca/adminweb/'
-                      % (self.reg_svc.info_loader.ami_public_hostname, self.ejbca.PORT))
-                print('WARNING: you will have to override web browser security alerts.')
-
-            self.cli_sleep(3)
-            print('-'*self.get_term_width())
-            print('')
-            print(self.t.underline('Please setup your computer for secure connections to your PKI '
-                                   'key management system:'))
-            time.sleep(0.5)
-
-            # Finalize, P12 file & final instructions
-            new_p12 = self.ejbca.copy_p12_file()
-            public_hostname = self.ejbca.hostname if domain_is_ok else self.reg_svc.info_loader.ami_public_hostname
-            print('\nDownload p12 file: %s' % new_p12)
-            print('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
-            print('  Key import password is: %s' % self.ejbca.superadmin_pass)
-            print('\nThe following page can guide you through p12 import: https://enigmabridge.com/support/aws13076')
-            print('Once you import the p12 file to your computer browser/keychain you can connect to the PKI '
-                  'admin interface:')
-
-            if domain_is_ok:
-                for domain in new_config.domains:
-                    print('  https://%s:%d/ejbca/adminweb/' % (domain, self.ejbca.PORT))
-            else:
-                print('  https://%s:%d/ejbca/adminweb/'
-                      % (self.reg_svc.info_loader.ami_public_hostname, self.ejbca.PORT))
-
-            # Test if EJBCA is reachable on outer interface
-            # The test is performed only if not in VPC. Otherwise it makes no sense to check public IP for 8443.
-            if not self.last_is_vpc:
-                ejbca_open = self.ejbca.test_port_open(host=self.reg_svc.info_loader.ami_public_ip)
-                if not ejbca_open:
-                    self.cli_sleep(5)
-                    print('\nWarning! The PKI port %d is not reachable on the public IP address %s'
-                          % (self.ejbca.PORT, self.reg_svc.info_loader.ami_public_ip))
-                    print('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
-                          'AWS Security Groups')
-                    print('Please get in touch with our support via https://enigmabridge/freshdesk.com')
-
-            self.cli_sleep(5)
-            return self.return_code(0)
+                self.return_code(ret)
 
         except Exception:
             if self.args.debug:
@@ -433,13 +537,25 @@ class Installer(InstallerBase):
         """Check if there is enough memory in the system, adds a new swapfile if not"""
         self.install_check_memory(SysConfig(print_output=True))
 
+    def load_base_settings(self):
+        # EB Settings read. Optional.
+        self.eb_settings, eb_aws_settings_path = Core.read_settings()
+        if self.eb_settings is not None:
+            self.user_reg_type = self.eb_settings.user_reg_type
+        if self.args.reg_type is not None:
+            self.user_reg_type = self.args.reg_type
+        if self.eb_settings is None:
+            self.eb_settings = EBSettings()
+        if self.user_reg_type is not None:
+            self.eb_settings.user_reg_type = self.user_reg_type
+
     def init_print_intro(self):
         """
         Prints introduction text before the installation.
         :return:
         """
         print('')
-        print('-'*self.get_term_width())
+        self.cli_separator()
         print('\nThe installation is about to start.')
         print('During the installation we collect the following ec2 metadata for enrolment to Enigma Bridge CloudHSM: ')
         print('  - ami-id')
@@ -501,7 +617,7 @@ class Installer(InstallerBase):
         # If user explicitly selects VPC then this is not printed
         # Otherwise we have to ask, because it can be just the case 443 is firewalled.
         if args_is_vpc is None and not self.last_le_port_open:
-            print('-'*self.get_term_width())
+            self.cli_separator()
             print('\n - TCP port 443 was not reachable on the public IP %s' % reg_svc.info_loader.ami_public_ip)
             print(' - You are probably behind NAT, in a virtual private cloud (VPC) or firewalled by other means')
             print(' - LetsEncrypt validation will now use DNS method\n')
@@ -510,7 +626,7 @@ class Installer(InstallerBase):
             self.last_is_vpc = self.ask_proceed('Are you in VPC / behind firewall / NAT ?\n'
                                                 'If yes, we will configure your private IP %s '
                                                 'in the DNS (y=VPC / n=public): ' % reg_svc.info_loader.ami_local_ip)
-            print('-'*self.get_term_width())
+            self.cli_separator()
 
         if args_is_vpc == 1:
             self.last_is_vpc = True
@@ -570,7 +686,7 @@ class Installer(InstallerBase):
         return self.return_code(0), domain_is_ok
 
     def init_print_challenge_intro(self):
-        print('-'*self.get_term_width())
+        self.cli_separator()
         print('')
 
         tmp = 'In order to complete your registration as an Enigma Bridge client, you need to enter a ' \
@@ -901,7 +1017,7 @@ class Installer(InstallerBase):
             print('You can try it again later with command renew\n')
         return ret
 
-    def install_check_memory(self, syscfg):
+    def install_check_memory(self, syscfg=None):
         """
         Checks if the system has enough virtual memory to successfully finish the installation.
         If not, it adds a new swap file.
@@ -909,6 +1025,9 @@ class Installer(InstallerBase):
         :param syscfg:
         :return:
         """
+        if syscfg is None:
+            syscfg = self.syscfg
+
         if not syscfg.is_enough_ram():
             total_mem = syscfg.get_total_usable_mem()
             print('\nTotal memory in the system is low: %d MB, installation requires at least 2GB'
@@ -945,47 +1064,6 @@ class Installer(InstallerBase):
             print('It\'s optional but we highly recommend to enter a valid e-mail address'
                   ' (especially on a production system)\n')
 
-    def ask_for_token(self):
-        """
-        Asks for the verification token for the EB user registration
-        :return:
-        """
-        confirmation = False
-        var = None
-
-        # Take reg token from the command line
-        if self.args.reg_token is not None:
-            self.args.reg_token = self.args.reg_token.strip()
-
-            print('Using registration challenge passed as an argument: %s' % self.args.reg_token)
-            if len(self.args.reg_token) > 0:
-                print('Registration challenge is empty')
-                raise ValueError('Invalid registration challenge token')
-
-            else:
-                return self.args.reg_token
-
-        # Noninteractive mode - use empty email address if got here
-        if self.noninteractive:
-            raise ValueError('Registration challenge is required')
-
-        # Asking for email - interactive
-        while not confirmation:
-            var = raw_input('Please enter the challenge: ').strip()
-            question = None
-            if len(var) == 0:
-                print('Registration challenge cannot be empty')
-                continue
-
-            else:
-                question = 'Is this challenge correct? \'%s\' (Y/n/q):' % var
-            confirmation = self.ask_proceed_quit(question)
-            if confirmation == self.PROCEED_QUIT:
-                return self.return_code(1)
-            confirmation = confirmation == self.PROCEED_YES
-
-        return var
-
     def is_args_le_verification_set(self):
         """True if LetsEncrypt domain verification is set in command line - potential override"""
         return self.args.le_verif is not None
@@ -1006,34 +1084,6 @@ class Installer(InstallerBase):
         if is_vpc is None:
             return default
         return is_vpc
-
-    def check_pid(self, retry=True):
-        """Checks if the tool is running"""
-        first_retry = True
-        attempt_ctr = 0
-        while first_retry or retry:
-            try:
-                first_retry = False
-                attempt_ctr += 1
-
-                self.core.pidlock_create()
-                if attempt_ctr > 1:
-                    print('\nPID lock acquired')
-                return True
-
-            except pid.PidFileAlreadyRunningError as e:
-                return True
-
-            except pid.PidFileError as e:
-                pidnum = self.core.pidlock_get_pid()
-                print('\nError: CLI already running in exclusive mode by PID: %d' % pidnum)
-
-                if self.args.pidlock >= 0 and attempt_ctr > self.args.pidlock:
-                    return False
-
-                print('Next check will be performed in few seconds. Waiting...')
-                time.sleep(3)
-        pass
 
     def init_argparse(self):
         """

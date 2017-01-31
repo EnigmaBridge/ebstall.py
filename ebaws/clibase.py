@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
+
 from cmd2 import Cmd
 import argparse
 import sys
@@ -51,6 +53,8 @@ class InstallerBase(Cmd):
         :return:
         """
         Cmd.__init__(self, *args, **kwargs)
+        self.core = Core()
+
         self.args = None
         self.last_result = 0
         self.noninteractive = False
@@ -105,6 +109,15 @@ class InstallerBase(Cmd):
     # Cli helpers
     #
 
+    def tprint(self, *args, **kwargs):
+        """
+        Print wrapper - for additional logging & inspection
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print(*args, **kwargs)
+
     def return_code(self, code=0, if_interactive_return_ok=False):
         """
         Sets return code to the state and returns it as value.
@@ -118,6 +131,13 @@ class InstallerBase(Cmd):
             return 0
         return code
 
+    def cli_separator(self):
+        """
+        Prints section separator ---
+        :return:
+        """
+        self.tprint('-' * self.get_term_width())
+
     def cli_sleep(self, iter=5):
         """
         Sleep + newline
@@ -125,7 +145,7 @@ class InstallerBase(Cmd):
         :return:
         """
         for lines in range(iter):
-            print('')
+            self.tprint('')
             time.sleep(0.1)
 
     def ask_proceed_quit(self, question=None, support_non_interactive=False,
@@ -146,13 +166,13 @@ class InstallerBase(Cmd):
 
         if self.noninteractive and support_non_interactive:
             if self.args.yes:
-                print(question)
+                self.tprint(question)
                 if non_interactive_return == self.PROCEED_YES:
-                    print('Y')
+                    self.tprint('Y')
                 elif non_interactive_return == self.PROCEED_NO:
-                    print('n')
+                    self.tprint('n')
                 elif non_interactive_return == self.PROCEED_QUIT:
-                    print('q')
+                    self.tprint('q')
                 else:
                     raise ValueError('Unknown default value')
 
@@ -215,13 +235,13 @@ class InstallerBase(Cmd):
         if self.args.email is not None:
             self.args.email = self.args.email.strip()
 
-            print('Using email passed as an argument: %s' % self.args.email)
+            self.tprint('Using email passed as an argument: %s' % self.args.email)
             if len(self.args.email) > 0 and not util.safe_email(self.args.email):
-                print('Email you have entered is invalid, cannot continue')
+                self.tprint('Email you have entered is invalid, cannot continue')
                 raise ValueError('Invalid email address')
 
             elif is_required and len(self.args.email) == 0:
-                print(self.t.red('Email is required in this mode'))
+                self.tprint(self.t.red('Email is required in this mode'))
                 raise ValueError('Email is required')
 
             else:
@@ -230,7 +250,7 @@ class InstallerBase(Cmd):
         # Noninteractive mode - use empty email address if got here
         if self.noninteractive:
             if is_required:
-                print(self.t.red('Email address is required to continue with the registration, cannot continue'))
+                self.tprint(self.t.red('Email address is required to continue with the registration, cannot continue'))
                 raise ValueError('Email is required')
             else:
                 return ''
@@ -244,15 +264,56 @@ class InstallerBase(Cmd):
             question = None
             if len(var) == 0:
                 if is_required:
-                    print('Email address is required, cannot be empty')
+                    self.tprint('Email address is required, cannot be empty')
                     continue
                 else:
                     question = 'You have entered an empty email address, is it correct? (Y/n): '
             elif not util.safe_email(var):
-                print('Email you have entered is invalid, try again')
+                self.tprint('Email you have entered is invalid, try again')
                 continue
             else:
                 question = 'Is this email correct? \'%s\' (Y/n/q): ' % var
+            confirmation = self.ask_proceed_quit(question)
+            if confirmation == self.PROCEED_QUIT:
+                return self.return_code(1)
+            confirmation = confirmation == self.PROCEED_YES
+
+        return var
+
+    def ask_for_token(self):
+        """
+        Asks for the verification token for the EB user registration
+        :return:
+        """
+        confirmation = False
+        var = None
+
+        # Take reg token from the command line
+        if self.args.reg_token is not None:
+            self.args.reg_token = self.args.reg_token.strip()
+
+            self.tprint('Using registration challenge passed as an argument: %s' % self.args.reg_token)
+            if len(self.args.reg_token) > 0:
+                self.tprint('Registration challenge is empty')
+                raise ValueError('Invalid registration challenge token')
+
+            else:
+                return self.args.reg_token
+
+        # Noninteractive mode - use empty email address if got here
+        if self.noninteractive:
+            raise ValueError('Registration challenge is required')
+
+        # Asking for email - interactive
+        while not confirmation:
+            var = raw_input('Please enter the challenge: ').strip()
+            question = None
+            if len(var) == 0:
+                self.tprint('Registration challenge cannot be empty')
+                continue
+
+            else:
+                question = 'Is this challenge correct? \'%s\' (Y/n/q):' % var
             confirmation = self.ask_proceed_quit(question)
             if confirmation == self.PROCEED_QUIT:
                 return self.return_code(1)
@@ -298,15 +359,47 @@ class InstallerBase(Cmd):
         uid = os.getuid()
         euid = os.geteuid()
         if uid != 0 and euid != 0:
-            print('Error: This action requires root privileges')
-            print('Please, start the client with: sudo -E -H ebaws')
+            self.tprint('Error: This action requires root privileges')
+            self.tprint('Please, start the client with: sudo -E -H ebaws')
             return False
         return True
+
+    def check_pid(self, retry=True):
+        """
+        Checks if the tool is running.
+        :param retry:
+        :return:
+        """
+        first_retry = True
+        attempt_ctr = 0
+        while first_retry or retry:
+            try:
+                first_retry = False
+                attempt_ctr += 1
+
+                self.core.pidlock_create()
+                if attempt_ctr > 1:
+                    self.tprint('\nPID lock acquired')
+                return True
+
+            except pid.PidFileAlreadyRunningError as e:
+                return True
+
+            except pid.PidFileError as e:
+                pidnum = self.core.pidlock_get_pid()
+                self.tprint('\nError: CLI already running in exclusive mode by PID: %d' % pidnum)
+
+                if self.args.pidlock >= 0 and attempt_ctr > self.args.pidlock:
+                    return False
+
+                self.tprint('Next check will be performed in few seconds. Waiting...')
+                time.sleep(3)
+        pass
 
     #
     # Cli commands
     #
 
     def do_version(self, line):
-        print('%s-%s' % (self.PIP_NAME, self.version))
+        self.tprint('%s-%s' % (self.PIP_NAME, self.version))
 

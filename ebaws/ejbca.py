@@ -512,9 +512,9 @@ class Ejbca(object):
         Adds a new crypto token to the EJBCA using CLI
         https://www.ejbca.org/docs/userguide.html#New Crypto Tokens
 
-        :param softhsm:
-        :param name:
-        :param slot_id:
+        :param softhsm: SoftHSM object
+        :param name: name of the HW crypto token used in EJBCA
+        :param slot_id: slot index in the token to associate with the new EJBCA crypto token
         :return:
         """
         so_path = softhsm.get_so_path() if softhsm is not None else SoftHsmV1Config.SOFTHSM_SO_PATH
@@ -774,7 +774,7 @@ class Ejbca(object):
 
         # 1. update properties file
         if self.print_output:
-            print " - Updating settings"
+            print(" - Updating settings")
         self.update_properties()
         self.backup_passwords()
         if self.config is not None:
@@ -782,23 +782,23 @@ class Ejbca(object):
 
         # Restart jboss - to make sure it is running
         if self.print_output:
-            print "\n - Restarting application server, please wait"
+            print("\n - Restarting application server, please wait")
         jboss_works = self.jboss_restart()
         if not jboss_works:
-            print "\n Application server (JBoss) could not be restarted. Please, resolve the problem and start again"
+            print("\n Application server (JBoss) could not be restarted. Please, resolve the problem and start again")
             return 100
 
         # 2. Undeploy original EJBCA, make JBoss clean
         if self.print_output:
-            print "\n - Preparing environment for application server"
+            print("\n - Preparing environment for application server")
         self.undeploy()
 
         # Restart jboss - so we can delete database after removal
         if self.print_output:
-            print "\n - Restarting application server, please wait"
+            print("\n - Restarting application server, please wait")
         jboss_works = self.jboss_restart()
         if not jboss_works:
-            print "\n Application server could not be restarted. Please, resolve the problem and start again"
+            print("\n Application server could not be restarted. Please, resolve the problem and start again")
             return 100
 
         # Delete & backup database, fix privileges, reload.
@@ -809,7 +809,8 @@ class Ejbca(object):
         # 3. deploy, 5 attempts
         for i in range(0, 5):
             if self.print_output:
-                print "\n - Deploying the PKI system" if i == 0 else "\n - Deploying the PKI system, attempt %d" % (i+1)
+                print("\n - Deploying the PKI system" if i == 0 else
+                      "\n - Deploying the PKI system, attempt %d" % (i+1))
             res, out, err = self.ant_deploy()
             self.ejbca_install_result = res
             if res == 0:
@@ -821,7 +822,8 @@ class Ejbca(object):
         # 4. install, 3 attempts
         for i in range(0, 3):
             if self.print_output:
-                print " - Installing the PKI system" if i == 0 else " - Installing the PKI system, attempt %d" % (i+1)
+                print(" - Installing the PKI system" if i == 0 else
+                      " - Installing the PKI system, attempt %d" % (i+1))
             self.jboss_fix_privileges()
             self.jboss_wait_after_deploy()
 
@@ -849,6 +851,5 @@ class Ejbca(object):
         Very light check, but prevents from running and failing on hosts without our jboss installation.
         :return: true if env is OK (installation could finish successfully)
         """
-        return os.path.exists(self.get_ejbca_home()) \
-               and os.path.exists(self.get_jboss_home())
+        return os.path.exists(self.get_ejbca_home()) and os.path.exists(self.get_jboss_home())
 
