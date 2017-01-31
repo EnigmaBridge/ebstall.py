@@ -55,6 +55,7 @@ class Installer(InstallerBase):
         self.eb_cfg = None
 
         self.previous_registration_continue = False
+        self.domain_is_ok = False
         self.first_run = self.is_first_run()
 
         self.debug_simulate_vpc = False
@@ -339,6 +340,140 @@ class Installer(InstallerBase):
                 self.tprint('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
         return 0
 
+    def cfg_get_raw_hostname(self):
+        """
+        Returns natural hostname of the machine - reachable over the internet.
+        If there is no public hostname available, IPv4 address is returned.
+        Used when DNS registration fails.
+        :return:
+        """
+        # TODO: refactor to multi profiles, not just AWS
+        return self.reg_svc.info_loader.ami_public_hostname
+
+    def cfg_get_raw_ip(self):
+        """
+        Returns public IP address of the machine.
+        May use profile dependent tools to figure this out - e.g., AWS tools.
+        :return:
+        """
+        # TODO: refactor to multiple profiles, not just AWS
+        return self.reg_svc.info_loader.ami_public_ip
+
+    def init_le_install(self, ejbca=None):
+        """
+        Installs LetsEncrypt certificate to the EJBCA.
+        :param ejbca:
+        :return: result
+        """
+        if ejbca is None:
+            ejbca = self.ejbca
+
+        le_certificate_installed = self.le_install(self.ejbca)
+
+        print('\n')
+        self.cli_separator()
+        self.cli_sleep(3)
+
+        print(self.t.underline_green('[OK] System installation is completed'))
+        if le_certificate_installed == 0:
+            if not self.domain_is_ok:
+                print('  \nThere was a problem in registering new domain names for you system')
+                print('  Please get in touch with support@enigmabridge.com and we will try to resolve the problem')
+        else:
+            print('  \nTrusted HTTPS certificate was not installed, most likely reason is port '
+                  '443 being closed by a firewall')
+            print('  For more info please check https://enigmabridge.com/support/aws13073')
+            print('  We will keep re-trying every 5 minutes.')
+            print('\nMeantime, you can access the system at:')
+            print('     https://%s:%d/ejbca/adminweb/'
+                  % (self.cfg_get_raw_hostname(), self.ejbca.PORT))
+            print('WARNING: you will have to override web browser security alerts.')
+        return 0
+
+    def init_install_ejbca_intro(self):
+        """
+        Shows text info before EJBCA installation starts
+        :return:
+        """
+        self.tprint('Going to install PKI system')
+        self.tprint('  This may take 15 minutes or less. Please, do not interrupt the installation')
+        self.tprint('  and wait until the process completes.\n')
+
+    def init_install_ejbca(self, new_config=None):
+        """
+        Installs EJBCA
+        :return: result
+        """
+        if new_config is None:
+            new_config = self.config
+
+        self.init_install_ejbca_intro()
+        self.ejbca.set_config(new_config)
+        self.ejbca.set_domains(new_config.domains)
+        self.ejbca.reg_svc = self.reg_svc
+
+        self.ejbca.configure()
+
+        if self.ejbca.ejbca_install_result != 0:
+            self.tprint('\nPKI installation error. Please try again.')
+            return self.return_code(1)
+
+        Core.write_configuration(self.ejbca.config)
+        self.tprint('\nPKI installed successfully.')
+        return 0
+
+    def init_show_p12_info(self, new_p12, new_config):
+        """
+        Informs user where to get P12 file to log into EJBCA admin panel.
+        :return:
+        """
+        if new_p12 is None:
+            raise ValueError('P12 file is not defined')
+
+        if new_config is None:
+            new_config = self.config
+
+        public_hostname = self.ejbca.hostname if self.domain_is_ok else self.cfg_get_raw_hostname()
+        print('\nDownload p12 file: %s' % new_p12)
+        print('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
+        print('  Key import password is: %s' % self.ejbca.superadmin_pass)
+        print('\nThe following page can guide you through p12 import: https://enigmabridge.com/support/aws13076')
+        print('Once you import the p12 file to your computer browser/keychain you can connect to the PKI '
+              'admin interface:')
+
+        if self.domain_is_ok:
+            for domain in new_config.domains:
+                print('  https://%s:%d/ejbca/adminweb/' % (domain, self.ejbca.PORT))
+        else:
+            print('  https://%s:%d/ejbca/adminweb/'
+                  % (self.cfg_get_raw_hostname(), self.ejbca.PORT))
+
+    def init_test_admin_port_reachability(self):
+        """
+        Tests main EJBCA admin port reachability.
+        :return:
+        """
+        # Test if EJBCA is reachable on outer interface
+        # The test is performed only if not in VPC. Otherwise it makes no sense to check public IP for 8443.
+        if self.last_is_vpc:
+            return
+
+        ejbca_open = self.ejbca.test_port_open(host=self.cfg_get_raw_ip())
+        if not ejbca_open:
+            self.cli_sleep(5)
+            self.init_print_ejbca_unreachable_error()
+
+    def init_print_ejbca_unreachable_error(self):
+        """
+        Prints error when EJBCA admin ports are not reachable
+        :return:
+        """
+        print('\nWarning! The PKI port %d is not reachable on the public IP address %s'
+              % (self.ejbca.PORT, self.cfg_get_raw_ip()))
+        print('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
+              'AWS Security Groups')
+        print('Please get in touch with our support via https://enigmabridge/freshdesk.com')
+
     def init_main_try(self):
         """
         Main installer block, called from the global try:
@@ -389,7 +524,7 @@ class Installer(InstallerBase):
         new_config.le_preferred_verification = args_le_preferred_method
 
         # Assign a new dynamic domain for the host
-        res, domain_is_ok = self.init_domains_check(reg_svc=self.reg_svc)
+        res, self.domain_is_ok = self.init_domains_check(reg_svc=self.reg_svc)
         new_config = self.reg_svc.config
         if res != 0:
             return self.return_code(res)
@@ -409,22 +544,9 @@ class Installer(InstallerBase):
             return self.return_code(res)
 
         # EJBCA configuration
-        self.tprint('Going to install PKI system')
-        self.tprint('  This may take 15 minutes or less. Please, do not interrupt the installation')
-        self.tprint('  and wait until the process completes.\n')
-
-        self.ejbca.set_config(new_config)
-        self.ejbca.set_domains(new_config.domains)
-        self.ejbca.reg_svc = self.reg_svc
-
-        self.ejbca.configure()
-
-        if self.ejbca.ejbca_install_result != 0:
-            self.tprint('\nPKI installation error. Please try again.')
-            return self.return_code(1)
-
-        Core.write_configuration(self.ejbca.config)
-        self.tprint('\nPKI installed successfully.')
+        res = self.init_install_ejbca(new_config=new_config)
+        if res != 0:
+            return self.return_code(res)
 
         # Generate new keys
         res = self.init_create_new_eb_keys()
@@ -437,62 +559,23 @@ class Installer(InstallerBase):
             return self.return_code(res)
 
         # LetsEncrypt enrollment
-        le_certificate_installed = self.le_install(self.ejbca)
-
-        print('\n')
-        self.cli_separator()
-        self.cli_sleep(3)
-
-        print(self.t.underline_green('[OK] System installation is completed'))
-        if le_certificate_installed == 0:
-            if not domain_is_ok:
-                print('  \nThere was a problem in registering new domain names for you system')
-                print('  Please get in touch with support@enigmabridge.com and we will try to resolve the problem')
-        else:
-            print('  \nTrusted HTTPS certificate was not installed, most likely reason is port '
-                  '443 being closed by a firewall')
-            print('  For more info please check https://enigmabridge.com/support/aws13073')
-            print('  We will keep re-trying every 5 minutes.')
-            print('\nMeantime, you can access the system at:')
-            print('     https://%s:%d/ejbca/adminweb/'
-                  % (self.reg_svc.info_loader.ami_public_hostname, self.ejbca.PORT))
-            print('WARNING: you will have to override web browser security alerts.')
+        res = self.init_le_install()
+        if res != 0:
+            return self.return_code(res)
 
         self.cli_sleep(3)
         self.cli_separator()
-        print('')
-        print(self.t.underline('Please setup your computer for secure connections to your PKI '
-                               'key management system:'))
+        self.tprint('')
+        self.tprint(self.t.underline('Please setup your computer for secure connections to your PKI '
+                                     'key management system:'))
         time.sleep(0.5)
 
         # Finalize, P12 file & final instructions
         new_p12 = self.ejbca.copy_p12_file()
-        public_hostname = self.ejbca.hostname if domain_is_ok else self.reg_svc.info_loader.ami_public_hostname
-        print('\nDownload p12 file: %s' % new_p12)
-        print('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
-        print('  Key import password is: %s' % self.ejbca.superadmin_pass)
-        print('\nThe following page can guide you through p12 import: https://enigmabridge.com/support/aws13076')
-        print('Once you import the p12 file to your computer browser/keychain you can connect to the PKI '
-              'admin interface:')
+        self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
 
-        if domain_is_ok:
-            for domain in new_config.domains:
-                print('  https://%s:%d/ejbca/adminweb/' % (domain, self.ejbca.PORT))
-        else:
-            print('  https://%s:%d/ejbca/adminweb/'
-                  % (self.reg_svc.info_loader.ami_public_hostname, self.ejbca.PORT))
-
-        # Test if EJBCA is reachable on outer interface
-        # The test is performed only if not in VPC. Otherwise it makes no sense to check public IP for 8443.
-        if not self.last_is_vpc:
-            ejbca_open = self.ejbca.test_port_open(host=self.reg_svc.info_loader.ami_public_ip)
-            if not ejbca_open:
-                self.cli_sleep(5)
-                print('\nWarning! The PKI port %d is not reachable on the public IP address %s'
-                      % (self.ejbca.PORT, self.reg_svc.info_loader.ami_public_ip))
-                print('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
-                      'AWS Security Groups')
-                print('Please get in touch with our support via https://enigmabridge/freshdesk.com')
+        # Test if main admin port of EJBCA is reachable.
+        self.init_test_admin_port_reachability()
 
         self.cli_sleep(5)
         return self.return_code(0)
@@ -618,7 +701,7 @@ class Installer(InstallerBase):
         # Otherwise we have to ask, because it can be just the case 443 is firewalled.
         if args_is_vpc is None and not self.last_le_port_open:
             self.cli_separator()
-            print('\n - TCP port 443 was not reachable on the public IP %s' % reg_svc.info_loader.ami_public_ip)
+            print('\n - TCP port 443 was not reachable on the public IP %s' % self.cfg_get_raw_ip())
             print(' - You are probably behind NAT, in a virtual private cloud (VPC) or firewalled by other means')
             print(' - LetsEncrypt validation will now use DNS method\n')
             args_le_preferred_method = LE_VERIFY_DNS
@@ -829,7 +912,7 @@ class Installer(InstallerBase):
             else:
                 if config.last_ipv4 is not None:
                     print('Last IPv4 used for domain registration: %s' % config.last_ipv4)
-                print('Current IPv4: %s' % reg_svc.info_loader.ami_public_ip)
+                print('Current IPv4: %s' % self.cfg_get_raw_ip())
 
             # Assign a new dynamic domain for the host
             domain_is_ok = False
@@ -865,7 +948,7 @@ class Installer(InstallerBase):
                 print('\nDomain could not be assigned. You can try domain reassign later.')
                 return self.return_code(1)
 
-            new_config.last_ipv4 = reg_svc.info_loader.ami_public_ip
+            new_config.last_ipv4 = self.cfg_get_raw_ip()
             new_config.last_ipv4_private = reg_svc.info_loader.ami_local_ip
 
             # Is original hostname used in the EJBCA in domains?
@@ -1030,39 +1113,39 @@ class Installer(InstallerBase):
 
         if not syscfg.is_enough_ram():
             total_mem = syscfg.get_total_usable_mem()
-            print('\nTotal memory in the system is low: %d MB, installation requires at least 2GB'
+            self.tprint('\nTotal memory in the system is low: %d MB, installation requires at least 2GB'
                   % int(math.ceil(total_mem/1024/1024)))
 
-            print('New swap file will be installed in /var')
-            print('It will take approximately 2 minutes')
+            self.tprint('New swap file will be installed in /var')
+            self.tprint('It will take approximately 2 minutes')
             code, swap_name, swap_size = syscfg.create_swap()
             if code == 0:
-                print('\nNew swap file was created %s %d MB and activated'
-                      % (swap_name, int(math.ceil(total_mem/1024/1024))))
+                self.tprint('\nNew swap file was created %s %d MB and activated'
+                            % (swap_name, int(math.ceil(total_mem/1024/1024))))
             else:
-                print('\nSwap file could not be created. Please, inspect the problem and try again')
+                self.tprint('\nSwap file could not be created. Please, inspect the problem and try again')
                 return self.return_code(1)
 
             # Recheck
             if not syscfg.is_enough_ram():
-                print('Error: still not enough memory. Please, resolve the issue and try again')
+                self.tprint('Error: still not enough memory. Please, resolve the issue and try again')
                 return self.return_code(1)
-            print('')
+            self.tprint('')
         return 0
 
     def ask_for_email_reason(self, is_required=None):
         if is_required:
-            print('We need your email address for:\n'
-                  '   a) identity verification for EnigmaBridge account \n'
-                  '   b) LetsEncrypt certificate registration')
-            print('We will send you a verification email.')
-            print('Without a valid e-mail address you won\'t be able to continue with the installation\n')
+            self.tprint('We need your email address for:\n'
+                        '   a) identity verification for EnigmaBridge account \n'
+                        '   b) LetsEncrypt certificate registration')
+            self.tprint('We will send you a verification email.')
+            self.tprint('Without a valid e-mail address you won\'t be able to continue with the installation\n')
         else:
-            print('We need your email address for:\n'
-                  '   a) identity verification in case of a recovery / support \n'
-                  '   b) LetsEncrypt certificate registration')
-            print('It\'s optional but we highly recommend to enter a valid e-mail address'
-                  ' (especially on a production system)\n')
+            self.tprint('We need your email address for:\n'
+                        '   a) identity verification in case of a recovery / support \n'
+                        '   b) LetsEncrypt certificate registration')
+            self.tprint('It\'s optional but we highly recommend to enter a valid e-mail address'
+                        ' (especially on a production system)\n')
 
     def is_args_le_verification_set(self):
         """True if LetsEncrypt domain verification is set in command line - potential override"""
