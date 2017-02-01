@@ -75,6 +75,110 @@ class VpnInstaller(Installer):
         init_res = Installer.do_init(self, line)
         return init_res
 
+    def init_main_try(self):
+        """
+        Main installer block, called from the global try:
+        :return:
+        """
+        self.init_services()
+
+        # Get registration options and choose one - network call.
+        self.reg_svc.load_auth_types()
+
+        # Show email prompt and intro text only for new initializations.
+        res = self.init_prompt_user()
+        if res != 0:
+            self.return_code(res)
+
+        # System check proceeds (mem, network).
+        # We do this even if we continue with previous registration, to have fresh view on the system.
+        # Check if we have EJBCA resources on the drive
+        res = self.init_test_environment()
+        if res != 0:
+            self.return_code(res)
+
+        # Determine if we have enough RAM for the work.
+        # If not, a new swap file is created so the system has at least 2GB total memory space
+        # for compilation & deployment.
+        res = self.install_check_memory(syscfg=self.syscfg)
+        if res != 0:
+            return self.return_code(res)
+
+        # Preferred LE method? If set...
+        self.last_is_vpc = False
+
+        # Lets encrypt reachability test, if preferred method is DNS - do only one attempt.
+        # We test this to detect VPC also. If 443 is reachable, we are not in VPC
+        res, args_le_preferred_method = self.init_le_vpc_check(self.get_args_le_verification(),
+                                                               self.get_args_vpc(), reg_svc=self.reg_svc)
+        if res != 0:
+            return self.return_code(res)
+
+        # User registration may be multi-step process.
+        res, new_config = self.init_enigma_registration()
+        if res != 0:
+            return self.return_code(res)
+
+        # Custom hostname for EJBCA - not yet supported
+        new_config.ejbca_hostname_custom = False
+        new_config.is_private_network = self.last_is_vpc
+        new_config.le_preferred_verification = args_le_preferred_method
+
+        # Assign a new dynamic domain for the host
+        res, self.domain_is_ok = self.init_domains_check(reg_svc=self.reg_svc)
+        new_config = self.reg_svc.config
+        if res != 0:
+            return self.return_code(res)
+
+        # Install to the OS - cron job & on boot service
+        res = self.init_install_os_hooks()
+        if res != 0:
+            return self.return_code(res)
+
+        # Dump config & SoftHSM
+        conf_file = Core.write_configuration(new_config)
+        self.tprint('New configuration was written to: %s\n' % conf_file)
+
+        # SoftHSMv1 reconfigure
+        res = self.init_softhsm(new_config=new_config)
+        if res != 0:
+            return self.return_code(res)
+
+        # EJBCA configuration
+        res = self.init_install_ejbca(new_config=new_config)
+        if res != 0:
+            return self.return_code(res)
+
+        # Generate new keys
+        res = self.init_create_new_eb_keys()
+        if res != 0:
+            return self.return_code(res)
+
+        # Add SoftHSM crypto token to EJBCA
+        res = self.init_add_softhsm_token()
+        if res != 0:
+            return self.return_code(res)
+
+        # LetsEncrypt enrollment
+        res = self.init_le_install()
+        if res != 0:
+            return self.return_code(res)
+
+        self.tprint('')
+        self.init_celebrate()
+        self.cli_sleep(3)
+        self.cli_separator()
+
+        # Finalize, P12 file & final instructions
+        new_p12 = self.ejbca.copy_p12_file()
+        self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
+
+        # Test if main admin port of EJBCA is reachable.
+        self.init_test_admin_port_reachability()
+
+        self.cli_sleep(5)
+        return self.return_code(0)
+
 
 def main():
     app = VpnInstaller()

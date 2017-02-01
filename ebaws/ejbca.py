@@ -26,6 +26,7 @@ class Ejbca(object):
     """
 
     PORT = 8443
+    PORT_PUBLIC = 8442
 
     # Default home dirs
     EJBCA_HOME = '/opt/ejbca_ce_6_3_1_1'
@@ -837,12 +838,15 @@ class Ejbca(object):
         self.jboss_reload()
         return self.ejbca_install_result
 
-    def test_port_open(self, host, timeout=5, attempts=3):
+    def test_port_open(self, host, timeout=5, attempts=3, port=None):
         """
         Tests if port is open to the public
         :return:
         """
-        return util.test_port_open(host=host, port=self.PORT, timeout=timeout, attempts=attempts,
+        if port is None:
+            port = self.PORT
+
+        return util.test_port_open(host=host, port=port, timeout=timeout, attempts=attempts,
                                    test_upper_read_write=False)
 
     def test_environment(self):

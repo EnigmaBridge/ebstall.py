@@ -382,7 +382,6 @@ class Installer(InstallerBase):
         self.cli_separator()
         self.cli_sleep(3)
 
-        self.tprint(self.t.underline_green('[OK] System installation is completed'))
         if le_certificate_installed == 0:
             if not self.domain_is_ok:
                 self.tprint('  \nThere was a problem in registering new domain names for you system')
@@ -429,6 +428,13 @@ class Installer(InstallerBase):
         self.tprint('\nPKI installed successfully.')
         return 0
 
+    def init_celebrate(self):
+        """
+        Show all done
+        :return:
+        """
+        self.tprint(self.t.underline_green('[OK] System installation is completed'))
+
     def init_show_p12_info(self, new_p12, new_config):
         """
         Informs user where to get P12 file to log into EJBCA admin panel.
@@ -471,8 +477,15 @@ class Installer(InstallerBase):
 
         ejbca_open = self.ejbca.test_port_open(host=self.cfg_get_raw_ip())
         if not ejbca_open:
-            self.cli_sleep(5)
+            self.cli_sleep(2)
             self.init_print_ejbca_unreachable_error()
+            return
+
+        ejbca_public_open = self.ejbca.test_port_open(host=self.cfg_get_raw_ip(), port=self.ejbca.PORT_PUBLIC)
+        if not ejbca_open:
+            self.cli_sleep(2)
+            self.init_print_ejbca_unreachable_public_error()
+            return
 
     def init_print_ejbca_unreachable_error(self):
         """
@@ -481,6 +494,18 @@ class Installer(InstallerBase):
         """
         self.tprint('\nWarning! The PKI port %d is not reachable on the public IP address %s'
                     % (self.ejbca.PORT, self.cfg_get_raw_ip()))
+        self.tprint('Make sure both ports are open and available: %d, %d' % (self.ejbca.PORT, self.ejbca.PORT_PUBLIC))
+        self.tprint('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
+                    'AWS Security Groups')
+        self.tprint('Please get in touch with our support via https://enigmabridge/freshdesk.com')
+
+    def init_print_ejbca_unreachable_public_error(self):
+        """
+        Prints error when EJBCA admin ports are not reachable
+        :return:
+        """
+        self.tprint('\nWarning! The PKI public port %d is not reachable on the public IP address %s'
+                    % (self.ejbca.PORT_PUBLIC, self.cfg_get_raw_ip()))
         self.tprint('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
                     'AWS Security Groups')
         self.tprint('Please get in touch with our support via https://enigmabridge/freshdesk.com')
@@ -574,6 +599,8 @@ class Installer(InstallerBase):
         if res != 0:
             return self.return_code(res)
 
+        self.tprint('')
+        self.init_celebrate()
         self.cli_sleep(3)
         self.cli_separator()
 
@@ -623,7 +650,7 @@ class Installer(InstallerBase):
 
         return self.return_code(1)
 
-    def do_check_memory(self):
+    def do_check_memory(self, args):
         """Check if there is enough memory in the system, adds a new swapfile if not"""
         self.install_check_memory(SysConfig(print_output=True))
 
