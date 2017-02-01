@@ -458,7 +458,7 @@ class Ejbca(object):
 
     def copy_p12_file(self):
         """
-        Copies p12 file to the home directory & chowns so user can download it via scp
+        Copies p12 file to the home directory & chown-s so user can download it via scp
         :return:
         """
         p12 = self.get_p12_file()

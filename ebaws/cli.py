@@ -62,6 +62,10 @@ class Installer(InstallerBase):
         self.update_intro()
 
     def is_first_run(self):
+        """
+        Returns true if this is the first run - configuration is empty.
+        :return:
+        """
         try:
             config = Core.read_configuration()
             return config is None or config.has_nonempty_config()
@@ -69,6 +73,10 @@ class Installer(InstallerBase):
             return True
 
     def update_intro(self):
+        """
+        Updates intro text for CLI header - adds version to it.
+        :return:
+        """
         self.intro = '-'*self.get_term_width() + \
                      ('\n    Enigma Bridge Installer command line interface (v%s) \n' % self.version) + \
                      '\n    usage - shows simple command list' + \
@@ -157,7 +165,7 @@ class Installer(InstallerBase):
         self.syscfg = SysConfig(print_output=True)
         return 0
 
-    def init_prompt_user_data(self):
+    def init_prompt_user(self):
         """
         Prompt user for initial data as a part of the initialisation process.
         E.g., asks for the user e-mail.
@@ -432,6 +440,11 @@ class Installer(InstallerBase):
         if new_config is None:
             new_config = self.config
 
+        self.tprint('')
+        self.tprint(self.t.underline('Please setup your computer for secure connections to your PKI '
+                                     'key management system:'))
+        time.sleep(0.5)
+
         public_hostname = self.ejbca.hostname if self.domain_is_ok else self.cfg_get_raw_hostname()
         self.tprint('\nDownload p12 file: %s' % new_p12)
         self.tprint('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
@@ -483,7 +496,7 @@ class Installer(InstallerBase):
         self.reg_svc.load_auth_types()
 
         # Show email prompt and intro text only for new initializations.
-        res = self.init_prompt_user_data()
+        res = self.init_prompt_user()
         if res != 0:
             self.return_code(res)
 
@@ -563,10 +576,6 @@ class Installer(InstallerBase):
 
         self.cli_sleep(3)
         self.cli_separator()
-        self.tprint('')
-        self.tprint(self.t.underline('Please setup your computer for secure connections to your PKI '
-                                     'key management system:'))
-        time.sleep(0.5)
 
         # Finalize, P12 file & final instructions
         new_p12 = self.ejbca.copy_p12_file()
@@ -619,14 +628,20 @@ class Installer(InstallerBase):
         self.install_check_memory(SysConfig(print_output=True))
 
     def load_base_settings(self):
-        # EB Settings read. Optional.
+        """
+        Loads EB settings - defining the image / host VM.
+        :return:
+        """
         self.eb_settings, eb_aws_settings_path = Core.read_settings()
-        if self.eb_settings is not None:
-            self.user_reg_type = self.eb_settings.user_reg_type
         if self.args.reg_type is not None:
             self.user_reg_type = self.args.reg_type
+
+        if self.eb_settings is not None and self.user_reg_type is None:
+            self.user_reg_type = self.eb_settings.user_reg_type
+
         if self.eb_settings is None:
             self.eb_settings = EBSettings()
+
         if self.user_reg_type is not None:
             self.eb_settings.user_reg_type = self.user_reg_type
 
@@ -769,6 +784,10 @@ class Installer(InstallerBase):
         return self.return_code(0), domain_is_ok
 
     def init_print_challenge_intro(self):
+        """
+        Prints text challenge to the user to copy registration token from the support system.
+        :return:
+        """
         self.cli_separator()
         self.tprint('')
 
