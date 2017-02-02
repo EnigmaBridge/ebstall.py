@@ -52,6 +52,12 @@ class Ejbca(object):
     JBOSS_CLI = 'bin/jboss-cli.sh'
     JBOSS_KEYSTORE = 'standalone/configuration/keystore/keystore.jks'
 
+    # MySQL connection
+    MYSQL_HOST = 'localhost'
+    MYSQL_PORT = '3306'
+    MYSQL_DB = 'ejbca'
+    MYSQL_USER = 'ejbca'
+
     # Default installation settings
     INSTALL_PROPERTIES = {
         'ca.name': 'ManagementCA',
@@ -64,6 +70,7 @@ class Ejbca(object):
         'ca.policy': 'null'
     }
 
+    # web.properties file - misc settings.
     WEB_PROPERTIES = {
         'cryptotoken.p11.lib.255.name': 'EnigmaBridge',
         'cryptotoken.p11.lib.255.file': SoftHsmV1Config.SOFTHSM_SO_PATH,
@@ -75,10 +82,21 @@ class Ejbca(object):
         'superadmin.dn': 'CN=SuperAdmin',
         'superadmin.batch': 'true',
 
-        # Credentials, generated at random, stored into password file
-        #'httpsserver.password': 'serverpwd',
-        #'java.trustpassword': 'changeit',
-        #'superadmin.password': 'ejbca',
+        'vpn.email.from': 'root@localhost'
+    }
+
+    # MySQL database properties
+    DATABASE_PROPERTIES = {
+        'database.name': 'mysql',
+        'database.url': 'jdbc:mysql://localhost:3306/ejbca?characterEncoding=UTF-8',
+        'database.driver': 'com.mysql.jdbc.Driver',
+        'database.username': 'ejbca',
+        'database.password': 'sa'
+    }
+
+    # mail.properties file
+    MAIL_PROPERTIES = {
+        'mail.from': 'ejbca@localhost'
     }
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
@@ -90,6 +108,7 @@ class Ejbca(object):
         self.java_pass = 'changeit'  # EJBCA & JBoss bug here
         self.superadmin_pass = util.random_password(16)
         self.db_pass = util.random_password(16)  # MySQL EJBCA user password.
+        self.master_p12_pass = util.random_password(16)  # P12 encryption password for VPN user enc.
 
         self.print_output = print_output
         self.hostname = None
@@ -345,6 +364,56 @@ class Ejbca(object):
             self.jboss_cmd(cmd)
         self.jboss_reload()
 
+    def get_mysql_root_connstring(self):
+        """
+        Returns connection string to the MySQL database for root.
+        :return:
+        """
+        con_string = 'mysql://%s:%s@%s%s/%s' % (self.MYSQL_USER, self.config.mysql_root_password,
+                                                self.MYSQL_HOST, ':%s' % self.MYSQL_PORT, self.MYSQL_DB)
+        return con_string
+
+    def backup_mysql_database(self):
+        """
+        Backups EJBCA database in the standard location.
+        internally uses mysqldump command to create SQL dump
+        :return:
+        """
+        util.make_or_verify_dir(self.DB_BACKUPS)
+
+        db_fpath = os.path.abspath(os.path.join(self.DB_BACKUPS, 'dbdump.sql'))
+        fh, backup_file = util.safe_create_with_backup(db_fpath, mode='w', chmod=0o600)
+        fh.close()
+
+        cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
+              % (self.MYSQL_DB, self.MYSQL_USER, self.config.ejbca_db_password, db_fpath)
+
+        p = subprocess.Popen(cmd, shell=True)
+        p.wait()
+
+    def reset_mysql_database(self):
+        """
+        Performs backup of the original MySQL database - if any.
+        Resets the database to the original state - drop database, drop users, create from scratch.
+        :return:
+        """
+        self.backup_mysql_database()
+        con_str = self.get_mysql_root_connstring()
+
+        try:
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker, scoped_session
+            engine = create_engine(con_str, pool_recycle=3600)
+            engine.execute("DROP DATABASE `%s`" % self.MYSQL_DB)
+            engine.execute("CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
+            engine.execute("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
+                           % (self.MYSQL_DB, self.MYSQL_USER, self.db_pass))
+            engine.execute("FLUSH PRIVILEGES")
+
+        except Exception as e:
+            logger.info('Exception in database regeneration %s' % e)
+            raise
+
     def jboss_backup_database(self):
         """
         Removes original database, moving it to a backup location.
@@ -452,6 +521,8 @@ class Ejbca(object):
             f.write('httpsserver.password=%s\n' % self.http_pass)
             f.write('java.trustpassword=%s\n' % self.java_pass)
             f.write('superadmin.password=%s\n' % self.superadmin_pass)
+            f.write('database.password=%s\n' % self.db_pass)
+            f.write('masterp12.password=%s\n' % self.master_p12_pass)
             f.flush()
 
     def get_p12_file(self):
