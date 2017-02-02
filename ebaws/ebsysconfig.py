@@ -106,19 +106,31 @@ class SysConfig(object):
         if self.print_output:
             sys.stderr.write(msg)
 
+    def install_crond_file(self, file_name, file_contents):
+        """
+        Installs a new cron.d file name.
+        Overwrites existing.
+        :param file_name:
+        :param file_contents:
+        :return:
+        """
+        cron_path = os.path.join('/etc/cron.d', os.path.basename(file_name))
+        if os.path.exists(cron_path):
+            os.remove(cron_path)
+
+        with util.safe_open(cron_path, mode='w', chmod=0o644) as handle:
+            handle.write(file_contents)
+        return 0
+
     def install_cron_renew(self):
         """
         Installs cronjob for certificate renewal
         :return:
         """
-        cron_path = '/etc/cron.d/ebaws-renew'
-        if os.path.exists(cron_path):
-            os.remove(cron_path)
+        data = '# Daily certificate renewal for the PKI key management system (EJBCA LetsEncrypt)\n'
+        data += '*/5 * * * * root /usr/local/bin/ebins-cli -n --pid-lock 3 renew >/dev/null 2>/dev/null \n'
 
-        with util.safe_open(cron_path, mode='w', chmod=0o644) as handle:
-            handle.write('# Daily certificate renewal for the PKI key management system (EJBCA LetsEncrypt)\n')
-            handle.write('*/5 * * * * root /usr/local/bin/ebins-cli -n --pid-lock 3 renew >/dev/null 2>/dev/null \n')
-        return 0
+        return self.install_crond_file('ebaws-renew', data)
 
     def install_onboot_check(self):
         """
