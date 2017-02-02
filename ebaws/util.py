@@ -224,7 +224,7 @@ def safe_create_with_backup(path, mode='w', chmod=0o644):
     :param path:
     :param mode:
     :param chmod:
-    :return:
+    :return: file handle, backup path
     """
     backup_path = delete_file_backup(path, chmod)
     return safe_open(path, mode, chmod), backup_path
