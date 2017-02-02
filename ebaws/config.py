@@ -237,6 +237,24 @@ class Config(object):
     def ejbca_domains(self, val):
         self.set_config('ejbca_domains', val)
 
+    # EJBCA database type
+    @property
+    def ejbca_db_type(self):
+        return self.get_config('ejbca_db_type')
+
+    @ejbca_db_type.setter
+    def ejbca_db_type(self, val):
+        self.set_config('ejbca_db_type', val)
+
+    # MySQL root password for the initialisation
+    @property
+    def mysql_root_password(self):
+        return self.get_config('mysql_root_password')
+
+    @mysql_root_password.setter
+    def mysql_root_password(self, val):
+        self.set_config('mysql_root_password', val)
+
     # EJBCA key store password
     @property
     def ejbca_jks_password(self):
@@ -245,6 +263,24 @@ class Config(object):
     @ejbca_jks_password.setter
     def ejbca_jks_password(self, val):
         self.set_config('ejbca_jks_password', val)
+
+    # EJBCA database password
+    @property
+    def ejbca_db_password(self):
+        return self.get_config('ejbca_db_password')
+
+    @ejbca_db_password.setter
+    def ejbca_db_password(self, val):
+        self.set_config('ejbca_db_password', val)
+
+    # EJBCA master key store password for VPN user credentials encryption
+    @property
+    def ejbca_p12master_password(self):
+        return self.get_config('ejbca_p12master_password')
+
+    @ejbca_p12master_password.setter
+    def ejbca_p12master_password(self, val):
+        self.set_config('ejbca_p12master_password', val)
 
     # EJBCA custom hostname flag
     @property
