@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from config import Config, EBSettings
 from consts import *
 from ebclient import eb_configuration

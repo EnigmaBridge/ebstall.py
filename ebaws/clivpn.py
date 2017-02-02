@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from cmd2 import Cmd
 import argparse
 import sys

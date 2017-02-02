@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from __future__ import print_function
 import argparse
 import collections
 import distutils.version  # pylint: disable=import-error,no-name-in-module
