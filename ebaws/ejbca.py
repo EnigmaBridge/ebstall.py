@@ -12,6 +12,7 @@ import shutil
 import re
 import letsencrypt
 import logging
+import shellescape
 from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT
 
 
@@ -100,16 +101,21 @@ class Ejbca(object):
     }
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
-                 config=None, staging=False, *args, **kwargs):
-        self.install_props = install_props if install_props is not None else {}
-        self.web_props = web_props if web_props is not None else {}
+                 config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
+                 *args, **kwargs):
 
-        self.http_pass = jks_pass if jks_pass is not None else util.random_password(16)
+        self.install_props = util.defval(install_props, {})
+        self.web_props = util.defval(web_props, {})
+        self.database_props = {}
+        self.mail_props = {}
+
+        self.http_pass = util.defval(jks_pass, util.random_password(16))
         self.java_pass = 'changeit'  # EJBCA & JBoss bug here
         self.superadmin_pass = util.random_password(16)
-        self.db_pass = util.random_password(16)  # MySQL EJBCA user password.
-        self.master_p12_pass = util.random_password(16)  # P12 encryption password for VPN user enc.
+        self.db_pass = util.defval(db_pass, util.random_password(16))  # MySQL EJBCA user password.
+        self.master_p12_pass = util.defval(master_p12_pass, util.random_password(16))  # P12 encryption password for VPN user enc.
 
+        self.do_vpn = do_vpn
         self.print_output = print_output
         self.hostname = None
         self.domains = None
@@ -124,6 +130,20 @@ class Ejbca(object):
 
         self.ejbca_install_result = 1
         pass
+
+    def get_db_type(self):
+        """
+        Returns DB type to use in the installation
+        :return: None for default (H2) or database type string, e.g., mysql
+        """
+        return self.config.ejbca_db_type
+
+    def get_database_root_password(self):
+        """
+        Returns database root password for database setup. Used for external DBs (e.g, mysql)
+        :return:
+        """
+        return self.config.mysql_root_password
 
     def get_ejbca_home(self):
         """
@@ -150,6 +170,12 @@ class Ejbca(object):
 
     def get_web_prop_file(self):
         return os.path.abspath(os.path.join(self.get_ejbca_home(), self.WEB_PROPERTIES_FILE))
+
+    def get_database_prop_file(self):
+        return os.path.abspath(os.path.join(self.get_ejbca_home(), self.DATABASE_PROPERTIES_FILE))
+
+    def get_email_prop_file(self):
+        return os.path.abspath(os.path.join(self.get_ejbca_home(), self.MAIL_PROPERTIES_FILE))
 
     def properties_to_string(self, prop):
         """
@@ -216,6 +242,12 @@ class Ejbca(object):
 
         self.web_props['httpsserver.hostname'] = hostname
         self.web_props['httpsserver.dn'] = 'CN=%s,O=Enigma Bridge Ltd,C=GB' % hostname
+
+        # Update another hostname related properties
+        if self.do_vpn:
+            self.web_props['vpn.email.from'] = 'private-space@%s' % hostname
+            self.mail_props['mail.from'] = 'private-space@%s' % hostname
+
         return self.web_props
 
     def update_properties(self):
@@ -259,6 +291,10 @@ class Ejbca(object):
         cwd = cwd if cwd is not None else default_cwd
 
         return util.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=write_dots, on_out=on_out, on_err=on_err, cwd=cwd)
+
+    #
+    # ANT CLI, calls
+    #
 
     def ant_cmd(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None):
         ret, out, err = self.cli_cmd('sudo -E -H -u %s ant %s' % (self.JBOSS_USER, cmd),
@@ -310,6 +346,10 @@ class Ejbca(object):
     def ant_client_tools(self):
         return self.ant_cmd('clientToolBox', log_obj='/tmp/ant-clientToolBox.log', write_dots=self.print_output)
 
+    #
+    # JBoss CLI
+    #
+
     def jboss_cmd(self, cmd):
         cli = os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_CLI))
         cli_cmd = 'sudo -E -H -u %s %s -c \'%s\'' % (self.JBOSS_USER, cli, cmd)
@@ -332,7 +372,12 @@ class Ejbca(object):
     def jboss_remove_datasource(self):
         return self.jboss_cmd('data-source remove --name=ejbcads')
 
-    def jboss_add_mysql_datasource(self):
+    def jboss_add_mysql_jdbc(self):
+        """
+        Adds MySQL JDBC to the JBoss.
+        Performed only once after JBoss installation.
+        :return:
+        """
         return self.jboss_cmd('/subsystem=datasources/jdbc-driver=com.mysql.jdbc.Driver:add(driver-name=com.mysql.jdbc.Driver,driver-class-name=com.mysql.jdbc.Driver,driver-module-name=com.mysql,driver-xa-datasource-class-name=com.mysql.jdbc.jdbc2.optional.MysqlXADataSource)')
 
     def jboss_rollback_ejbca(self):
@@ -364,12 +409,16 @@ class Ejbca(object):
             self.jboss_cmd(cmd)
         self.jboss_reload()
 
+    #
+    # Backup / env reset
+    #
+
     def get_mysql_root_connstring(self):
         """
         Returns connection string to the MySQL database for root.
         :return:
         """
-        con_string = 'mysql://%s:%s@%s%s/%s' % (self.MYSQL_USER, self.config.mysql_root_password,
+        con_string = 'mysql://%s:%s@%s%s/%s' % (self.MYSQL_USER, self.get_database_root_password(),
                                                 self.MYSQL_HOST, ':%s' % self.MYSQL_PORT, self.MYSQL_DB)
         return con_string
 
@@ -429,6 +478,10 @@ class Ejbca(object):
         backup1 = util.delete_file_backup(db1, backup_dir=self.DB_BACKUPS)
         backup2 = util.delete_file_backup(db2, backup_dir=self.DB_BACKUPS)
         backup3 = util.delete_file_backup(db3, backup_dir=self.DB_BACKUPS)
+
+        if self.get_db_type() == 'mysql':
+            self.reset_mysql_database()
+
         return backup1, backup2, backup3
 
     def jboss_fix_privileges(self):
@@ -548,6 +601,10 @@ class Ejbca(object):
 
         return new_p12
 
+    #
+    # EJBCA CLI
+    #
+
     def ejbca_get_cwd(self):
         return os.path.join(self.get_ejbca_home(), 'bin')
 
@@ -578,6 +635,10 @@ class Ejbca(object):
                 return ret, out, err
 
         return ret, out, err
+
+    #
+    # PKCS 11 token operations
+    #
 
     def ejbca_add_softhsm_token(self, softhsm=None, name='EnigmaBridge', slot_id=0):
         """
@@ -683,6 +744,104 @@ class Ejbca(object):
             if self.print_output:
                 sys.stderr.write('.')
         return 0, None, None
+
+    #
+    # VPN ops
+    #
+
+    def vpn_get_ca_properties(self):
+        """
+        Returns contents of a property file for VPN CA. Used when creating VPN CA via comand line
+        :return:
+        """
+        props = 'sharedLibrary %s\n' % SoftHsmV1Config.SOFTHSM_SO_PATH
+        props += 'slotLabelType=SLOT_INDEX\n'
+        props += 'slotLabelValue=0\n\n'
+        props += '# auto-activation\n'
+        props += 'pin=0000\n\n'
+        props += '# CA key configuration\n'
+        props += 'defaultKey defaultKey\n'
+        props += 'certSignKey signKey\n'
+        props += 'crlSignKey signKey\n'
+        props += 'testKey testKey\n'
+
+        return props
+
+    def vpn_create_tmp_ca_prop_file(self):
+        """
+        Creates temporary property file for VPN CA CLI.
+        :return: fobj, fname
+        """
+        fpath = os.path.join('/tmp', 'vpn.ca.properties')
+        return util.unique_file(fpath, mode=0o644)
+
+    def vpn_create_ca_cmd(self, prop_file_path):
+        """
+        Returns EJBCA cmd to create VPN CA
+        :param prop_file_path: file path to the property file with CA properties
+        :return:
+        """
+        cmd = "ca init --caname VPN "
+        cmd += "--dn 'CN=%s'" % self.hostname
+        cmd += " --tokenType 'org.cesecore.keys.token.PKCS11CryptoToken' "
+        cmd += "--keyspec 2048 "
+        cmd += "--keytype RSA "
+        cmd += "-v 7650 "
+        cmd += "-s SHA256WithRSA "
+        cmd += "--tokenPass 0000 "
+        cmd += "--policy null "
+        cmd += "--tokenprop '%s'" % prop_file_path
+        return cmd
+
+    def vpn_create_ca(self):
+        """
+        Creates VPN CA using EJBCA CLI.
+        Corresponding SoftHSM token has to be already prepared with keys generated in it.
+        :return:
+        """
+        fh_prop, fpath_prop = self.vpn_create_tmp_ca_prop_file()
+        try:
+            cmd = self.vpn_create_ca_cmd(fpath_prop)
+            return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+
+        finally:
+            util.safely_remove(fpath_prop)
+
+    def vpn_create_profiles(self):
+        """
+        Create required VPN certificate and end entity profiles
+        VPN CA has to be created already
+        :return:
+        """
+        cmd = 'vpn initprofiles'
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+
+    def vpn_create_server_certs(self):
+        """
+        Creates VPN server credentials
+        VPN CA and profiles have to be created already
+        :return:
+        """
+        # TODO: finish directories
+        cmd = "vpn genserver --create --regenerate --pem --password '%s' --directory '%s' " \
+              % (shellescape.quote(self.master_p12_pass), 'TODOOOO')
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+
+    def vpn_create_user(self, email, device='default'):
+        """
+        Creates a new VPN user via EJBCA CLI.
+        Credentials are sent to the user email
+        :param email:
+        :param device:
+        :return:
+        """
+        cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
+              % (shellescape.quote(email), shellescape.quote(device), shellescape.quote(util.random_password(16)))
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+
+    #
+    # LetsEncrypt & Cert
+    #
 
     def get_keystore_path(self):
         return os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_KEYSTORE))
@@ -827,6 +986,10 @@ class Ejbca(object):
 
         self.config.ejbca_hostname = self.hostname
         return 0
+
+    #
+    # Actions
+    #
 
     def undeploy(self):
         """
