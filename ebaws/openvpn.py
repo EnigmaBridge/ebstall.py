@@ -8,6 +8,7 @@ import collections
 import re
 import util
 import subprocess
+import types
 
 
 __author__ = 'dusanklinec'
@@ -73,7 +74,7 @@ class ConfigLine(object):
         cl.ltype = CONFIG_LINE_CMD if cmd_match.group(1) is None else CONFIG_LINE_CMD_COMMENT
         cl.cmd = cmd_match.group(2).strip()
         cl.params = cmd_match.group(3).strip()
-        cl.comment = cmd_match.group(4).strip()
+        cl.comment = cmd_match.group(4)
         return cl
 
 
@@ -119,12 +120,18 @@ class OpenVpn(object):
                 lines.append(ln)
         return lines
 
-    def set_config_value(self, cmd, value):
+    def set_config_value(self, cmd, values, remove=False):
         """
         Sets command to the specified value in the configuration file.
+        Loads file from the disk if server_config_data is None (file was not yet loaded).
+
+        Supports also multicommands - one command with more values.
+
         Modifies self.server_config_data, self.server_config_modified
         :param cmd:
-        :param value:
+        :param values: single value or array of values for multi-commands (e.g., push).
+                       None & remove -> remove all commands. Otherwise just commands with the given values are removed.
+        :param remove: if True, configuration command is removed
         :return: True if file was modified
         """
         # If file is not loaded - load
@@ -132,41 +139,82 @@ class OpenVpn(object):
             self.server_config_data = self.load_config_file_lines()
 
         last_cmd_idx = 0
-        cmd_set = False
+        file_changed = False
+        if not isinstance(values, types.ListType):
+            if values is None:
+                values = []
+            else:
+                values = [values]
 
+        values_set = [False] * len(values)
         for idx, cfg in enumerate(self.server_config_data):
             if cfg.ltype not in [CONFIG_LINE_CMD, CONFIG_LINE_CMD_COMMENT]:
                 continue
             if cfg.cmd != cmd:
                 continue
 
+            # Only commands of interest here
             last_cmd_idx = idx
-            if cfg.params == value:
-                if cfg.ltype == CONFIG_LINE_CMD:
+            is_desired_value = cfg.params in values
+            is_desired_value |= remove and len(values) == 0
+            value_idx = values.index(cfg.params) if not remove and cfg.params in values else None
+
+            if is_desired_value:
+                if cfg.ltype == CONFIG_LINE_CMD and not remove:
                     # Command is already set to the same value. File not modified.
-                    return False
+                    # Cannot quit yet, has to comment out other values
+                    if value_idx is not None:
+                        values_set[value_idx] = True
+                    pass
+
+                elif cfg.ltype == CONFIG_LINE_CMD:
+                    # Remove command - comment out
+                    cfg.ltype = CONFIG_LINE_CMD_COMMENT
+                    file_changed = True
+
+                elif cfg.ltype == CONFIG_LINE_CMD_COMMENT and remove:
+                    # Remove && comment - leave as it is
+                    # Cannot quit yet, has to comment out other values
+                    pass
+
                 else:
+                    # CONFIG_LINE_CMD_COMMENT and not remove.
                     # Just change the type to active value - switch from comment to command
                     # Cannot quit yet, has to comment out other values
                     cfg.ltype = CONFIG_LINE_CMD
-                    cmd_set = True
+                    file_changed = True
+                    if value_idx is not None:
+                        values_set[value_idx] = True
 
-            elif cfg.ltype == CONFIG_LINE_CMD:  # same command, but different value - comment this out
+            elif cfg.ltype == CONFIG_LINE_CMD and not remove:
+                # Same command, but different value - comment this out
+                # If remove is True, only desired values were removed.
                 cfg.ltype = CONFIG_LINE_CMD_COMMENT
 
-        if cmd_set:
-            self.server_config_modified = True
-            return True
+        if remove:
+            self.server_config_modified = file_changed
+            return file_changed
 
-        # Command was not set in the existing config file - add new.
-        cl = ConfigLine(idx=None, raw=None, ltype=CONFIG_LINE_CMD, cmd=cmd, params=value)
-        self.server_config_data.insert(last_cmd_idx+1, cl)
-        self.server_config_modified = True
-        return True
+        # Add those commands not set in the cycle above
+        ctr = 0
+        for idx, cval in enumerate(values):
+            if values_set[idx]:
+                continue
+
+            cl = ConfigLine(idx=None, raw=None, ltype=CONFIG_LINE_CMD, cmd=cmd, params=value)
+            self.server_config_data.insert(last_cmd_idx+1+ctr, cl)
+
+            ctr += 1
+            file_changed = True
+
+        self.server_config_modified = file_changed
+        return file_changed
 
     def update_config_file(self, force=False):
         """
-        Updates server configuration file
+        Updates server configuration file.
+        Resets server_config_modified after the file update was flushed to the disk
+
         :return: True if file was modified
         """
         if not force and not self.server_config_modified:
@@ -202,7 +250,7 @@ class OpenVpn(object):
         :param crl_path:
         :return: True if file was changed
         """
-        self.set_config_value('crl-verify', crl_path)
+        self.set_config_value('crl-verify', crl_path, remove=crl_path is None)
         return self.update_config_file()
 
     def configure_server(self):
