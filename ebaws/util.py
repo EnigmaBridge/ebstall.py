@@ -153,8 +153,8 @@ def file_backup(path, chmod=0o644, backup_dir=None):
     Copy is preferred to move. Move can keep processes working with the opened file after move operation.
 
     :param path:
-    :param mode:
     :param chmod:
+    :param backup_dir:
     :return:
     """
     backup_path = None
@@ -203,8 +203,8 @@ def delete_file_backup(path, chmod=0o644, backup_dir=None):
     """
     Backup the current file by moving it to a new file
     :param path:
-    :param mode:
     :param chmod:
+    :param backup_dir:
     :return:
     """
     backup_path = None
