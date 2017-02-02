@@ -102,6 +102,7 @@ class Ejbca(object):
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
                  config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
+                 sysconfig=None,
                  *args, **kwargs):
 
         self.install_props = util.defval(install_props, {})
@@ -127,6 +128,7 @@ class Ejbca(object):
         self.eb_config = eb_config
         self.config = config
         self.reg_svc = None
+        self.sysconfig = sysconfig
 
         self.ejbca_install_result = 1
         pass
@@ -838,6 +840,26 @@ class Ejbca(object):
         cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
               % (shellescape.quote(email), shellescape.quote(device), shellescape.quote(util.random_password(16)))
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+
+    def vpn_get_crl_cron_file(self):
+        """
+        Returns contents of the cron.d file for generating a CRL
+        :return:
+        """
+        crl = '# Check each half an hour if regeneration is needed\n'
+        crl += '*/30 * * * * root %s/bin/ejbca.sh vpn crl' % self.get_ejbca_home()
+        return crl
+
+    def vpn_install_cron(self):
+        """
+        Installs all cron.d files required by the VPN
+        :return:
+        """
+        crl_cron = self.vpn_get_crl_cron_file()
+        if self.sysconfig is None:
+            raise ValueError('Sysconfig is None, required for cron installation')
+
+        return self.sysconfig.install_crond_file(file_name='vpn', file_contents=crl_cron)
 
     #
     # LetsEncrypt & Cert
