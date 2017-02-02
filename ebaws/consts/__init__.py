@@ -33,7 +33,7 @@ ONBOOT_INIT_SCRIPT = """#!/bin/sh
 # chkconfig: - 80 20
 ### END INIT INFO
 
-SCRIPT="/usr/local/bin/ebins-cli -n onboot"
+SCRIPT="/usr/local/bin/ebstall-cli -n onboot"
 RUNAS=root
 
 PIDFILE=/var/run/enigmabridge-onboot.pid
@@ -84,7 +84,7 @@ After=network.target iptables.service firewalld.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/ebins-cli -n onboot
+ExecStart=/usr/local/bin/ebstall-cli -n onboot
 # ExecStop=
 # ExecReload=
 PIDFile=/var/run/enigmabridge-onboot.pid

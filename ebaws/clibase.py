@@ -40,7 +40,7 @@ class InstallerBase(Cmd):
     """
     prompt = '$> '
 
-    PIP_NAME = 'ebins'
+    PIP_NAME = 'ebstall'
     PROCEED_YES = 'yes'
     PROCEED_NO = 'no'
     PROCEED_QUIT = 'quit'
