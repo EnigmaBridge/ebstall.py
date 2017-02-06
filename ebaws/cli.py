@@ -301,13 +301,13 @@ class Installer(InstallerBase):
         self.tprint('EnigmaBridge PKCS#11 token initialization: %s' % out)
         return 0
 
-    def init_add_softhsm_token(self):
+    def init_add_softhsm_token(self, name='EnigmaBridgeToken', slot_id=0):
         """
         Adds SoftHSM crypto token to the EJBCA
         :return:
         """
         print('\nAdding an EnigmaBridge crypto token to your PKI instance:')
-        ret, out, err = self.ejbca.ejbca_add_softhsm_token(softhsm=self.soft_config, name='EnigmaBridgeToken')
+        ret, out, err = self.ejbca.ejbca_add_softhsm_token(softhsm=self.soft_config, name=name, slot_id=slot_id)
         if ret != 0:
             print('\nError in adding EnigmaBridge token to the PKI instance')
             print('You can add it manually in the PKI (EJBCA) admin page later')
