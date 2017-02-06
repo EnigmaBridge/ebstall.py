@@ -13,6 +13,7 @@ import time
 import util
 import errors
 import textwrap
+import openvpn
 from blessed import Terminal
 from consts import *
 from core import Core
@@ -46,6 +47,7 @@ class VpnInstaller(Installer):
         :return:
         """
         Installer.__init__(self, *args, **kwargs)
+        self.ovpn = None
 
     def init_argparse(self):
         """
@@ -84,6 +86,7 @@ class VpnInstaller(Installer):
         :return:
         """
         self.init_services()
+        self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg)
 
         # Get registration options and choose one - network call.
         self.reg_svc.load_auth_types()
@@ -152,15 +155,26 @@ class VpnInstaller(Installer):
         if res != 0:
             return self.return_code(res)
 
-        # Generate new keys
-        res = self.init_create_new_eb_keys()
-        if res != 0:
-            return self.return_code(res)
+        # VPN setup
+        self.ejbca.vpn_create_ca()
+        self.ejbca.vpn_create_profiles()
+        self.ejbca.vpn_create_server_certs()
+        self.ejbca.vpn_create_crl()
+        vpn_ca, vpn_cert, vpn_key = self.ejbca.vpn_get_server_cert_paths()
 
-        # Add SoftHSM crypto token to EJBCA
-        res = self.init_add_softhsm_token()
-        if res != 0:
-            return self.return_code(res)
+        # VPN server
+        self.tprint('Installing & configuring VPN server')
+        self.ovpn.install()
+        self.ovpn.generate_dh_group()
+        self.ovpn.configure_server()
+        self.ovpn.store_server_cert(ca=vpn_ca, cert=vpn_cert, key=vpn_key)
+
+        # VPN CRL
+        crl_path = self.ejbca.vpn_get_crl_path()
+        self.ovpn.configure_crl(crl_path=crl_path)
+
+        # Starting VPN server
+        self.ovpn.switch(start=True)
 
         # LetsEncrypt enrollment
         res = self.init_le_install()
