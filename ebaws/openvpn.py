@@ -268,7 +268,6 @@ class OpenVpn(object):
         self.set_config_value('key', 'server.key')
         return self.update_config_file()
 
-
     #
     # Installation
     #
@@ -277,9 +276,9 @@ class OpenVpn(object):
         Installs itself
         :return: installer return code
         """
-        cmd_exec = 'sudo yum install openvpn'
+        cmd_exec = 'sudo yum install -y openvpn'
         if self.sysconfig.get_packager() == osutil.PKG_APT:
-            cmd_exec = 'sudo apt-get install openvpn'
+            cmd_exec = 'sudo apt-get install -y openvpn'
 
         p = subprocess.Popen(cmd_exec, shell=True)
         p.communicate()
