@@ -870,7 +870,7 @@ class Ejbca(object):
         :return:
         """
         crl = '# Check each half an hour if regeneration is needed\n'
-        crl += '*/30 * * * * root %s/bin/ejbca.sh vpn crl' % self.get_ejbca_home()
+        crl += '*/30 * * * * %s %s vpn crl' % (self.JBOSS_USER, self.get_ejbca_sh())
         return crl
 
     def vpn_install_cron(self):
