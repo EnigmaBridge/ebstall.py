@@ -160,7 +160,7 @@ def _starts_with(x, testz):
         testz = [testz]
     for sx in x:
         for test in testz:
-            if sx is not None and sx.startswith(testz):
+            if sx is not None and sx.startswith(test):
                 return True
     return False
 
