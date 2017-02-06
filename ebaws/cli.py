@@ -1194,7 +1194,7 @@ class Installer(InstallerBase):
         if not syscfg.is_enough_ram():
             total_mem = syscfg.get_total_usable_mem()
             self.tprint('\nTotal memory in the system is low: %d MB, installation requires at least 2GB'
-                  % int(math.ceil(total_mem/1024/1024)))
+                        % int(math.ceil(total_mem/1024/1024)))
 
             self.tprint('New swap file will be installed in /var')
             self.tprint('It will take approximately 2 minutes')
