@@ -174,7 +174,9 @@ class VpnInstaller(Installer):
         self.ovpn.configure_crl(crl_path=crl_path)
 
         # Starting VPN server
+        self.ovpn.enable()
         self.ovpn.switch(start=True)
+        self.ejbca.vpn_install_cron()
 
         # LetsEncrypt enrollment
         res = self.init_le_install()
