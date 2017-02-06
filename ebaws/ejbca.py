@@ -15,7 +15,6 @@ import shutil
 import re
 import letsencrypt
 import logging
-import shellescape
 from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT
 
 
@@ -824,15 +823,26 @@ class Ejbca(object):
         cmd = 'vpn initprofiles'
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
 
-    def vpn_create_server_certs(self):
+    def vpn_create_server_certs(self, directory=None):
         """
         Creates VPN server credentials
         VPN CA and profiles have to be created already
+        :param directory: if none, default directories are used.
         :return:
         """
-        # TODO: finish directories
-        cmd = "vpn genserver --create --regenerate --pem --password '%s' --directory '%s' " \
-              % (shellescape.quote(self.master_p12_pass), 'TODOOOO')
+        cmd = 'vpn genserver --create --regenerate --pem --password \'%s\'' \
+              % (util.escape_shell(self.master_p12_pass))
+        if directory is not None:
+            cmd += ' --directory \'%s\'' % util.escape_shell(directory)
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+
+    def vpn_create_crl(self, force=True):
+        """
+        Creates a new CRL forcefully. Used to generate first CRL to start OpenVPN.
+        Or to regenerate CRL.
+        :return:
+        """
+        cmd = 'vpn crl'
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
 
     def vpn_create_user(self, email, device='default'):
@@ -844,7 +854,7 @@ class Ejbca(object):
         :return:
         """
         cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
-              % (shellescape.quote(email), shellescape.quote(device), shellescape.quote(util.random_password(16)))
+              % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(util.random_password(16)))
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
 
     def vpn_get_crl_cron_file(self):
@@ -865,7 +875,25 @@ class Ejbca(object):
         if self.sysconfig is None:
             raise ValueError('Sysconfig is None, required for cron installation')
 
-        return self.sysconfig.install_crond_file(file_name='vpn', file_contents=crl_cron)
+        return self.sysconfig.install_crond_file(file_name='ejbca-vpn', file_contents=crl_cron)
+
+    def vpn_get_crl_path(self):
+        """
+        Returns path for the CRL file path
+        :return:
+        """
+        return '%s/vpn/%.crl' % (self.get_ejbca_home(), self.hostname)
+
+    def vpn_get_server_cert_paths(self):
+        """
+        Returns VPN server paths
+        :return: (ca, cert, key) paths
+        """
+        vpn_base = os.path.join(self.get_ejbca_home(), 'vpn')
+        ca = os.path.join(vpn_base, 'VPN_Server-CA.pem')
+        crt = os.path.join(vpn_base, 'VPN_Server.pem')
+        key = os.path.join(vpn_base, 'VPN_Server-key.pem')
+        return ca, crt, key
 
     #
     # LetsEncrypt & Cert

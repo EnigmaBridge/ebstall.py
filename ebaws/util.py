@@ -645,6 +645,25 @@ def defvalkey(js, key, default=None, take_none=True):
     return js[key]
 
 
+def escape_shell(inp):
+    """
+    Shell-escapes input param
+    :param inp:
+    :return:
+    """
+    try:
+        import shellescape
+        return shellescape.quote(inp)
+    except:
+        pass
+
+    try:  # py3
+        from shlex import quote
+    except ImportError:  # py2
+        from pipes import quote
+    return quote(inp)
+
+
 class DummyTCPHandler(socketserver.BaseRequestHandler):
     """Handler for a dummy socket server for firewall testing"""
     def handle(self):
