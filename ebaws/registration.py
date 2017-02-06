@@ -142,7 +142,7 @@ class Registration(object):
 
         self.reg_auth_methods = []
         self.reg_auth_chosen = None
-        self.reg_token = 'LSQJCHT61VTEMFQBZADO'
+        self.reg_token = None
         self.auth_data = None
 
         self.info_loader = InfoLoader()
@@ -210,6 +210,7 @@ class Registration(object):
             self.crt = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, self.crt_pem)
             self.crt_crypto = util.load_x509(self.crt_pem)
 
+        self._init_config()
         return 0
 
     def get_email(self):
@@ -218,13 +219,11 @@ class Registration(object):
         if self.config is not None:
             return self.config.email
 
-    def load_auth_types(self):
+    def _init_config(self):
         """
-        Requests all available authentication methods allowed for given user type
+        Initializes eb_config, user_reg_type, reg_token
         :return:
         """
-
-        # Step 1: get possible authentication methods for the client.
         if self.eb_config is None:
             self.eb_config = Core.get_default_eb_config()
 
@@ -234,6 +233,21 @@ class Registration(object):
 
         if self.user_reg_type is None:
             self.user_reg_type = 'test'
+
+        if self.eb_settings is not None and self.eb_settings.api_token is not None:
+            self.reg_token = self.eb_settings.api_token
+
+        if self.reg_token is None:
+            self.reg_token = 'LSQJCHT61VTEMFQBZADO'
+
+    def load_auth_types(self):
+        """
+        Requests all available authentication methods allowed for given user type
+        :return:
+        """
+
+        # Step 1: get possible authentication methods for the client.
+        self._init_config()
 
         client_data_req = {
             'type': self.user_reg_type
