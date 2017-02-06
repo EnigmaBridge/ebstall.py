@@ -174,8 +174,9 @@ class Installer(InstallerBase):
                                     eb_config=self.eb_cfg, eb_settings=self.eb_settings)
 
         self.soft_config = SoftHsmV1Config()
-        self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging)
         self.syscfg = SysConfig(print_output=True)
+        self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=self.config, sysconfig=self.syscfg,
+                           eb_config=self.eb_settings)
         return 0
 
     def init_prompt_user(self):
