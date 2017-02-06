@@ -18,9 +18,11 @@ import psutil
 import math
 import consts
 import osutil
+import logging
 
 
 __author__ = 'dusanklinec'
+logger = logging.getLogger(__name__)
 
 
 class SysConfig(object):
@@ -29,7 +31,9 @@ class SysConfig(object):
     def __init__(self, print_output=False, *args, **kwargs):
         self.print_output = print_output
         self.os = osutil.get_os()
-        pass
+        logger.debug('OS detection, name: %s, version: %s, version major: %s, like: %s, packager: %s, '
+                     'start system: %s' % (self.os.name, self.os.version, self.os.version_major,
+                                           self.os.like, self.os.packager, self.os.start_system))
 
     #
     # Execution
