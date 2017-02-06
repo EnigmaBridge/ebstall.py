@@ -159,6 +159,13 @@ class Ejbca(object):
         else:
             return os.path.abspath(self.EJBCA_HOME)
 
+    def get_ejbca_sh(self):
+        """
+        Returns EJBCA sh script
+        :return:
+        """
+        return os.path.join(self.get_ejbca_home(), 'bin', 'ejbca.sh')
+
     def get_jboss_home(self):
         """
         Returns JBoss home directory, first try to look at env var, then return default val
@@ -613,7 +620,7 @@ class Ejbca(object):
         return os.path.join(self.get_ejbca_home(), 'bin')
 
     def ejbca_get_command(self, cmd):
-        return 'sudo -E -H -u %s %s/ejbca.sh %s' % (self.JBOSS_USER, self.ejbca_get_cwd(), cmd)
+        return 'sudo -E -H -u %s %s %s' % (self.JBOSS_USER, self.get_ejbca_sh(), cmd)
 
     def ejbca_cmd(self, cmd, retry_attempts=3, write_dots=False, on_out=None, on_err=None):
         """
