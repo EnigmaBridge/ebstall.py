@@ -86,6 +86,7 @@ class VpnInstaller(Installer):
         :return:
         """
         self.init_services()
+        self.ejbca.do_vpn = True
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg)
 
         # Get registration options and choose one - network call.
