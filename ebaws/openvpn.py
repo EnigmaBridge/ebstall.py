@@ -284,4 +284,32 @@ class OpenVpn(object):
         p.communicate()
         return p.returncode
 
+    def get_svc_map(self):
+        """
+        Returns service naming for different start systems
+        :return:
+        """
+        return {
+            osutil.START_SYSTEMD: 'openvpn.service',
+            osutil.START_INITD: 'openvpn'
+        }
+
+    def enable(self):
+        """
+        Enables service after OS start
+        :return:
+        """
+        return self.sysconfig.enable_svc(self.get_svc_map())
+
+    def switch(self, start=None, stop=None, restart=None):
+        """
+        Starts/stops/restarts the service
+        :param state:
+        :param start:
+        :param stop:
+        :param restart:
+        :return:
+        """
+        return self.sysconfig.switch_svc(self.get_svc_map(), start=start, stop=stop, restart=restart)
+
 
