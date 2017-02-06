@@ -182,7 +182,7 @@ class SysConfig(object):
                 svcmap += '.service'
             return svcmap
 
-    def enable_svc(self, svcmap):
+    def enable_svc(self, svcmap, enable=True):
         """
         Enables given service after OS start
         :param svcmap:
@@ -193,9 +193,11 @@ class SysConfig(object):
         cmd_exec = None
 
         if start_system == osutil.START_INITD:
-            cmd_exec = 'sudo chkconfig --level=345 \'%s\' on' % svc
+            enable_cmd = 'on' if enable else 'off'
+            cmd_exec = 'sudo chkconfig --level=345 \'%s\' %s' % (svc, enable_cmd)
         elif start_system == osutil.START_SYSTEMD:
-            cmd_exec = 'sudo systemctl enable \'%s\'' % svc
+            enable_cmd = 'enable' if enable else 'disable'
+            cmd_exec = 'sudo systemctl %s \'%s\'' % (enable_cmd, svc)
         else:
             raise OSError('Cannot enable service in this OS')
 
