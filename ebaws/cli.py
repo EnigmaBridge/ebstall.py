@@ -154,7 +154,17 @@ class Installer(InstallerBase):
         if self.previous_registration_continue:
             self.config.eb_config = self.eb_cfg
         else:
+            # New configuration is created
+            # Some settings are migrated, e.g., mysql root password
+            old_config = self.config
             self.config = Config(eb_config=self.eb_cfg)
+
+            if old_config is not None and old_config.mysql_root_password is not None:
+                self.config.mysql_root_password = old_config.mysql_root_password
+
+        # Database settings.
+        self.config.mysql_root_password = self.get_db_root_password()
+        self.config.ejbca_db_type = self.get_db_type()
 
         # Determine the environment we are going to use in EB.
         self.config.env = self.get_env()
