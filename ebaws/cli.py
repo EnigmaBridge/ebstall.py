@@ -1258,12 +1258,21 @@ class Installer(InstallerBase):
             return default
         return is_vpc
 
+    def get_args_intro(self, parser):
+        """
+        Argument parser intro text
+        :return:
+        """
+        parser.description = 'EnigmaBridge AWS client'
+
     def init_argparse(self):
         """
         Initializes argument parser object
         :return: parser
         """
-        parser = argparse.ArgumentParser(description='EnigmaBridge AWS client')
+        parser = argparse.ArgumentParser()
+        self.get_args_intro(parser)
+
         parser.add_argument('-n', '--non-interactive', dest='noninteractive', action='store_const', const=True,
                             help='non-interactive mode of operation, command line only')
         parser.add_argument('-r', '--attempts', dest='attempts', type=int, default=3,

@@ -80,6 +80,13 @@ class VpnInstaller(Installer):
         init_res = Installer.do_init(self, line)
         return init_res
 
+    def get_args_intro(self, parser):
+        """
+        Argument parser intro text
+        :return:
+        """
+        parser.description = 'EnigmaBridge Private Space installer'
+
     def init_main_try(self):
         """
         Main installer block, called from the global try:
