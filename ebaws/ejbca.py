@@ -927,7 +927,7 @@ class Ejbca(object):
         Returns path for the CRL file path
         :return:
         """
-        return '%s/vpn/%.crl' % (self.get_ejbca_home(), self.hostname)
+        return os.path.join(self.get_ejbca_home(), 'vpn', '%s.crl' % self.hostname)
 
     def vpn_get_server_cert_paths(self):
         """
