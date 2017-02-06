@@ -166,18 +166,21 @@ def _starts_with(x, testz):
 
 
 def os_packager(ros):
+    yums = ['redhat', 'fedora', 'centos', 'rhel', 'amzn', 'amazon']
+    debs = ['debian', 'ubuntu', 'kali']
+
     if ros.like is not None:
-        if _starts_with(ros.like, 'redhat'):
+        if _starts_with(ros.like, yums):
             ros.packager = PKG_YUM
-        if _starts_with(ros.like, 'debian'):
+        if _starts_with(ros.like, debs):
             ros.packager = PKG_APT
         return ros
 
     if ros.name is not None:
-        yums = ['redhat', 'fedora', 'centos', 'rhel', 'amzn', 'amazon']
+
         if sum([1 for x in yums if ros.name.lower().startswith(x)]) > 0:
             ros.packager = PKG_YUM
-        debs = ['debian', 'ubuntu', 'kali']
+
         if sum([1 for x in debs if ros.name.lower().startswith(x)]) > 0:
             ros.packager = PKG_APT
         return
