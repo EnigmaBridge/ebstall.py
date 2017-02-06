@@ -370,6 +370,36 @@ class Installer(InstallerBase):
         # TODO: refactor to multiple profiles, not just AWS
         return self.reg_svc.info_loader.ami_public_ip
 
+    def get_db_type(self):
+        """
+        Returns DB type to use for the installation - EJBCA.
+        Priority: command line argument, ENV[EJBCA_DB_TYPE], config, /opt/enigma config, None
+        :return:
+        """
+        if self.args.db_type is not None:
+            return self.args.db_type
+        if 'EJBCA_DB_TYPE' in os.environ:
+            return os.environ['EJBCA_DB_TYPE']
+        if self.config is not None and self.config.ejbca_db_type is not None:
+            return self.config.ejbca_db_type
+        if self.eb_settings is not None and self.eb_settings.ejbca_db_type is not None:
+            return self.eb_settings.ejbca_db_type
+        return None
+
+    def get_db_root_password(self):
+        """
+        Returns root password for the database. Required for MySQL server to create the databases.
+        Priority: ENV[EJBCA_DB_ROOT_PASS], config, /opt/enigma, None
+        :return:
+        """
+        if 'EJBCA_DB_ROOT_PASS' in os.environ:
+            return os.environ['EJBCA_DB_ROOT_PASS']
+        if self.config is not None and self.config.mysql_root_password is not None:
+            return self.config.mysql_root_password
+        if self.eb_settings is not None and self.eb_settings.mysql_root_password is not None:
+            return self.eb_settings.mysql_root_password
+        return None
+
     def init_le_install(self, ejbca=None):
         """
         Installs LetsEncrypt certificate to the EJBCA.
@@ -1248,6 +1278,9 @@ class Installer(InstallerBase):
                             help='Use the devel environment in the EnigmaBridge')
         parser.add_argument('--env-test', dest='env_test', action='store_const', const=True, default=None,
                             help='Use the test environment in the EnigmaBridge')
+
+        parser.add_argument('--db-type', dest='db_type', default=None,
+                            help='Database type to use (e.g., mysql)')
 
         parser.add_argument('--vpc', dest='is_vpc', default=None, type=int,
                             help='Sets whether the installation is in Virtual Private Cloud (VPC, public IP is not '

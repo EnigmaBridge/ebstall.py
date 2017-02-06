@@ -420,4 +420,21 @@ class EBSettings(object):
     def env(self, val):
         self.set_config('env', val)
 
+    # EJBCA database type
+    @property
+    def ejbca_db_type(self):
+        return self.get_config('ejbca_db_type')
+
+    @ejbca_db_type.setter
+    def ejbca_db_type(self, val):
+        self.set_config('ejbca_db_type', val)
+
+    # MySQL root password for the initialisation
+    @property
+    def mysql_root_password(self):
+        return self.get_config('mysql_root_password')
+
+    @mysql_root_password.setter
+    def mysql_root_password(self, val):
+        self.set_config('mysql_root_password', val)
 
