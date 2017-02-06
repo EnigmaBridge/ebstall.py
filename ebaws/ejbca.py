@@ -775,10 +775,13 @@ class Ejbca(object):
     def vpn_create_tmp_ca_prop_file(self):
         """
         Creates temporary property file for VPN CA CLI.
-        :return: fobj, fname
+        :return: fname
         """
         fpath = os.path.join('/tmp', 'vpn.ca.properties')
-        return util.unique_file(fpath, mode=0o644)
+        fobj, fname = util.unique_file(fpath, mode=0o644)
+        with fobj:
+            fobj.write(self.vpn_get_ca_properties())
+        return fname
 
     def vpn_create_ca_cmd(self, prop_file_path):
         """
@@ -804,7 +807,7 @@ class Ejbca(object):
         Corresponding SoftHSM token has to be already prepared with keys generated in it.
         :return:
         """
-        fh_prop, fpath_prop = self.vpn_create_tmp_ca_prop_file()
+        fpath_prop = self.vpn_create_tmp_ca_prop_file()
         try:
             cmd = self.vpn_create_ca_cmd(fpath_prop)
             return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
