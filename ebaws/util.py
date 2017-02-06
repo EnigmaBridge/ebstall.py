@@ -441,6 +441,8 @@ def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, 
     Runs command line task synchronously
     :return:
     """
+    # TODO: audit
+
     feeder = Feeder()
     p = run(cmd,
             input=feeder, async=True,

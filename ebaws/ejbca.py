@@ -448,8 +448,7 @@ class Ejbca(object):
         cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
               % (self.MYSQL_DB, self.MYSQL_USER, self.config.ejbca_db_password, db_fpath)
 
-        p = subprocess.Popen(cmd, shell=True)
-        p.wait()
+        return self.sysconfig.exec_shell(cmd)
 
     def reset_mysql_database(self):
         """
@@ -496,10 +495,8 @@ class Ejbca(object):
         return backup1, backup2, backup3
 
     def jboss_fix_privileges(self):
-        p = subprocess.Popen('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_jboss_home()), shell=True)
-        p.wait()
-        p = subprocess.Popen('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_ejbca_home()), shell=True)
-        p.wait()
+        self.sysconfig.exec_shell('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_jboss_home()))
+        self.sysconfig.exec_shell('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_ejbca_home()))
 
     def jboss_wait_after_start(self):
         """
@@ -607,9 +604,7 @@ class Ejbca(object):
             with util.safe_open(new_p12, mode='w', chmod=0o600) as dst_p12:
                 shutil.copyfileobj(src_p12, dst_p12)
 
-        p = subprocess.Popen('sudo chown %s:%s %s' % (self.SSH_USER, self.SSH_USER, new_p12), shell=True)
-        p.wait()
-
+        self.sysconfig.exec_shell('sudo chown %s:%s %s' % (self.SSH_USER, self.SSH_USER, new_p12))
         return new_p12
 
     #

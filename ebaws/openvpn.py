@@ -248,8 +248,7 @@ class OpenVpn(object):
         size = 2048  # constant for now
         dh_file = os.path.join(self.SETTINGS_DIR, 'dh%d.pem' % size)
         cmd = 'sudo openssl dhparam -out \'%s\' %d' % (dh_file, size)
-        p = subprocess.Popen(cmd, shell=True)
-        return p.wait()
+        return self.sysconfig.exec_shell(cmd)
 
     def configure_crl(self, crl_path):
         """
@@ -291,12 +290,10 @@ class OpenVpn(object):
         fh = util.safe_open(key_file, 'w', chmod=0o600)
         fh.close()
 
-        p = subprocess.Popen('sudo chown root:root \'%s\'' % key_file, shell=True)
-        p.communicate()
+        self.sysconfig.exec_shell('sudo chown root:root \'%s\'' % key_file, shell=True)
 
         cmd_exec = 'sudo cat \'%s\' >> \'%s\'' % (key, key_file)
-        p = subprocess.Popen(cmd_exec, shell=True)
-        return p.communicate()
+        return self.sysconfig.exec_shell(cmd_exec)
 
     #
     # Installation
@@ -310,9 +307,7 @@ class OpenVpn(object):
         if self.sysconfig.get_packager() == osutil.PKG_APT:
             cmd_exec = 'sudo apt-get install -y openvpn'
 
-        p = subprocess.Popen(cmd_exec, shell=True)
-        p.communicate()
-        return p.returncode
+        return self.sysconfig.exec_shell(cmd_exec)
 
     def get_svc_map(self):
         """

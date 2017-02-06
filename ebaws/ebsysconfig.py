@@ -31,6 +31,35 @@ class SysConfig(object):
         self.os = osutil.get_os()
         pass
 
+    #
+    # Execution
+    #
+
+    def exec_shell_open(self, cmd_exec, shell=True):
+        """
+        Simple execution wrapper with audit logging
+        :param cmd_exec:
+        :param shell:
+        :return:
+        """
+        # TODO: audit
+        p = subprocess.Popen(cmd_exec, shell=shell)
+        return p
+
+    def exec_shell(self, cmd_exec, shell=True):
+        """
+        Simple execution wrapper with audit logging, executes the command, returns return code
+        :param cmd_exec:
+        :param shell:
+        :return:
+        """
+        p = self.exec_shell_open(cmd_exec=cmd_exec, shell=shell)
+        return p.communicate()
+
+    #
+    # Memory
+    #
+
     def get_virt_mem(self):
         return psutil.virtual_memory().total
 
@@ -105,9 +134,8 @@ class SysConfig(object):
         cmd_exec = 'sudo -E -H /bin/bash -c \'%s\'' % cmd
 
         # Swap create
-        p = subprocess.Popen(cmd_exec, shell=True)
-        p.communicate()
-        return p.returncode, fname, desired_size
+        return_code = self.exec_shell(cmd_exec)
+        return return_code, fname, desired_size
 
     def print_error(self, msg):
         if self.print_output:
@@ -201,8 +229,7 @@ class SysConfig(object):
         else:
             raise OSError('Cannot enable service in this OS')
 
-        p = subprocess.Popen(cmd_exec, shell=True)
-        return p.communicate()
+        return self.shell_exec(cmd_exec)
 
     def switch_svc(self, svcmap, start=None, stop=None, restart=None):
         """
@@ -236,8 +263,7 @@ class SysConfig(object):
         else:
             raise OSError('Cannot enable service in this OS')
 
-        p = subprocess.Popen(cmd_exec, shell=True)
-        return p.communicate()
+        return self.shell_exec(cmd_exec)
 
     def install_onboot_check(self):
         """
@@ -265,15 +291,13 @@ class SysConfig(object):
             handle.write('\n')
 
         # Set service to start after boot
-        p = subprocess.Popen('systemctl daemon-reload', shell=True)
-        p.communicate()
-        if p.returncode != 0:
+        ret = self.shell_exec('sudo systemctl daemon-reload')
+        if ret != 0:
             self.print_error('Error: Could not reload systemctl\n')
             return 2
 
-        p = subprocess.Popen('systemctl enable enigmabridge-onboot', shell=True)
-        p.communicate()
-        if p.returncode != 0:
+        ret = self.shell_exec('sudo systemctl enable enigmabridge-onboot', shell=True)
+        if ret != 0:
             self.print_error('Error: Could not install on boot system service\n')
             return 2
 
@@ -294,9 +318,8 @@ class SysConfig(object):
             handle.write('\n')
 
         # Set service to start after boot
-        p = subprocess.Popen('chkconfig --level=345 enigmabridge-onboot on', shell=True)
-        p.communicate()
-        if p.returncode != 0:
+        ret = self.shell_exec('sudo chkconfig --level=345 enigmabridge-onboot on', shell=True)
+        if ret != 0:
             self.print_error('Error: Could not install on boot system service\n')
             return 2
 
