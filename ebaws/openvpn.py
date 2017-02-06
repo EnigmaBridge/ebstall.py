@@ -9,6 +9,7 @@ import re
 import util
 import subprocess
 import types
+import osutil
 
 
 __author__ = 'dusanklinec'
@@ -268,5 +269,20 @@ class OpenVpn(object):
         return self.update_config_file()
 
 
+    #
+    # Installation
+    #
+    def install(self):
+        """
+        Installs itself
+        :return: installer return code
+        """
+        cmd_exec = 'sudo yum install openvpn'
+        if self.sysconfig.get_packager() == osutil.PKG_APT:
+            cmd_exec = 'sudo apt-get install openvpn'
+
+        p = subprocess.Popen(cmd_exec, shell=True)
+        p.communicate()
+        return p.returncode
 
 

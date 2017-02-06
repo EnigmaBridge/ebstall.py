@@ -142,6 +142,26 @@ class SysConfig(object):
     #
     # OR detection / specific settings
     #
+    def get_os(self):
+        """
+        Returns the OS detection result
+        :return:
+        """
+        return self.os
+
+    def get_packager(self):
+        """
+        Returns package manager for the current OS
+        :return:
+        """
+        return self.os.packager
+
+    def get_start_system(self):
+        """
+        Returns start system (init.d/systemd) for the current OS
+        :return:
+        """
+        return self.os.start_system
 
     def install_onboot_check(self):
         """
