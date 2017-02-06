@@ -10,6 +10,7 @@ import util
 import subprocess
 import types
 import osutil
+import shutil
 
 
 __author__ = 'dusanklinec'
@@ -97,6 +98,11 @@ class OpenVpn(object):
     #
     # server.conf reading & modification
     #
+    def get_config_dir(self):
+        return self.SETTINGS_DIR
+
+    def get_config_dir_subfile(self, filename):
+        return os.path.join(self.get_config_dir(), filename)
 
     def get_config_file_path(self):
         """
@@ -267,6 +273,30 @@ class OpenVpn(object):
         self.set_config_value('cert', 'server.crt')
         self.set_config_value('key', 'server.key')
         return self.update_config_file()
+
+    def store_server_cert(self, ca, cert, key):
+        """
+        Stores CA, Cert, Key to the storage and fixes permissions
+        :return:
+        """
+        shutil.copy(ca, self.get_config_dir_subfile('ca.crt'))
+        shutil.copy(cert, self.get_config_dir_subfile('server.crt'))
+
+        # Key is tricky - do not expose the raw key
+        key_file = self.get_config_dir_subfile('server.key')
+        if os.path.exists(key_file):
+            os.remove(key_file)  # just UX remove, not security sensitive
+
+        # Create file with correct permissions set
+        fh = util.safe_open(key_file, 'w', chmod=0o600)
+        fh.close()
+
+        p = subprocess.Popen('sudo chown root:root \'%s\'' % key_file, shell=True)
+        p.communicate()
+
+        cmd_exec = 'sudo cat \'%s\' >> \'%s\'' % (key, key_file)
+        p = subprocess.Popen(cmd_exec, shell=True)
+        return p.communicate()
 
     #
     # Installation
