@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+
+import ebaws.osutil
 import util
 from sarge import run, Capture, Feeder
 from ebclient.eb_utils import EBUtils
@@ -15,6 +17,7 @@ import re
 import psutil
 import math
 import consts
+import osutil
 
 
 __author__ = 'dusanklinec'
@@ -25,6 +28,7 @@ class SysConfig(object):
 
     def __init__(self, print_output=False, *args, **kwargs):
         self.print_output = print_output
+        self.os = osutil.get_os()
         pass
 
     def get_virt_mem(self):
@@ -135,15 +139,16 @@ class SysConfig(object):
 
         return self.install_crond_file('ebaws-renew', data)
 
+    #
+    # OR detection / specific settings
+    #
+
     def install_onboot_check(self):
         """
         Installs a service invocation after boot to reclaim domain again
         :return:
         """
-        os_name, os_version = util.get_os_info()
-        os_name = os_name.lower()
-
-        if os_name in ['rhel', 'centos'] and os_version.startswith('7'):
+        if self.os.start_system == osutil.START_SYSTEMD:
             return self.install_onboot_check_systemd()
 
         # Fallback to default initd start system
