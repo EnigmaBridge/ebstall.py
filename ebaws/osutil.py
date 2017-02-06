@@ -147,11 +147,29 @@ def get_os():
     return ros
 
 
+def _starts_with(x, testz):
+    """
+    Returns true if x or any element in x (if list) matches testz or any element in testz (if list)
+    :param x:
+    :param testz:
+    :return:
+    """
+    if not isinstance(x, types.ListType):
+        x = [x]
+    if not isinstance(testz, types.ListType):
+        testz = [testz]
+    for sx in x:
+        for test in testz:
+            if sx is not None and sx.startswith(testz):
+                return True
+    return False
+
+
 def os_packager(ros):
     if ros.like is not None:
-        if ros.like.startswith('redhat'):
+        if _starts_with(ros.like, 'redhat'):
             ros.packager = PKG_YUM
-        if ros.like.startswith('debian'):
+        if _starts_with(ros.like, 'debian'):
             ros.packager = PKG_APT
         return ros
 
@@ -225,13 +243,13 @@ def os_redhat_release(ros):
 def os_like_detect(ros):
     if not ros.like and ros.name is not None:
         try:
-            ros.like = osconst.FLAVORS[ros.name.lower()]
+            ros.like = FLAVORS[ros.name.lower()]
         except:
             pass
 
     if not ros.like and ros.long_name is not None:
         try:
-            ros.like = osconst.FLAVORS[ros.long_name.lower()]
+            ros.like = FLAVORS[ros.long_name.lower()]
         except:
             pass
 
