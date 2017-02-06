@@ -785,7 +785,7 @@ class Ejbca(object):
 
     def vpn_create_ca_cmd(self, prop_file_path):
         """
-        Returns EJBCA cmd to create VPN CA
+        Returns EJBCA cmd to create VPN CA. CA Validity = 25 years
         :param prop_file_path: file path to the property file with CA properties
         :return:
         """
@@ -794,7 +794,7 @@ class Ejbca(object):
         cmd += " --tokenType 'org.cesecore.keys.token.PKCS11CryptoToken' "
         cmd += "--keyspec 2048 "
         cmd += "--keytype RSA "
-        cmd += "-v 7650 "
+        cmd += "-v 9150 "
         cmd += "-s SHA256WithRSA "
         cmd += "--tokenPass 0000 "
         cmd += "--policy null "
