@@ -163,6 +163,80 @@ class SysConfig(object):
         """
         return self.os.start_system
 
+    def _get_svc_desc(self, svcmap, start_system):
+        """
+        Gets service identifier from the argument.
+        May be a simple value or a dictionary[start-system].
+        The service name can also differ among OSes, but this is not addressed for now.
+
+        :param svcmap:
+        :param start_system:
+        :return:
+        """
+        try:
+            return svcmap[start_system]
+        except:
+            if start_system == osutil.START_SYSTEMD \
+                    and not svcmap.endswith('.service') \
+                    and not svcmap.endswith('.daemon'):
+                svcmap += '.service'
+            return svcmap
+
+    def enable_svc(self, svcmap):
+        """
+        Enables given service after OS start
+        :param svcmap:
+        :return:
+        """
+        start_system = self.get_start_system()
+        svc = self._get_svc_desc(svcmap, start_system)
+        cmd_exec = None
+
+        if start_system == osutil.START_INITD:
+            cmd_exec = 'sudo chkconfig --level=345 \'%s\' on' % svc
+        elif start_system == osutil.START_SYSTEMD:
+            cmd_exec = 'sudo systemctl enable \'%s\'' % svc
+        else:
+            raise OSError('Cannot enable service in this OS')
+
+        p = subprocess.Popen(cmd_exec, shell=True)
+        return p.communicate()
+
+    def switch_svc(self, svcmap, start=None, stop=None, restart=None):
+        """
+        Changes service state - starts, stops or restarts the service
+        :param start:
+        :param stop:
+        :param restart:
+        :return:
+        """
+        check = 0
+        check += 1 if start is not None else 0
+        check += 1 if stop is not None else 0
+        check += 1 if restart is not None else 0
+        if check != 1:
+            raise ValueError('Exactly one of start, stop, restart has to be set to True')
+
+        start_system = self.get_start_system()
+        svc = self._get_svc_desc(svcmap, start_system)
+        cmd_exec = None
+
+        change_state = 'start'
+        if stop:
+            change_state = 'stop'
+        elif restart:
+            change_state = 'restart'
+
+        if start_system == osutil.START_INITD:
+            cmd_exec = 'sudo /etc/init.d/%s %s' % (svc, change_state)
+        elif start_system == osutil.START_SYSTEMD:
+            cmd_exec = 'sudo systemctl %s \'%s\'' % (change_state, svc)
+        else:
+            raise OSError('Cannot enable service in this OS')
+
+        p = subprocess.Popen(cmd_exec, shell=True)
+        return p.communicate()
+
     def install_onboot_check(self):
         """
         Installs a service invocation after boot to reclaim domain again
