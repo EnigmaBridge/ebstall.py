@@ -90,9 +90,9 @@ class Ejbca(object):
 
     # MySQL database properties
     DATABASE_PROPERTIES = {
-        'database.name': 'mysql',
-        'database.url': 'jdbc:mysql://localhost:3306/ejbca?characterEncoding=UTF-8',
-        'database.driver': 'com.mysql.jdbc.Driver',
+        # 'database.name': 'mysql',
+        # 'database.url': 'jdbc:mysql://localhost:3306/ejbca?characterEncoding=UTF-8',
+        # 'database.driver': 'com.mysql.jdbc.Driver',
         'database.username': 'ejbca',
         'database.password': 'sa'
     }
@@ -115,8 +115,12 @@ class Ejbca(object):
         self.http_pass = util.defval(jks_pass, util.random_password(16))
         self.java_pass = 'changeit'  # EJBCA & JBoss bug here
         self.superadmin_pass = util.random_password(16)
-        self.db_pass = util.defval(db_pass, util.random_password(16))  # MySQL EJBCA user password.
-        self.master_p12_pass = util.defval(master_p12_pass, util.random_password(16))  # P12 encryption password for VPN user enc.
+
+        # MySQL EJBCA user password.
+        self.db_pass = util.defval(db_pass, util.random_password(16))
+
+        # P12 encryption password for VPN user enc.
+        self.master_p12_pass = util.defval(master_p12_pass, util.random_password(16))
 
         self.do_vpn = do_vpn
         self.print_output = print_output
@@ -133,7 +137,9 @@ class Ejbca(object):
         self.sysconfig = sysconfig
 
         self.ejbca_install_result = 1
-        pass
+
+        # Initialize settings
+        self._setup_database_properties()
 
     def get_db_type(self):
         """
@@ -202,6 +208,29 @@ class Ejbca(object):
     def set_config(self, config):
         self.config = config
 
+    def _setup_database_properties(self):
+        """
+        Setting up database properties from the internal state
+        e.g., database password, DB type.
+        :return:
+        """
+        self.database_props['database.password'] = self.db_pass
+
+        db_type = self.get_db_type()
+        if db_type == 'mysql':
+            # 'database.name': 'mysql',
+            # 'database.url': 'jdbc:mysql://localhost:3306/ejbca?characterEncoding=UTF-8',
+            # 'database.driver': 'com.mysql.jdbc.Driver',
+
+            self.database_props['database.name'] = 'mysql'
+            self.database_props['database.driver'] = 'com.mysql.jdbc.Driver'
+            self.database_props['database.url'] = 'jdbc:mysql://%s:%s/%s?characterEncoding=UTF-8' \
+                                                  % (self.MYSQL_HOST, self.MYSQL_PORT, self.MYSQL_DB)
+
+        else:
+            # Fallback - default H2 database
+            return
+
     def set_domains(self, domains, primary=None, set_hostname=True):
         """
         Sets the domains EJBCA is reachable on
@@ -261,34 +290,48 @@ class Ejbca(object):
 
         return self.web_props
 
+    def _update_property_file(self, file, properties):
+        """
+        Updates EJBCA property file with backup
+        :param file:
+        :param content:
+        :return:
+        """
+        prop_hdr = '#\n'
+        prop_hdr += '# Config file generated: %s\n' % (datetime.now().strftime("%Y-%m-%d %H:%M"))
+        prop_hdr += '#\n'
+
+        file_hnd = None
+        try:
+            file_hnd, file_backup = util.safe_create_with_backup(file, 'w', 0o644)
+            file_hnd.write(prop_hdr + self.properties_to_string(properties) + "\n\n")
+        finally:
+            if file_hnd is not None:
+                file_hnd.close()
+
     def update_properties(self):
         """
         Updates properties files of the ejbca
         :return:
         """
+        self._setup_database_properties()
+
         file_web = self.get_web_prop_file()
         file_ins = self.get_install_prop_file()
+        file_db = self.get_database_prop_file()
 
         prop_web = util.merge(self.WEB_PROPERTIES, self.web_props)
         prop_ins = util.merge(self.INSTALL_PROPERTIES, self.install_props)
+        prop_db = util.merge(self.DATABASE_PROPERTIES, self.database_props)
 
-        prop_hdr = '#\n'
-        prop_hdr += '# Config file generated: %s\n' % (datetime.now().strftime("%Y-%m-%d %H:%M"))
-        prop_hdr += '#\n'
+        self._update_property_file(file_web, prop_web)
+        self._update_property_file(file_ins, prop_ins)
+        self._update_property_file(file_db, prop_db)
 
-        file_web_hnd = None
-        file_ins_hnd = None
-        try:
-            file_web_hnd, file_web_backup = util.safe_create_with_backup(file_web, 'w', 0o644)
-            file_ins_hnd, file_ins_backup = util.safe_create_with_backup(file_ins, 'w', 0o644)
-
-            file_web_hnd.write(prop_hdr + self.properties_to_string(prop_web)+"\n\n")
-            file_ins_hnd.write(prop_hdr + self.properties_to_string(prop_ins)+"\n\n")
-        finally:
-            if file_web_hnd is not None:
-                file_web_hnd.close()
-            if file_ins_hnd is not None:
-                file_ins_hnd.close()
+        if self.do_vpn:
+            file_mail = self.get_email_prop_file()
+            prop_mail = util.merge(self.MAIL_PROPERTIES, self.mail_props)
+            self._update_property_file(file_mail, prop_mail)
 
     def cli_cmd(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, ant_answer=True, cwd=None):
         """
