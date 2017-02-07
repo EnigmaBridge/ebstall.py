@@ -145,7 +145,7 @@ class OpenVpn(object):
         if self.server_config_data is None:
             self.server_config_data = self.load_config_file_lines()
 
-        last_cmd_idx = 0
+        last_cmd_idx = len(self.server_config_data)
         file_changed = False
         if not isinstance(values, types.ListType):
             if values is None:
