@@ -163,6 +163,14 @@ class VpnInstaller(Installer):
         if res != 0:
             return self.return_code(res)
 
+        # Generate new keys
+        res = self.init_create_vpn_eb_keys()
+        if res != 0:
+            return self.return_code(res)
+
+        # JBoss restart is needed - so it sees the new keys
+        self.ejbca.jboss_restart()
+
         # VPN setup
         self.ejbca.vpn_create_ca()
         self.ejbca.vpn_create_profiles()
@@ -200,11 +208,33 @@ class VpnInstaller(Installer):
         new_p12 = self.ejbca.copy_p12_file()
         self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
 
+        # Generate VPN client for the admin
+        self.ejbca.vpn_create_user(self.config.email, 'default')
+
         # Test if main admin port of EJBCA is reachable.
         self.init_test_admin_port_reachability()
 
         self.cli_sleep(5)
         return self.return_code(0)
+
+    def init_create_vpn_eb_keys(self):
+        """
+        Creates a new keys in the SoftHSM token -> EB.
+        :return:
+        """
+        self.tprint('\nEnigma Bridge service will generate new keys:')
+        ret, out, err = self.ejbca.pkcs11_generate_default_key_set(softhsm=self.soft_config)
+
+        if ret != 0:
+            self.tprint(self.t.red('\nError generating new keys'))
+            self.tprint('The installation has to be repeated later')
+
+            self.tprint('\nError from the command:')
+            self.tprint(''.join(out))
+            self.tprint('\n')
+            self.tprint(''.join(err))
+            return 1
+        return 0
 
 
 def main():
