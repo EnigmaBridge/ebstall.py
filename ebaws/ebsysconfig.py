@@ -297,12 +297,12 @@ class SysConfig(object):
         # Set service to start after boot
         ret = self.exec_shell('sudo systemctl daemon-reload')
         if ret != 0:
-            self.print_error('Error: Could not reload systemctl\n')
+            self.print_error('Error: Could not reload systemctl, code: %d\n' % ret)
             return 2
 
         ret = self.exec_shell('sudo systemctl enable enigmabridge-onboot', shell=True)
         if ret != 0:
-            self.print_error('Error: Could not install on boot system service\n')
+            self.print_error('Error: Could not install on boot system service, code: %d\n' % ret)
             return 2
 
         return 0
@@ -324,7 +324,7 @@ class SysConfig(object):
         # Set service to start after boot
         ret = self.exec_shell('sudo chkconfig --level=345 enigmabridge-onboot on', shell=True)
         if ret != 0:
-            self.print_error('Error: Could not install on boot system service\n')
+            self.print_error('Error: Could not install on boot system service, code: %d\n' % ret)
             return 2
 
         return 0
