@@ -91,6 +91,55 @@ class Installer(InstallerBase):
         self.intro += '\n    More info: https://enigmabridge.com/amazonpki \n' + \
                      '-'*self.get_term_width()
 
+    def cfg_get_raw_hostname(self):
+        """
+        Returns natural hostname of the machine - reachable over the internet.
+        If there is no public hostname available, IPv4 address is returned.
+        Used when DNS registration fails.
+        :return:
+        """
+        # TODO: refactor to multi profiles, not just AWS
+        return self.reg_svc.info_loader.ami_public_hostname
+
+    def cfg_get_raw_ip(self):
+        """
+        Returns public IP address of the machine.
+        May use profile dependent tools to figure this out - e.g., AWS tools.
+        :return:
+        """
+        # TODO: refactor to multiple profiles, not just AWS
+        return self.reg_svc.info_loader.ami_public_ip
+
+    def get_db_type(self):
+        """
+        Returns DB type to use for the installation - EJBCA.
+        Priority: command line argument, ENV[EJBCA_DB_TYPE], config, /opt/enigma config, None
+        :return:
+        """
+        if self.args.db_type is not None:
+            return self.args.db_type
+        if 'EJBCA_DB_TYPE' in os.environ:
+            return os.environ['EJBCA_DB_TYPE']
+        if self.config is not None and self.config.ejbca_db_type is not None:
+            return self.config.ejbca_db_type
+        if self.eb_settings is not None and self.eb_settings.ejbca_db_type is not None:
+            return self.eb_settings.ejbca_db_type
+        return None
+
+    def get_db_root_password(self):
+        """
+        Returns root password for the database. Required for MySQL server to create the databases.
+        Priority: ENV[EJBCA_DB_ROOT_PASS], config, /opt/enigma, None
+        :return:
+        """
+        if 'EJBCA_DB_ROOT_PASS' in os.environ:
+            return os.environ['EJBCA_DB_ROOT_PASS']
+        if self.config is not None and self.config.mysql_root_password is not None:
+            return self.config.mysql_root_password
+        if self.eb_settings is not None and self.eb_settings.mysql_root_password is not None:
+            return self.eb_settings.mysql_root_password
+        return None
+
     def do_dump_config(self, line):
         """Dumps the current configuration to the terminal"""
         config = Core.read_configuration()
@@ -363,55 +412,6 @@ class Installer(InstallerBase):
             for tmpcmd in key_gen_cmds:
                 self.tprint('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
         return 0
-
-    def cfg_get_raw_hostname(self):
-        """
-        Returns natural hostname of the machine - reachable over the internet.
-        If there is no public hostname available, IPv4 address is returned.
-        Used when DNS registration fails.
-        :return:
-        """
-        # TODO: refactor to multi profiles, not just AWS
-        return self.reg_svc.info_loader.ami_public_hostname
-
-    def cfg_get_raw_ip(self):
-        """
-        Returns public IP address of the machine.
-        May use profile dependent tools to figure this out - e.g., AWS tools.
-        :return:
-        """
-        # TODO: refactor to multiple profiles, not just AWS
-        return self.reg_svc.info_loader.ami_public_ip
-
-    def get_db_type(self):
-        """
-        Returns DB type to use for the installation - EJBCA.
-        Priority: command line argument, ENV[EJBCA_DB_TYPE], config, /opt/enigma config, None
-        :return:
-        """
-        if self.args.db_type is not None:
-            return self.args.db_type
-        if 'EJBCA_DB_TYPE' in os.environ:
-            return os.environ['EJBCA_DB_TYPE']
-        if self.config is not None and self.config.ejbca_db_type is not None:
-            return self.config.ejbca_db_type
-        if self.eb_settings is not None and self.eb_settings.ejbca_db_type is not None:
-            return self.eb_settings.ejbca_db_type
-        return None
-
-    def get_db_root_password(self):
-        """
-        Returns root password for the database. Required for MySQL server to create the databases.
-        Priority: ENV[EJBCA_DB_ROOT_PASS], config, /opt/enigma, None
-        :return:
-        """
-        if 'EJBCA_DB_ROOT_PASS' in os.environ:
-            return os.environ['EJBCA_DB_ROOT_PASS']
-        if self.config is not None and self.config.mysql_root_password is not None:
-            return self.config.mysql_root_password
-        if self.eb_settings is not None and self.eb_settings.mysql_root_password is not None:
-            return self.eb_settings.mysql_root_password
-        return None
 
     def init_le_install(self, ejbca=None):
         """
