@@ -33,8 +33,8 @@ class ConfigLine(object):
         self._raw = raw
         self.ltype = ltype
         self.cmd = cmd
-        self.params = params if params is not None else ''
-        self.comment = comment if comment is not None else ''
+        self.params = params
+        self.comment = comment
 
     @property
     def raw(self):
@@ -43,11 +43,11 @@ class ConfigLine(object):
         :return:
         """
         if self.ltype in [CONFIG_LINE_COMMENT, CONFIG_LINE_BLANK]:
-            return self._raw
+            return util.defval(self._raw, '')
 
         res = '' if self.ltype == CONFIG_LINE_CMD else ';'
-        res += '%s %s %s' % (self.cmd, self.params, self.comment)
-        return res
+        res += '%s %s %s' % (util.defval(self.cmd, ''), util.defval(self.params, ''), util.defval(self.comment, ''))
+        return res.strip()
 
     @raw.setter
     def raw(self, val):
