@@ -669,6 +669,42 @@ def defvalkey(js, key, default=None, take_none=True):
     return js[key]
 
 
+def startswith(x, testz):
+    """
+    Returns true if x or any element in x (if list) matches testz or any element in testz (if list)
+    :param x:
+    :param testz:
+    :return:
+    """
+    if not isinstance(x, types.ListType):
+        x = [x]
+    if not isinstance(testz, types.ListType):
+        testz = [testz]
+    for sx in x:
+        for test in testz:
+            if sx is not None and sx.startswith(test):
+                return True
+    return False
+
+
+def equals_any(subject, target):
+    """
+    Returns true if subject (or any of the subjects if list) equals to the target (or any of the targets if list)
+    :param subject:
+    :param target:
+    :return:
+    """
+    if not isinstance(subject, types.ListType):
+        subject = [subject]
+    if not isinstance(target, types.ListType):
+        target = [target]
+    for sub in subject:
+        for tgt in target:
+            if sub == tgt:
+                return True
+    return False
+
+
 def escape_shell(inp):
     """
     Shell-escapes input param

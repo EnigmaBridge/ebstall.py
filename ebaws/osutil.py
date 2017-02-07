@@ -18,6 +18,7 @@ import string
 from datetime import datetime
 import time
 import types
+import util
 from ebaws.util import normalize_string
 
 logger = logging.getLogger(__name__)
@@ -147,32 +148,14 @@ def get_os():
     return ros
 
 
-def _starts_with(x, testz):
-    """
-    Returns true if x or any element in x (if list) matches testz or any element in testz (if list)
-    :param x:
-    :param testz:
-    :return:
-    """
-    if not isinstance(x, types.ListType):
-        x = [x]
-    if not isinstance(testz, types.ListType):
-        testz = [testz]
-    for sx in x:
-        for test in testz:
-            if sx is not None and sx.startswith(test):
-                return True
-    return False
-
-
 def os_packager(ros):
     yums = ['redhat', 'fedora', 'centos', 'rhel', 'amzn', 'amazon']
     debs = ['debian', 'ubuntu', 'kali']
 
     if ros.like is not None:
-        if _starts_with(ros.like, yums):
+        if util.startswith(ros.like, yums):
             ros.packager = PKG_YUM
-        if _starts_with(ros.like, debs):
+        if util.startswith(ros.like, debs):
             ros.packager = PKG_APT
         return ros
 
