@@ -395,7 +395,7 @@ class Installer(InstallerBase):
             self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
                                                    bit_size=2048, alias='defaultKey', slot_id=0),
             self.ejbca.pkcs11_get_generate_key_cmd(softhsm=self.soft_config,
-                                                   bit_size=1024, alias='testKey', slot_id=0)
+                                                   bit_size=2048, alias='testKey', slot_id=0)
         ]
 
         if ret != 0:

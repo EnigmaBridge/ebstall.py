@@ -811,7 +811,7 @@ class Ejbca(object):
         :return:
         """
         aliases = [sign_key_alias, default_key_alias, test_key_alias]
-        key_sizes = [2048, 2048, 1024]
+        key_sizes = [2048, 2048, 2048]
 
         for idx,alias in enumerate(aliases):
             key_size = key_sizes[idx]
