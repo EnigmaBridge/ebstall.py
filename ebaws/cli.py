@@ -919,6 +919,7 @@ class Installer(InstallerBase):
         eb_cfg = Core.get_default_eb_config()
 
         # Registration - for domain updates. Identity should already exist.
+        self.syscfg = SysConfig(print_output=True)
         reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug)
         ret = reg_svc.load_identity()
         if ret != 0:
@@ -927,7 +928,7 @@ class Installer(InstallerBase):
 
         # EJBCA
         ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config,
-                      staging=self.args.le_staging)
+                      staging=self.args.le_staging, sysconfig=self.syscfg)
         ejbca.set_domains(config.ejbca_domains)
         ejbca.reg_svc = reg_svc
 
