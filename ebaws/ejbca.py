@@ -473,7 +473,7 @@ class Ejbca(object):
         Returns connection string to the MySQL database for root.
         :return:
         """
-        con_string = 'mysql://%s:%s@%s%s/%s' % (self.MYSQL_USER, self.get_database_root_password(),
+        con_string = 'mysql://%s:%s@%s%s/%s' % ('root', self.get_database_root_password(),
                                                 self.MYSQL_HOST, ':%s' % self.MYSQL_PORT, self.MYSQL_DB)
         return con_string
 
@@ -490,7 +490,7 @@ class Ejbca(object):
         fh.close()
 
         cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
-              % (self.MYSQL_DB, self.MYSQL_USER, self.config.ejbca_db_password, db_fpath)
+              % ('root', self.MYSQL_USER, self.get_database_root_password(), db_fpath)
 
         return self.sysconfig.exec_shell(cmd)
 
