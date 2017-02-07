@@ -54,8 +54,8 @@ class Installer(InstallerBase):
         self.reg_svc = None
         self.soft_config = None
         self.ejbca = None
-        self.syscfg = None
         self.eb_cfg = None
+        self.syscfg = SysConfig(print_output=True)
 
         self.previous_registration_continue = False
         self.domain_is_ok = False
@@ -225,7 +225,6 @@ class Installer(InstallerBase):
                                     eb_config=self.eb_cfg, eb_settings=self.eb_settings)
 
         self.soft_config = SoftHsmV1Config()
-        self.syscfg = SysConfig(print_output=True)
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=self.config, sysconfig=self.syscfg,
                            eb_config=self.eb_settings)
         return 0
@@ -919,7 +918,6 @@ class Installer(InstallerBase):
         eb_cfg = Core.get_default_eb_config()
 
         # Registration - for domain updates. Identity should already exist.
-        self.syscfg = SysConfig(print_output=True)
         reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug)
         ret = reg_svc.load_identity()
         if ret != 0:
@@ -1089,7 +1087,7 @@ class Installer(InstallerBase):
         if not should_continue:
             return self.return_code(1)
 
-        ejbca = Ejbca(print_output=True, staging=self.args.le_staging)
+        ejbca = Ejbca(print_output=True, staging=self.args.le_staging, sysconfig=self.syscfg)
 
         self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
         ejbca.undeploy()
