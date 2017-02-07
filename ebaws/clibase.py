@@ -90,6 +90,7 @@ class InstallerBase(Cmd):
         Determines which environment to use.
         Priority from top to bottom:
          - command line switch
+         - ENV[ENIGMA_ENV_DEVEL], ENV[ENIGMA_ENV_TEST]
          - /etc/enigma/config.json
          - eb-settings.json
          - default: production
@@ -98,6 +99,10 @@ class InstallerBase(Cmd):
         if self.args.env_dev:
             return ENVIRONMENT_DEVELOPMENT
         if self.args.env_test:
+            return ENVIRONMENT_TEST
+        if 'ENIGMA_ENV_DEVEL' in os.environ:
+            return ENVIRONMENT_DEVELOPMENT
+        if 'ENIGMA_ENV_TEST' in os.environ:
             return ENVIRONMENT_TEST
         if self.config is not None and self.config.env is not None:
             return self.config.env
