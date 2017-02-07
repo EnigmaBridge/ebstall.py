@@ -140,6 +140,10 @@ class Installer(InstallerBase):
             return self.eb_settings.mysql_root_password
         return None
 
+    #
+    # Install action
+    #
+
     def do_dump_config(self, line):
         """Dumps the current configuration to the terminal"""
         config = Core.read_configuration()
@@ -634,7 +638,7 @@ class Installer(InstallerBase):
         if res != 0:
             return self.return_code(res)
 
-        # Add SoftHSM crypto token to EJBCA
+        # Add SoftHSM crypto token to EJBCA as a hard token
         res = self.init_add_softhsm_token()
         if res != 0:
             return self.return_code(res)
@@ -694,10 +698,6 @@ class Installer(InstallerBase):
             self.tprint('Exception in the registration process, cannot continue.')
 
         return self.return_code(1)
-
-    def do_check_memory(self, args):
-        """Check if there is enough memory in the system, adds a new swapfile if not"""
-        self.install_check_memory(SysConfig(print_output=True))
 
     def load_base_settings(self):
         """
@@ -873,6 +873,14 @@ class Installer(InstallerBase):
         self.tprint('       An invitation with a direct link should be in your mailbox.')
         self.tprint('  2. You will receive a new ticket notification. Open the ticket link.')
         self.tprint('  3. Copy the challenge from the ticket below.\n')
+
+    #
+    # Other CLI actions, renew, on boot, ...
+    #
+
+    def do_check_memory(self, args):
+        """Check if there is enough memory in the system, adds a new swapfile if not"""
+        self.install_check_memory(self.syscfg)
 
     def do_renew(self, arg):
         """Renews LetsEncrypt certificates used for the JBoss"""
@@ -1102,6 +1110,10 @@ class Installer(InstallerBase):
         self.tprint('Check successful: %s' % ('yes' if port_ok else 'no'))
         return self.return_code(0 if port_ok else 1)
 
+    #
+    # Helpers
+    #
+
     def le_check_port(self, ip=None, letsencrypt=None, critical=False, one_attempt=False):
         if ip is None:
             info = InfoLoader()
@@ -1224,6 +1236,10 @@ class Installer(InstallerBase):
                 return self.return_code(1)
             self.tprint('')
         return 0
+
+    #
+    # Params, misc, main
+    #
 
     def ask_for_email_reason(self, is_required=None):
         if is_required:
