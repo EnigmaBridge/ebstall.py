@@ -754,6 +754,9 @@ class Ejbca(object):
 
         :param cmd:
         :param retry_attempts:
+        :param write_dots:
+        :param on_out:
+        :param on_err:
         :return:
         """
         cwd = self.pkcs11_get_cwd()
@@ -805,6 +808,9 @@ class Ejbca(object):
                                         test_key_alias='testKey'):
         """
         Generates a default key set to be used with EJBCA
+        :param softhsm:
+        :param slot_id:
+        :param retry_attempts:
         :param sign_key_alias:
         :param default_key_alias:
         :param test_key_alias:
@@ -813,7 +819,7 @@ class Ejbca(object):
         aliases = [sign_key_alias, default_key_alias, test_key_alias]
         key_sizes = [2048, 2048, 2048]
 
-        for idx,alias in enumerate(aliases):
+        for idx, alias in enumerate(aliases):
             key_size = key_sizes[idx]
             ret, out, cmd = self.pkcs11_generate_key(softhsm=softhsm, bit_size=key_size, alias=alias,
                                                      slot_id=slot_id, retry_attempts=retry_attempts)

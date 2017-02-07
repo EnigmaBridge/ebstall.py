@@ -340,7 +340,6 @@ class OpenVpn(object):
     def switch(self, start=None, stop=None, restart=None):
         """
         Starts/stops/restarts the service
-        :param state:
         :param start:
         :param stop:
         :param restart:
