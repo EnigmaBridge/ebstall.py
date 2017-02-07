@@ -233,7 +233,7 @@ class SysConfig(object):
         else:
             raise OSError('Cannot enable service in this OS')
 
-        return self.shell_exec(cmd_exec)
+        return self.exec_shell(cmd_exec)
 
     def switch_svc(self, svcmap, start=None, stop=None, restart=None):
         """
@@ -267,7 +267,7 @@ class SysConfig(object):
         else:
             raise OSError('Cannot enable service in this OS')
 
-        return self.shell_exec(cmd_exec)
+        return self.exec_shell(cmd_exec)
 
     def install_onboot_check(self):
         """
@@ -295,12 +295,12 @@ class SysConfig(object):
             handle.write('\n')
 
         # Set service to start after boot
-        ret = self.shell_exec('sudo systemctl daemon-reload')
+        ret = self.exec_shell('sudo systemctl daemon-reload')
         if ret != 0:
             self.print_error('Error: Could not reload systemctl\n')
             return 2
 
-        ret = self.shell_exec('sudo systemctl enable enigmabridge-onboot', shell=True)
+        ret = self.exec_shell('sudo systemctl enable enigmabridge-onboot', shell=True)
         if ret != 0:
             self.print_error('Error: Could not install on boot system service\n')
             return 2
@@ -322,7 +322,7 @@ class SysConfig(object):
             handle.write('\n')
 
         # Set service to start after boot
-        ret = self.shell_exec('sudo chkconfig --level=345 enigmabridge-onboot on', shell=True)
+        ret = self.exec_shell('sudo chkconfig --level=345 enigmabridge-onboot on', shell=True)
         if ret != 0:
             self.print_error('Error: Could not install on boot system service\n')
             return 2
