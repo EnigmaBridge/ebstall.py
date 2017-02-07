@@ -168,6 +168,8 @@ class Installer(InstallerBase):
 
         # Determine the environment we are going to use in EB.
         self.config.env = self.get_env()
+        if self.config.env != ENVIRONMENT_PRODUCTION:
+            Core.set_devel_endpoints(self.eb_settings)
 
         # Initialize helper classes for registration & configuration.
         self.reg_svc = Registration(email=self.config.email, config=self.config,

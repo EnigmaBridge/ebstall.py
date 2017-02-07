@@ -97,6 +97,15 @@ class Core(object):
         return cfg
 
     @staticmethod
+    def set_devel_endpoints(cfg):
+        """
+        Set test/devel endpoints to the EB configuration
+        :return:
+        """
+        cfg.endpoint_register = eb_configuration.Endpoint.url('https://hut0.enigmabridge.com:8445')
+        return cfg
+
+    @staticmethod
     def search_for_settings():
         """Tries to search for settings file"""
         for folder in SETTINGS_FOLDERS:
