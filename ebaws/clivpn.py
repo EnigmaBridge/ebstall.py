@@ -177,6 +177,7 @@ class VpnInstaller(Installer):
         self.ejbca.vpn_create_server_certs()
         self.ejbca.vpn_create_crl()
         vpn_ca, vpn_cert, vpn_key = self.ejbca.vpn_get_server_cert_paths()
+        crl_path = self.ejbca.vpn_get_crl_path()
 
         # VPN server
         self.tprint('Installing & configuring VPN server')
@@ -184,9 +185,6 @@ class VpnInstaller(Installer):
         self.ovpn.generate_dh_group()
         self.ovpn.configure_server()
         self.ovpn.store_server_cert(ca=vpn_ca, cert=vpn_cert, key=vpn_key)
-
-        # VPN CRL
-        crl_path = self.ejbca.vpn_get_crl_path()
         self.ovpn.configure_crl(crl_path=crl_path)
 
         # Starting VPN server
