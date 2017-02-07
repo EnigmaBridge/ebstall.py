@@ -669,6 +669,20 @@ def defvalkey(js, key, default=None, take_none=True):
     return js[key]
 
 
+def strip(x):
+    """
+    Strips string x (if non empty) or each string in x if it is a list
+    :param x:
+    :return:
+    """
+    if x is None:
+        return None
+    if isinstance(x, types.ListType):
+        return [y.strip() if y is not None else y for y in x]
+    else:
+        return x.strip()
+
+
 def startswith(x, testz):
     """
     Returns true if x or any element in x (if list) matches testz or any element in testz (if list)

@@ -80,9 +80,9 @@ class ConfigLine(object):
             return cl
 
         cl.ltype = CONFIG_LINE_CMD if cmd_match.group(1) is None else CONFIG_LINE_CMD_COMMENT
-        cl.cmd = cmd_match.group(2).strip()
-        cl.params = cmd_match.group(3).strip()
-        cl.comment = cmd_match.group(4)
+        cl.cmd = util.strip(cmd_match.group(2))
+        cl.params = util.strip(cmd_match.group(3))
+        cl.comment = util.strip(cmd_match.group(4))
         return cl
 
 
