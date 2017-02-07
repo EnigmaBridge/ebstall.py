@@ -345,7 +345,8 @@ class Ejbca(object):
             on_out = self.ant_answer
         cwd = cwd if cwd is not None else default_cwd
 
-        return util.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=write_dots, on_out=on_out, on_err=on_err, cwd=cwd)
+        return self.sysconfig.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=write_dots,
+                                           on_out=on_out, on_err=on_err, cwd=cwd)
 
     #
     # ANT CLI, calls
