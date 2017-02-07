@@ -117,17 +117,24 @@ class OpenVpn(object):
         Loads config file to a string
         :return: array of ConfigLine or None if file does not exist
         """
+        config = []
+        lines = []
+
         cpath = self.get_config_file_path()
         if not os.path.exists(cpath):
             bare = self.load_static_config()
-            return [x.strip() for x in bare.split('\n')]
+            lines = [x.strip() for x in bare.split('\n')]
 
-        lines = []
-        with open(cpath, 'r') as fh:
-            for idx, line in enumerate(fh):
-                ln = ConfigLine.build(line=line, idx=idx)
-                lines.append(ln)
-        return lines
+        else:
+            with open(cpath, 'r') as fh:
+                for line in fh:
+                    lines.append(line.strip())
+
+        for idx, line in enumerate(lines):
+            ln = ConfigLine.build(line=line, idx=idx)
+            config.append(ln)
+
+        return config
 
     def load_static_config(self):
         """
