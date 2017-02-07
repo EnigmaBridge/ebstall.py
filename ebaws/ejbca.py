@@ -777,7 +777,7 @@ class Ejbca(object):
         return ret, out, err
 
     def pkcs11_answer(self, out, feeder, p=None, *args, **kwargs):
-        out = out.strip()
+        out = util.strip(out)
         if 'Password:' in out:
             feeder.feed('0000')
             feeder.feed('\n')
