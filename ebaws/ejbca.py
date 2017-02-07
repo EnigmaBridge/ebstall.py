@@ -490,7 +490,7 @@ class Ejbca(object):
         fh.close()
 
         cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
-              % ('root', self.MYSQL_USER, self.get_database_root_password(), db_fpath)
+              % (self.MYSQL_DB, 'root', self.get_database_root_password(), db_fpath)
 
         return self.sysconfig.exec_shell(cmd)
 
