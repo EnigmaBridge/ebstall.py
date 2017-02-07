@@ -802,7 +802,7 @@ class Ejbca(object):
         return self.pkcs11_cmd(cmd=cmd, retry_attempts=retry_attempts, write_dots=self.print_output,
                                on_out=self.pkcs11_answer, on_err=self.pkcs11_answer)
 
-    def pkcs11_generate_default_key_set(self, softhsm=None, slot_id=0, retry_attempts=3,
+    def pkcs11_generate_default_key_set(self, softhsm=None, slot_id=0, retry_attempts=5,
                                         sign_key_alias='signKey',
                                         default_key_alias='defaultKey',
                                         test_key_alias='testKey'):
