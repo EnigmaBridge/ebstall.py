@@ -1357,6 +1357,11 @@ class Installer(InstallerBase):
         if self.args.debug:
             coloredlogs.install(level=logging.DEBUG)
 
+        # Logging - filter out too verbose Sarge logging messages
+        for handler in logging.getLogger().handlers:
+            handler.addFilter(util.SargeLogFilter('hnd'))
+        logging.getLogger().addFilter(util.SargeLogFilter('root'))
+
         self.cmdloop()
         sys.argv = args_src
 
