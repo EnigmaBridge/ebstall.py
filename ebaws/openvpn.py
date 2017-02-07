@@ -11,6 +11,7 @@ import subprocess
 import types
 import osutil
 import shutil
+import pkg_resources
 
 
 __author__ = 'dusanklinec'
@@ -118,7 +119,8 @@ class OpenVpn(object):
         """
         cpath = self.get_config_file_path()
         if not os.path.exists(cpath):
-            return []
+            bare = self.load_static_config()
+            return [x.strip() for x in bare.split('\n')]
 
         lines = []
         with open(cpath, 'r') as fh:
@@ -126,6 +128,15 @@ class OpenVpn(object):
                 ln = ConfigLine.build(line=line, idx=idx)
                 lines.append(ln)
         return lines
+
+    def load_static_config(self):
+        """
+        Loads static config from the package
+        :return:
+        """
+        resource_package = __name__
+        resource_path = '/'.join(('consts', 'ovpn-server.conf'))
+        return pkg_resources.resource_string(resource_package, resource_path)
 
     def set_config_value(self, cmd, values, remove=False):
         """
