@@ -219,7 +219,7 @@ class OpenVpn(object):
             if values_set[idx]:
                 continue
 
-            cl = ConfigLine(idx=None, raw=None, ltype=CONFIG_LINE_CMD, cmd=cmd, params=value)
+            cl = ConfigLine(idx=None, raw=None, ltype=CONFIG_LINE_CMD, cmd=cmd, params=cval)
             self.server_config_data.insert(last_cmd_idx+1+ctr, cl)
 
             ctr += 1
