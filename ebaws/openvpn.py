@@ -150,7 +150,7 @@ class OpenVpn(object):
         resource_path = '/'.join(('consts', 'ovpn-server.conf'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
-    def set_config_value(self, cmd, values, remove=False):
+    def set_config_value(self, cmd, values, remove=False, under_directive=None):
         """
         Sets command to the specified value in the configuration file.
         Loads file from the disk if server_config_data is None (file was not yet loaded).
@@ -162,13 +162,15 @@ class OpenVpn(object):
         :param values: single value or array of values for multi-commands (e.g., push).
                        None & remove -> remove all commands. Otherwise just commands with the given values are removed.
         :param remove: if True, configuration command is removed
+        :param under_directive: if specified, command is placed under specified directive, if exists
         :return: True if file was modified
         """
         # If file is not loaded - load
         if self.server_config_data is None:
             self.server_config_data = self.load_config_file_lines()
 
-        last_cmd_idx = len(self.server_config_data)
+        # default position - end of the config file
+        last_cmd_idx = len(self.server_config_data)-1
         file_changed = False
         if not isinstance(values, types.ListType):
             if values is None:
@@ -180,6 +182,10 @@ class OpenVpn(object):
         for idx, cfg in enumerate(self.server_config_data):
             if cfg.ltype not in [CONFIG_LINE_CMD, CONFIG_LINE_CMD_COMMENT]:
                 continue
+
+            if under_directive is not None and util.equals_any(cfg.cmd, under_directive):
+                last_cmd_idx = idx
+
             if cfg.cmd != cmd:
                 continue
 
@@ -279,7 +285,7 @@ class OpenVpn(object):
         :param crl_path:
         :return: True if file was changed
         """
-        self.set_config_value('crl-verify', crl_path, remove=crl_path is None)
+        self.set_config_value('crl-verify', crl_path, remove=crl_path is None, under_directive='key')
         return self.update_config_file()
 
     def configure_server(self):
