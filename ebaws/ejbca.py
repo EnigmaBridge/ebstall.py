@@ -12,6 +12,7 @@ import sys
 import types
 import subprocess
 import shutil
+import osutil
 import re
 import letsencrypt
 import logging
@@ -493,6 +494,34 @@ class Ejbca(object):
 
         return self.sysconfig.exec_shell(cmd)
 
+    def db_install_python_mysql(self):
+        """
+        Checks if Mysql for python is installed.
+        :return:
+        """
+        try:
+            import MySQLdb
+        except:
+            logger.debug('MySQLdb not found')
+            pkger = self.sysconfig.get_packager()
+            ret = -1
+
+            if pkger == osutil.PKG_YUM:
+                ret = self.sysconfig.exec_shell('sudo yum install -y python python-devel mysql-devel '
+                                                'redhat-rpm-config gcc')
+            elif pkger == osutil.PKG_APT:
+                ret = self.sysconfig.exec_shell('sudo apt-get install python-pip python-dev libmysqlclient-dev')
+
+            else:
+                raise EnvironmentError('MySQLdb module not installed, code: %s' % ret)
+
+            if ret != 0:
+                raise OSError('Could not install MySQLdb related packages')
+
+            ret = self.sysconfig.exec_shell('sudo pip install MySQL-python')
+            if ret != 0:
+                raise OSError('Could not install MySQLdb, code: %s' % ret)
+
     def reset_mysql_database(self):
         """
         Performs backup of the original MySQL database - if any.
@@ -502,6 +531,8 @@ class Ejbca(object):
         self.backup_mysql_database()
         con_str = self.get_mysql_root_connstring()
 
+        # Install required packages for mysql
+        self.db_install_python_mysql()
         try:
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker, scoped_session
