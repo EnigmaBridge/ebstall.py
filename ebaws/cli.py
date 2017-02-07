@@ -898,12 +898,12 @@ class Installer(InstallerBase):
 
         if args_le_preferred_method is not None and args_le_preferred_method != config.le_preferred_verification:
             self.tprint('\nOverriding LetsEncrypt preferred method, settings: %s, new: %s'
-                  % (config.le_preferred_verification, args_le_preferred_method))
+                        % (config.le_preferred_verification, args_le_preferred_method))
             config.le_preferred_verification = args_le_preferred_method
 
         if args_is_vpc is not None and args_is_vpc != config.is_private_network:
             self.tprint('\nOverriding is private network settings, settings.private: %s, new.private: %s'
-                  % (config.is_private_network, args_is_vpc))
+                        % (config.is_private_network, args_is_vpc))
             config.is_private_network = args_is_vpc == 1
 
         if config.is_private_network \
