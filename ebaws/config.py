@@ -330,6 +330,15 @@ class Config(object):
     def le_preferred_verification(self, val):
         self.set_config('le_preferred_verification', val)
 
+    # Was VPN installed
+    @property
+    def vpn_installed(self):
+        return self.get_config('vpn_installed')
+
+    @vpn_installed.setter
+    def vpn_installed(self, val):
+        self.set_config('vpn_installed', val)
+
     # process endpoint
     @property
     def endpoint_process(self):

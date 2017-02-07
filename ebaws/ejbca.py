@@ -1154,6 +1154,7 @@ class Ejbca(object):
             self.config.ejbca_jks_password = self.http_pass
             self.config.ejbca_db_password = self.db_pass
             self.config.ejbca_p12master_password = self.master_p12_pass
+            self.config.vpn_installed = self.do_vpn
 
         # Restart jboss - to make sure it is running
         if self.print_output:
