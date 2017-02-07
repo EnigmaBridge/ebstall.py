@@ -47,6 +47,7 @@ class SysConfig(object):
         :return:
         """
         # TODO: audit
+        logger.debug('Execute: %s' % cmd_exec)
         p = subprocess.Popen(cmd_exec, shell=shell)
         return p
 
@@ -60,6 +61,16 @@ class SysConfig(object):
         p = self.exec_shell_open(cmd_exec=cmd_exec, shell=shell)
         p.communicate()
         return p.returncode
+
+    def cli_cmd_sync(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None):
+        """
+        Runs command line task synchronously
+        :return:
+        """
+        # TODO: audit
+        logger.debug('Execute: %s' % cmd)
+        return util.cli_cmd_sync(cmd=cmd, log_obj=log_obj, write_dots=write_dots,
+                                 on_out=on_out, on_err=on_err, cwd=cwd)
 
     #
     # Memory
