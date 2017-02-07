@@ -66,7 +66,7 @@ class VpnInstaller(Installer):
         if is_required:
             self.tprint('We need your email address for:\n'
                         '   a) identity verification for EnigmaBridge account \n'
-                        '   b) LetsEncrypt certificate registration'
+                        '   b) LetsEncrypt certificate registration\n'
                         '   c) PKI setup - VPN configuration')
             self.tprint('We will send you a verification email.')
             self.tprint('Without a valid e-mail address you won\'t be able to continue with the installation\n')
