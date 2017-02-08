@@ -332,7 +332,7 @@ class AuditManager(object):
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
-    def audit_print(self, lines=None, sensitive=False, *args, **kwargs):
+    def audit_print(self, *args, **kwargs):
         """
         Command line auditing - printing
         :param lines:
@@ -342,10 +342,22 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('print')
-        if lines is not None:
-            log['lines'] = self._valueize(lines)
-        if sensitive:
-            log['sensitive'] = self._valueize(sensitive)
+
+        self._args_to_log(log, *args)
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
+    def audit_print_sensitive(self, *args, **kwargs):
+        """
+        Command line auditing - printing
+        :param lines:
+        :param sensitive:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        log = self._newlog('print')
+        log['sensitive'] = True
 
         self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
