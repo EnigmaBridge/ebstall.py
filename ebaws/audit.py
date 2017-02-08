@@ -439,7 +439,7 @@ class AuditManager(object):
         :param kwargs:
         :return:
         """
-        log = self._newlog('input_prompt')
+        log = self._newlog('value')
         if key is not None:
             log['key'] = self._valueize(key)
         if value is not None:
