@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 import types
+import psutil
 
 import OpenSSL
 import socketserver
@@ -601,33 +602,51 @@ def hmac_obj(key, data):
     return hmac.new(key, data, hashlib.sha256)
 
 
-def test_port_open(host='127.0.0.1', port=80, timeout=15, attempts=3, test_upper_read_write=True):
+def test_port_open(host='127.0.0.1', port=80, timeout=15, attempts=3, test_upper_read_write=True, tcp=True,
+                   test_write_read=False, test_write=False):
     """
-    Test if the given port is open on the TCP.
+    Test if the given port is open on the TCP/UDP.
 
-    :param host:
-    :param port:
-    :param attempts:
-    :param timeout:
+    :param host: host to connect to
+    :param port: port to connect to
+    :param attempts: number of attempts before failing test
+    :param timeout: timeout in seconds
+    :param test_upper_read_write: if True (default) the echo uppercase is tested - our port tester. Otherwise
+        the test is successful if socket reads something.
+    :param tcp: if True, TCP is tested, if false, UDP
+    :param test_write_read: if True, socket is written / read
+    :param test_write_read: if True, socket is written
     :return:
     """
     idx = 0
     while idx < attempts:
         sock = None
         try:
-            sock = socket.create_connection((host, port), timeout=timeout)
+            if tcp:
+                sock = socket.create_connection((host, port), timeout=timeout)
+            else:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.settimeout(timeout)
 
             # read/write test on the dummy server - our.
-            if test_upper_read_write:
+            if test_upper_read_write or test_write_read or test_write:
                 random_nonce = 'ebaws-letsencrypt-test-' + (random_password(32).lower())
 
-                sock.sendall(random_nonce)
-                read_data = sock.recv(4096)
-                if read_data is None or len(read_data) == 0:
-                    raise ValueError('Data read from the socket is empty')
-                if read_data.strip() != random_nonce.upper().strip():
-                    raise ValueError('Data read from the socket do not match the expectations')
-            
+                if tcp:
+                    sock.sendall(random_nonce)
+                else:
+                    sock.sendto(random_nonce, (host, port))
+
+                read_data = None
+                if test_upper_read_write or test_write_read:
+                    read_data = sock.recv(4096)
+
+                if test_upper_read_write:
+                    if read_data is None or len(read_data) == 0:
+                        raise ValueError('Data read from the socket is empty')
+                    if read_data.strip() != random_nonce.upper().strip():
+                        raise ValueError('Data read from the socket do not match the expectations')
+
             silent_close(sock)
             sock = None
             return True
@@ -641,6 +660,20 @@ def test_port_open(host='127.0.0.1', port=80, timeout=15, attempts=3, test_upper
             silent_close(sock)
 
     return False
+
+
+def is_port_listening(port, tcp=True):
+    """
+    Returns a connection if the given port is listening, None otherwise
+    :param port:
+    :param tcp:
+    :return:
+    """
+    conns = psutil.net_connections('tcp' if tcp else 'udp')
+    for con in conns:
+        if con.laddr[1] == port and (not tcp or (con.status is not None and con.status.upper() == 'LISTEN')):
+            return con
+    return None
 
 
 def defval(val, default=None):
@@ -738,7 +771,7 @@ def escape_shell(inp):
     return quote(inp)
 
 
-class DummyTCPHandler(socketserver.BaseRequestHandler):
+class EchoUpTCPHandler(socketserver.BaseRequestHandler):
     """Handler for a dummy socket server for firewall testing"""
     def handle(self):
         try:
@@ -751,15 +784,21 @@ class DummyTCPHandler(socketserver.BaseRequestHandler):
     pass
 
 
-class DummyTCPServer(object):
+class EchoUpUDPHandler(socketserver.BaseRequestHandler):
+    """Handler for a dummy socket server for firewall testing"""
+    def handle(self):
+        data = self.request[0].strip()
+        socket = self.request[1]
+        socket.sendto(data.upper(), self.client_address)
+
+
+class EchoUpServer(object):
     """
-    Dummy TCP server bound on the specific socket.
+    Echo uppercase base server bound on the specific socket.
     Server is started in a new thread so it does not block.
     """
     def __init__(self, address):
-        socketserver.TCPServer.allow_reuse_address = True
         self.address = address
-        self.server = socketserver.TCPServer(self.address, DummyTCPHandler, False)
         self.thread = None
 
     def start(self):
@@ -769,7 +808,7 @@ class DummyTCPServer(object):
         """
         self.server.allow_reuse_address = True
         self.server.server_bind()     # Manually bind, to support allow_reuse_address
-        self.server.server_activate() #
+        self.server.server_activate()
 
         self.thread = threading.Thread(target=self.server.serve_forever)
         self.thread.setDaemon(True)
@@ -792,4 +831,51 @@ class DummyTCPServer(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+
+class EchoUpTCPServer(EchoUpServer):
+    """
+    Echo upper case TCP server
+    """
+    def __init__(self, address):
+        EchoUpServer.__init__(self, address)
+        socketserver.TCPServer.allow_reuse_address = True
+        self.server = socketserver.TCPServer(self.address, EchoUpTCPHandler, False)
+
+
+class EchoUpUDPServer(EchoUpServer):
+    """
+    Echo upper case UDP server
+    """
+    def __init__(self, address):
+        EchoUpServer.__init__(self, address)
+        socketserver.UDPServer.allow_reuse_address = True
+        self.server = socketserver.UDPServer(self.address, EchoUpUDPHandler, False)
+
+
+def test_port_open_with_server(bind='0.0.0.0', host='127.0.0.1', port=80, timeout=15, attempts=3, tcp=True):
+    """
+    Test if the given port is open on the TCP.
+    Starts the dummy serer for the time of the test.
+
+    :param bind: address to bind server to
+    :param host: host to connect to
+    :param port: port to connect to
+    :param attempts: number of attempts before failing test
+    :param timeout: timeout in seconds
+    :param tcp: if True, TCP is tested, if false, UDP
+    :return:
+    """
+
+    server = None
+    if tcp:
+        server = EchoUpTCPServer((bind, port))
+    else:
+        server = EchoUpUDPServer((bind, port))
+
+    with server.start():
+        time.sleep(1.5)
+        return test_port_open(host=host, port=port, timeout=timeout, attempts=attempts,
+                              test_upper_read_write=True, tcp=tcp)
+    pass
 

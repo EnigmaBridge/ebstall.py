@@ -393,7 +393,7 @@ class LetsEncrypt(object):
         :param attempts:
         :return:
         """
-        server = util.DummyTCPServer(('0.0.0.0', self.PORT))
+        server = util.EchoUpTCPServer(('0.0.0.0', self.PORT))
         with server.start():
             time.sleep(1.5)
             return util.test_port_open(ip, self.PORT, timeout=timeout, attempts=attempts)
