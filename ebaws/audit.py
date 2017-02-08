@@ -90,6 +90,19 @@ class AuditManager(object):
         except TypeError:
             return '%s' % value
 
+    def _args_to_log(self, log, *args):
+        """
+        Transforms arguments to the log
+        :param log:
+        :param args:
+        :return:
+        """
+        if args is None:
+            return
+
+        for idx, arg in enumerate(args):
+            log['arg%d' % idx] = self._valueize(arg)
+
     def _kwargs_to_log(self, log, **kwargs):
         """
         Translates kwargs to the log entries
@@ -259,6 +272,7 @@ class AuditManager(object):
         if retcode is not None:
             log['retcode'] = self._valueize(retcode)
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -277,6 +291,7 @@ class AuditManager(object):
         if data is not None:
             log['data'] = self._valueize(data)
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -300,6 +315,7 @@ class AuditManager(object):
             except:
                 pass
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -312,6 +328,7 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('error')
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -330,6 +347,7 @@ class AuditManager(object):
         if sensitive:
             log['sensitive'] = self._valueize(sensitive)
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -345,6 +363,7 @@ class AuditManager(object):
         if question is not None:
             log['question'] = self._valueize(question)
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -366,6 +385,7 @@ class AuditManager(object):
         if sensitive:
             log['sensitive'] = self._valueize(sensitive)
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -387,6 +407,7 @@ class AuditManager(object):
         if sensitive:
             log['sensitive'] = self._valueize(sensitive)
 
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
@@ -399,6 +420,7 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog(evt)
+        self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
