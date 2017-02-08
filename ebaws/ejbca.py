@@ -16,6 +16,7 @@ import osutil
 import re
 import letsencrypt
 import logging
+from audit import AuditManager
 from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT
 
 
@@ -105,7 +106,7 @@ class Ejbca(object):
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
                  config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
-                 sysconfig=None,
+                 sysconfig=None, audit=None,
                  *args, **kwargs):
 
         self.install_props = util.defval(install_props, {})
@@ -136,6 +137,9 @@ class Ejbca(object):
         self.config = config
         self.reg_svc = None
         self.sysconfig = sysconfig
+        self.audit = audit
+        if self.audit is None:
+            self.audit = AuditManager(disabled=True)
 
         self.ejbca_install_result = 1
 
@@ -660,6 +664,7 @@ class Ejbca(object):
             f.write('database.password=%s\n' % self.db_pass)
             f.write('masterp12.password=%s\n' % self.master_p12_pass)
             f.flush()
+        self.audit.audit_file_write(self.PASSWORDS_FILE)
 
     def get_p12_file(self):
         return os.path.abspath(os.path.join(self.get_ejbca_home(), self.P12_FILE))
@@ -673,12 +678,14 @@ class Ejbca(object):
         new_p12 = os.path.abspath(os.path.join(self.USER_HOME, 'ejbca-admin.p12'))
         if os.path.exists(new_p12):
             os.remove(new_p12)
+            self.audit.audit_delete(new_p12)
 
         # copy in a safe mode - create file non readable by others, copy
         with open(p12, 'r') as src_p12:
             with util.safe_open(new_p12, mode='w', chmod=0o600) as dst_p12:
                 shutil.copyfileobj(src_p12, dst_p12)
 
+        self.audit.audit_copy(src=src_p12, dst=dst_p12)
         self.sysconfig.exec_shell('sudo chown %s:%s %s' % (self.SSH_USER, self.SSH_USER, new_p12))
         return new_p12
 

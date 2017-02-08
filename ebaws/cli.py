@@ -57,7 +57,7 @@ class Installer(InstallerBase):
         self.ejbca = None
         self.eb_cfg = None
         self.audit = audit.AuditManager(to_root=True, auto_flush=True)
-        self.syscfg = SysConfig(print_output=True)
+        self.syscfg = SysConfig(print_output=True, audit=audit)
 
         self.previous_registration_continue = False
         self.domain_is_ok = False
@@ -229,15 +229,16 @@ class Installer(InstallerBase):
         # Determine the environment we are going to use in EB.
         self.config.env = self.get_env()
         if self.config.env != ENVIRONMENT_PRODUCTION:
-            Core.set_devel_endpoints(self.eb_cfg)
+            pass  # Core.set_devel_endpoints(self.eb_cfg)
 
         # Initialize helper classes for registration & configuration.
         self.reg_svc = Registration(email=self.config.email, config=self.config,
                                     eb_config=self.eb_cfg, eb_settings=self.eb_settings)
 
         self.soft_config = SoftHsmV1Config()
-        self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=self.config, sysconfig=self.syscfg,
-                           eb_config=self.eb_settings)
+        self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
+                           config=self.config, eb_config=self.eb_settings,
+                           sysconfig=self.syscfg, audit=self.audit)
         return 0
 
     def init_prompt_user(self):
@@ -941,7 +942,7 @@ class Installer(InstallerBase):
 
         # EJBCA
         ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config,
-                      staging=self.args.le_staging, sysconfig=self.syscfg)
+                      staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit)
         ejbca.set_domains(config.ejbca_domains)
         ejbca.reg_svc = reg_svc
 
@@ -1102,7 +1103,7 @@ class Installer(InstallerBase):
         if not should_continue:
             return self.return_code(1)
 
-        ejbca = Ejbca(print_output=True, staging=self.args.le_staging, sysconfig=self.syscfg)
+        ejbca = Ejbca(print_output=True, staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit)
 
         self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
         ejbca.undeploy()

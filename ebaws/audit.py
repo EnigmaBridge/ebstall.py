@@ -143,6 +143,9 @@ class AuditManager(object):
             log['data'] = data
         self._log(log)
 
+    def audit_remove(self, fname):
+        self.audit_delete(fname)
+
     def audit_delete(self, fname):
         """
         Audits file deletion
