@@ -294,10 +294,11 @@ class AuditManager(object):
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
-    def audit_print(self, lines=None, *args, **kwargs):
+    def audit_print(self, lines=None, sensitive=False, *args, **kwargs):
         """
         Command line auditing - printing
         :param lines:
+        :param sensitive:
         :param args:
         :param kwargs:
         :return:
@@ -305,11 +306,13 @@ class AuditManager(object):
         log = self._newlog('print')
         if lines is not None:
             log['lines'] = lines
+        if sensitive:
+            log['sensitive'] = sensitive
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
-    def audit_input_prompt(self, question=None, *args, **kwargs):
+    def audit_input_prompt(self, question=None, sensitive=False, *args, **kwargs):
         """
         Command line auditing - printing
         :param question:
@@ -339,6 +342,29 @@ class AuditManager(object):
             log['question'] = question
         if answer is not None:
             log['answer'] = question
+        if sensitive:
+            log['sensitive'] = sensitive
+
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
+    def audit_value(self, key=None, value=None, sensitive=False, *args, **kwargs):
+        """
+        Command line auditing - printing
+        :param question:
+        :param answer:
+        :param sensitive:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        log = self._newlog('input_prompt')
+        if key is not None:
+            log['key'] = key
+        if value is not None:
+            log['value'] = value
+        if sensitive:
+            log['sensitive'] = sensitive
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
