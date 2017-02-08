@@ -38,6 +38,7 @@ class SysConfig(object):
             self.audit = AuditManager(disabled=True)
 
         self.os = osutil.get_os()
+        self.audit.audit_value(os=self.os.to_json())
         logger.debug('OS detection, name: %s, version: %s, version major: %s, like: %s, packager: %s, '
                      'start system: %s' % (self.os.name, self.os.version, self.os.version_major,
                                            self.os.like, self.os.packager, self.os.start_system))

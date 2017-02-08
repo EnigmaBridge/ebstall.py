@@ -70,6 +70,7 @@ class InstallerBase(Cmd):
 
         self.version = self.load_version()
         self.t = Terminal()
+        self.audit.audit_value(version=self.version)
 
     def load_version(self):
         """
