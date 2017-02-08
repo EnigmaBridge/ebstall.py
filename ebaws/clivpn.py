@@ -126,6 +126,9 @@ class VpnInstaller(Installer):
         if res != 0:
             self.return_code(res)
 
+        # If VPN server was running, stop it now - easier port testing, minimal interference.
+        self.ovpn.switch(stop=True)
+
         # System check proceeds (mem, network).
         # We do this even if we continue with previous registration, to have fresh view on the system.
         # Check if we have EJBCA resources on the drive
@@ -211,7 +214,7 @@ class VpnInstaller(Installer):
 
         # Starting VPN server
         self.ovpn.enable()
-        self.ovpn.switch(start=True)
+        self.ovpn.switch(restart=True)
         self.ejbca.vpn_install_cron()
 
         # LetsEncrypt enrollment
