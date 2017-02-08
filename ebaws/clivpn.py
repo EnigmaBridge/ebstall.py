@@ -87,6 +87,28 @@ class VpnInstaller(Installer):
         """
         parser.description = 'EnigmaBridge Private Space installer'
 
+    def do_test_vpn_ports(self, line):
+        """Tests if VPN server ports are accessible"""
+        public_ip = self.cfg_get_raw_ip()
+        port = 1194
+        tcp = False
+
+        self.tprint('Testing IP: %s, ports %s' % (public_ip, port))
+
+        # Test if server is running:
+        server_running = util.is_port_listening(port, tcp=tcp)
+        if server_running:
+            self.tprint('Server seems to be running, UDP scan cannot be performed')
+            return
+
+        # Read / write socket is not tried - does not work for UDPs.
+        succ2 = False
+        try:
+            succ2 = util.test_port_open_with_server(host=public_ip, port=port, tcp=tcp, timeout=7)
+        except:
+            pass
+        self.tprint('Port %s, echo server, reachable: %s' % (port, succ2))
+
     def init_main_try(self):
         """
         Main installer block, called from the global try:
