@@ -35,9 +35,9 @@ class SoftHsmV1Config(object):
             'genRSA': True,
 
             'retry': {
-                'maxRetry': 4,
+                'maxRetry': 6,
                 'jitterBase': 250,
-                'jitterRand': 50
+                'jitterRand': 100
             },
 
             'createTpl': {
