@@ -284,13 +284,62 @@ class AuditManager(object):
 
     def audit_error(self, *args, **kwargs):
         """
-        General audit logging
+        Error auditing
         :param evt:
         :param args:
         :param kwargs:
         :return:
         """
         log = self._newlog('error')
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
+    def audit_print(self, lines=None, *args, **kwargs):
+        """
+        Command line auditing - printing
+        :param lines:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        log = self._newlog('print')
+        if lines is not None:
+            log['lines'] = lines
+
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
+    def audit_input_prompt(self, question=None, *args, **kwargs):
+        """
+        Command line auditing - printing
+        :param question:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        log = self._newlog('input_prompt')
+        if question is not None:
+            log['question'] = question
+
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
+    def audit_input_enter(self, question=None, answer=None, sensitive=False, *args, **kwargs):
+        """
+        Command line auditing - printing
+        :param question:
+        :param answer:
+        :param sensitive:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        log = self._newlog('input_prompt')
+        if question is not None:
+            log['question'] = question
+        if answer is not None:
+            log['answer'] = question
+
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
