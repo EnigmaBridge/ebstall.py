@@ -10,6 +10,7 @@ import os
 import math
 import types
 import traceback
+from audit import AuditManager
 import pid
 import time
 import util
@@ -62,6 +63,10 @@ class InstallerBase(Cmd):
         self.config = None
         self.eb_settings = None
         self.email = None
+        self.user_reg_type = None
+
+        self.audit = AuditManager(to_root=True, auto_flush=True)
+        self.syscfg = SysConfig(print_output=True, audit=self.audit)
 
         self.version = self.load_version()
         self.t = Terminal()
