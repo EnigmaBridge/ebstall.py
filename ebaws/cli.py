@@ -682,19 +682,19 @@ class Installer(InstallerBase):
         if not self.check_root() or not self.check_pid():
             return self.return_code(1)
 
-        self.tprint('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
-
-        # EB Settings read. Optional.
-        self.load_base_settings()
-
-        # Configuration read, if any
-        ret = self.init_load_settings()
-        if ret != 0:
-            return self.return_code(ret)
-
         # Main try-catch block for the overall init operation.
         # noinspection PyBroadException
         try:
+            self.tprint('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
+
+            # EB Settings read. Optional.
+            self.load_base_settings()
+
+            # Configuration read, if any
+            ret = self.init_load_settings()
+            if ret != 0:
+                return self.return_code(ret)
+
             ret = self.init_main_try()
             if ret != 0:
                 return self.return_code(ret)
