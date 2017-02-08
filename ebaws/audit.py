@@ -72,6 +72,18 @@ class AuditManager(object):
             log['evt'] = evt
         return log
 
+    def _valueize_key(self, key):
+        """
+        Allows only string keys, numerical keys
+        :param key:
+        :return:
+        """
+        if isinstance(key, types.StringTypes):
+            return key
+        if isinstance(key, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
+            return key
+        return '%s' % key
+
     def _valueize(self, value):
         """
         Normalizes value to JSON serializable element.
@@ -84,10 +96,26 @@ class AuditManager(object):
         if isinstance(value, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
             return value
 
+        # Try JSON serialize
         try:
             json.dumps(value)
             return value
         except TypeError:
+            pass
+
+        # Tuple - convert to list
+        if isinstance(value, types.TupleType):
+            value = list(value)
+
+        # Special support for lists and dictionaries
+        # Preserve type, encode sub-values
+        if isinstance(value, types.ListType):
+            return [self._valueize(x) for x in value]
+
+        elif isinstance(value, types.DictionaryType):
+            return {self._valueize_key(key): self._valueize(value) for (key, value) in value}
+
+        else:
             return '%s' % value
 
     def _args_to_log(self, log, *args):
@@ -114,7 +142,7 @@ class AuditManager(object):
             return
 
         for key, value in kwargs.iteritems():
-            log[str(key)] = self._valueize(value)
+            log[self._valueize_key(key)] = self._valueize(value)
 
     def flush(self):
         """
