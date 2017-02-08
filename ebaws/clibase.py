@@ -127,6 +127,17 @@ class InstallerBase(Cmd):
         :return:
         """
         print(*args, **kwargs)
+        self.audit.audit_print(*args, **kwargs)
+
+    def tprint_sensitive(self, *args, **kwargs):
+        """
+        Print wrapper - for additional logging & inspection
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        print(*args, **kwargs)
+        self.audit.audit_print_sensitive(*args, **kwargs)
 
     def return_code(self, code=0, if_interactive_return_ok=False):
         """
@@ -193,7 +204,10 @@ class InstallerBase(Cmd):
         # Classic interactive prompt
         confirmation = None
         while confirmation != 'y' and confirmation != 'n' and confirmation != 'q':
+            self.audit.audit_input_prompt(question=question)
             confirmation = raw_input(question).strip().lower()
+            self.audit.audit_input_enter(question=question, answer=confirmation)
+
         if confirmation == 'y':
             return self.PROCEED_YES
         elif confirmation == 'n':
@@ -270,7 +284,11 @@ class InstallerBase(Cmd):
 
         # Asking for email - interactive
         while not confirmation:
-            var = raw_input('Please enter your email address%s: ' % ('' if is_required else ' [empty]')).strip()
+            question = 'Please enter your email address%s: ' % ('' if is_required else ' [empty]')
+            self.audit.audit_input_prompt(question=question)
+            var = raw_input().strip()
+            self.audit.audit_input_enter(question=question, answer=var, sensitive=True)
+
             question = None
             if len(var) == 0:
                 if is_required:
@@ -316,7 +334,11 @@ class InstallerBase(Cmd):
 
         # Asking for email - interactive
         while not confirmation:
-            var = raw_input('Please enter the challenge: ').strip()
+            question = 'Please enter the challenge: '
+            self.audit.audit_input_prompt(question=question)
+            var = raw_input(question).strip()
+            self.audit.audit_input_enter(question=question, answer=var, sensitive=True)
+
             question = None
             if len(var) == 0:
                 self.tprint('Registration challenge cannot be empty')
