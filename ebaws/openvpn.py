@@ -226,6 +226,7 @@ class OpenVpn(object):
                 # Same command, but different value - comment this out
                 # If remove is True, only desired values were removed.
                 cfg.ltype = CONFIG_LINE_CMD_COMMENT
+                file_changed = True
 
         if remove:
             self.server_config_modified = file_changed
