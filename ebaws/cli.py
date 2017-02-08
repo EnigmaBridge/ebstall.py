@@ -57,7 +57,7 @@ class Installer(InstallerBase):
         self.ejbca = None
         self.eb_cfg = None
         self.audit = audit.AuditManager(to_root=True, auto_flush=True)
-        self.syscfg = SysConfig(print_output=True, audit=audit)
+        self.syscfg = SysConfig(print_output=True, audit=self.audit)
 
         self.previous_registration_continue = False
         self.domain_is_ok = False
