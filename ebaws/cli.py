@@ -330,6 +330,7 @@ class Installer(InstallerBase):
         except Exception as e:
             if self.debug:
                 traceback.print_exc()
+            self.audit.audit_exception(e)
             logger.debug('Exception in registration: %s' % e)
 
             if self.reg_svc.is_auth_needed():
@@ -701,9 +702,10 @@ class Installer(InstallerBase):
             if ret != 0:
                 return self.return_code(ret)
 
-        except Exception:
+        except Exception as e:
             if self.args.debug:
                 traceback.print_exc()
+            self.audit.audit_exception(e)
             self.tprint('Exception in the registration process, cannot continue.')
 
         return self.return_code(1)
@@ -845,6 +847,7 @@ class Installer(InstallerBase):
                 if self.args.debug:
                     traceback.print_exc()
 
+                self.audit.audit_exception(e)
                 if self.noninteractive:
                     if domain_ctr >= self.args.attempts:
                         break
@@ -1042,6 +1045,7 @@ class Installer(InstallerBase):
                     if self.args.debug:
                         traceback.print_exc()
 
+                    self.audit.audit_exception(e)
                     self.tprint('\nError during domain registration, no dynamic domain will be assigned')
                     if self.noninteractive:
                         if domain_ctr >= self.args.attempts:
@@ -1073,6 +1077,7 @@ class Installer(InstallerBase):
 
         except Exception as ex:
             traceback.print_exc()
+            self.audit.audit_exception(ex)
             self.tprint('Exception in the domain registration process, cannot continue.')
 
         return self.return_code(1)
