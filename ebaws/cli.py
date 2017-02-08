@@ -108,7 +108,12 @@ class Installer(InstallerBase):
         :return:
         """
         # TODO: refactor to multiple profiles, not just AWS
-        return self.reg_svc.info_loader.ami_public_ip
+        if self.reg_svc is not None and self.reg_svc.info_loader is not None:
+            return self.reg_svc.info_loader.ami_public_ip
+
+        info = InfoLoader()
+        info.load()
+        return info.ami_public_ip
 
     def get_db_type(self):
         """
