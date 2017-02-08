@@ -88,7 +88,7 @@ class Installer(InstallerBase):
             self.intro += '            run this when running for the first time\n'
 
         self.intro += '\n    More info: https://enigmabridge.com/amazonpki \n' + \
-                     '-'*self.get_term_width()
+                      '-'*self.get_term_width()
 
     def cfg_get_raw_hostname(self):
         """
