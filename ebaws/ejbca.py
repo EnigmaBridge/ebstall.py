@@ -689,7 +689,7 @@ class Ejbca(object):
             with util.safe_open(new_p12, mode='w', chmod=0o600) as dst_p12:
                 shutil.copyfileobj(src_p12, dst_p12)
 
-        self.audit.audit_copy(src=src_p12, dst=dst_p12)
+        self.audit.audit_copy(src=new_p12, dst=dst_p12)
         self.sysconfig.exec_shell('sudo chown %s:%s %s' % (self.SSH_USER, self.SSH_USER, new_p12))
         return new_p12
 
