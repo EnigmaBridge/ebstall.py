@@ -390,6 +390,8 @@ class InstallerBase(Cmd):
         """
         uid = os.getuid()
         euid = os.geteuid()
+        self.audit.audit_evt('check-root', uid=uid, euid=euid)
+
         if uid != 0 and euid != 0:
             self.tprint('Error: This action requires root privileges')
             self.tprint('Please, start the client with: sudo -E -H ebaws')
