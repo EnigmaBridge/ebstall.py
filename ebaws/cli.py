@@ -688,14 +688,14 @@ class Installer(InstallerBase):
         # Configuration read, if any
         ret = self.init_load_settings()
         if ret != 0:
-            self.return_code(ret)
+            return self.return_code(ret)
 
         # Main try-catch block for the overall init operation.
         # noinspection PyBroadException
         try:
             ret = self.init_main_try()
             if ret != 0:
-                self.return_code(ret)
+                return self.return_code(ret)
 
         except Exception:
             if self.args.debug:

@@ -124,7 +124,7 @@ class VpnInstaller(Installer):
         # Show email prompt and intro text only for new initializations.
         res = self.init_prompt_user()
         if res != 0:
-            self.return_code(res)
+            return self.return_code(res)
 
         # If VPN server was running, stop it now - easier port testing, minimal interference.
         self.ovpn.switch(stop=True)
@@ -134,7 +134,7 @@ class VpnInstaller(Installer):
         # Check if we have EJBCA resources on the drive
         res = self.init_test_environment()
         if res != 0:
-            self.return_code(res)
+            return self.return_code(res)
 
         # Determine if we have enough RAM for the work.
         # If not, a new swap file is created so the system has at least 2GB total memory space
