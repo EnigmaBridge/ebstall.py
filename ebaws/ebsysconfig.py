@@ -20,6 +20,7 @@ import consts
 import osutil
 from audit import AuditManager
 import logging
+import pkg_resources
 
 
 __author__ = 'dusanklinec'
@@ -355,8 +356,13 @@ class SysConfig(object):
         return 0
 
     def get_onboot_init_script(self):
-        return consts.ONBOOT_INIT_SCRIPT
+        resource_package = __name__
+        resource_path = '/'.join(('consts', 'eb-init.sh'))
+        return pkg_resources.resource_string(resource_package, resource_path)
 
     def get_onboot_init_systemd_script(self):
-        return consts.ONBOOT_INIT_SYSTEMD_SCRIPT
+        resource_package = __name__
+        resource_path = '/'.join(('consts', 'eb-systemd.sh'))
+        return pkg_resources.resource_string(resource_package, resource_path)
+
 
