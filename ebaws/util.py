@@ -227,7 +227,7 @@ def safe_create_with_backup(path, mode='w', chmod=0o644):
     return safe_open(path, mode, chmod), backup_path
 
 
-def safe_open(path, mode="w", chmod=None, buffering=None):
+def safe_open(path, mode="w", chmod=None, buffering=None, exclusive=True):
     """Safely open a file.
 
     :param str path: Path to a file.
@@ -236,14 +236,36 @@ def safe_open(path, mode="w", chmod=None, buffering=None):
         if ``None``.
     :param int buffering: Same as `bufsize` for `os.fdopen`, uses Python
         defaults if ``None``.
-
+    :param bool exclusive: if True, the file cannot exist before
     """
     # pylint: disable=star-args
     open_args = () if chmod is None else (chmod,)
     fdopen_args = () if buffering is None else (buffering,)
-    return os.fdopen(
-        os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR, *open_args),
-        mode, *fdopen_args)
+    flags = os.O_CREAT | os.O_EXCL | os.O_RDWR
+    if exclusive:
+        flags |= os.O_EXCL
+
+    return os.fdopen(os.open(path, flags, *open_args),mode, *fdopen_args)
+
+
+def safe_open_append(path, chmod=None, buffering=None, exclusive=False):
+    """Safely open a file for append. If file exists, it is
+
+    :param str path: Path to a file.
+    :param int chmod: Same as `mode` for `os.open`, uses Python defaults
+        if ``None``.
+    :param int buffering: Same as `bufsize` for `os.fdopen`, uses Python
+        defaults if ``None``.
+    :param bool exclusive: if True, the file cannot exist before
+    """
+    # pylint: disable=star-args
+    open_args = () if chmod is None else (chmod,)
+    fdopen_args = () if buffering is None else (buffering,)
+    flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+    if exclusive:
+        flags |= os.O_EXCL
+
+    return os.fdopen(os.open(path, flags, *open_args), 'a', *fdopen_args)
 
 
 def safe_new_dir(path, mode=0o755):
