@@ -50,9 +50,36 @@ class AuditManager(object):
         if self.audit_file is None:
             if self.to_root:
                 self.audit_file = os.path.join('/root', 'eb-audit.json')
-            else:
-                self.audit_file = os.path.join(os.getcwd(), 'eb-audit.json')
+                try:
+                    logger.debug('Trying audit file %s' % self.audit_file)
+                    return self._open_audit_file()
+                except (IOError, OSError):
+                    pass
 
+            self.audit_file = os.path.join(os.getcwd(), 'eb-audit.json')
+            try:
+                logger.debug('Trying audit file %s' % self.audit_file)
+                return self._open_audit_file()
+            except (IOError, OSError):
+                pass
+
+            self.audit_file = os.path.join('/tmp', 'eb-audit.json')
+            try:
+                logger.debug('Trying audit file %s' % self.audit_file)
+                return self._open_audit_file()
+            except (IOError, OSError):
+                pass
+
+            self.audit_file = os.path.join('/tmp', 'eb-audit-%d.json' % int(time.time()))
+
+        logger.debug('Audit file %s' % self.audit_file)
+        return self._open_audit_file()
+
+    def _open_audit_file(self):
+        """
+        Opens the audit file
+        :return:
+        """
         if self.audit_ctr == 0 and not self.append:
             fh, backup = util.safe_create_with_backup(self.audit_file, 'a', 0o600)
             self.audit_ctr += 1
@@ -163,6 +190,7 @@ class AuditManager(object):
                         fa.write(json.dumps(x) + "\n")
                 self.audit_records_buffered = []
             except Exception as e:
+                logger.debug(traceback.format_exc())
                 logger.error('Exception in audit log dump %s' % e)
 
     def audit_exec(self, cmd, cwd=None, retcode=None, stdout=None, stderr=None, exception=None, exctrace=None, *args, **kwargs):
