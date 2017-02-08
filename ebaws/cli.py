@@ -1115,6 +1115,34 @@ class Installer(InstallerBase):
         self.tprint('Check successful: %s' % ('yes' if port_ok else 'no'))
         return self.return_code(0 if port_ok else 1)
 
+    def do_test_ejbca_ports(self, line):
+        """Tests if EJBCA ports are accessible"""
+        public_ip = self.cfg_get_raw_ip()
+        self.tprint('Testing IP: %s, ports: %s, %s' % (public_ip, Ejbca.PORT, Ejbca.PORT_PUBLIC))
+
+        # phase 1 - assume server is running.
+        succ_admin = util.test_port_open(host=public_ip, port=Ejbca.PORT, test_upper_read_write=False)
+        self.tprint('Port %s, server running, reachable: %s' % (Ejbca.PORT, succ_admin))
+
+        succ_publ = util.test_port_open(host=public_ip, port=Ejbca.PORT_PUBLIC, test_upper_read_write=False)
+        self.tprint('Port %s, server running, reachable: %s' % (Ejbca.PORT_PUBLIC, succ_publ))
+
+        if not succ_admin:
+            succ_admin2 = False
+            try:
+                succ_admin2 = util.test_port_open_with_server(host=public_ip, port=Ejbca.PORT)
+            except:
+                pass
+            self.tprint('Port %s, echo server, reachable: %s' % (Ejbca.PORT, succ_admin2))
+
+        if not succ_publ:
+            succ_publ2 = False
+            try:
+                succ_publ2 = util.test_port_open_with_server(host=public_ip, port=Ejbca.PORT_PUBLIC)
+            except:
+                pass
+            self.tprint('Port %s, echo server, reachable: %s' % (Ejbca.PORT_PUBLIC, succ_publ2))
+
     #
     # Helpers
     #
