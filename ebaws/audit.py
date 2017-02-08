@@ -332,7 +332,7 @@ class AuditManager(object):
         :param kwargs:
         :return:
         """
-        log = self._newlog('request')
+        log = self._newlog('exception')
         if exception is not None:
             log['exception'] = self._valueize(exception)
         if exctrace is not None:
