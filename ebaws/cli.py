@@ -282,6 +282,7 @@ class Installer(InstallerBase):
             self.tprint(self.t.red('\nError: Environment is damaged, some assets are missing for the key '
                                    'management installation. Cannot continue.'))
             return self.return_code(1)
+        return 0
 
     def init_enigma_registration_prepare(self):
         """
