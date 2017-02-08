@@ -481,10 +481,10 @@ class SargeLogFilter(logging.Filter):
         return 1
 
 
-def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None):
+def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None, shell=True):
     """
     Runs command line task synchronously
-    :return:
+    :return: return code, out_acc, err_acc
     """
     # TODO: audit
 
@@ -493,7 +493,8 @@ def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, 
             input=feeder, async=True,
             stdout=Capture(buffer_size=1),
             stderr=Capture(buffer_size=1),
-            cwd=cwd)
+            cwd=cwd,
+            shell=shell)
 
     out_acc = []
     err_acc = []

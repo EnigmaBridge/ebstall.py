@@ -20,6 +20,7 @@ import consts
 import osutil
 from audit import AuditManager
 import logging
+import traceback
 import pkg_resources
 
 
@@ -47,10 +48,10 @@ class SysConfig(object):
 
     def exec_shell_open(self, cmd_exec, shell=True):
         """
-        Simple execution wrapper with audit logging
+        Simple execution wrapper with audit logging.
         :param cmd_exec:
         :param shell:
-        :return:
+        :return: subprocess
         """
         self.audit.audit_exec(cmd_exec)
 
@@ -58,27 +59,50 @@ class SysConfig(object):
         p = subprocess.Popen(cmd_exec, shell=shell)
         return p
 
-    def exec_shell(self, cmd_exec, shell=True):
+    def exec_shell_subprocess(self, cmd_exec, shell=True):
+        """
+        Simple execution wrapper with audit logging, executes the command, returns return code.
+        Uses subprocess.Popen()
+        :param cmd_exec:
+        :param shell:
+        :return: return code
+        """
+        p = self.exec_shell_open(cmd_exec=cmd_exec, shell=shell)
+        p.communicate()
+
+        self.audit.audit_exec(cmd_exec, retcode=p.returncode)
+        return p.returncode
+
+    def exec_shell(self, cmd_exec, shell=True, write_dots=False):
         """
         Simple execution wrapper with audit logging, executes the command, returns return code
         :param cmd_exec:
         :param shell:
-        :return:
+        :return: return code
         """
-        p = self.exec_shell_open(cmd_exec=cmd_exec, shell=shell)
-        p.communicate()
-        return p.returncode
+        ret = self.cli_cmd_sync(cmd_exec, shell=shell, write_dots=write_dots)
+        return ret[0]
 
-    def cli_cmd_sync(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None):
+    def cli_cmd_sync(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None, shell=True):
         """
         Runs command line task synchronously
         :return:
         """
         self.audit.audit_exec(cmd, cwd=cwd)
-
         logger.debug('Execute: %s' % cmd)
-        return util.cli_cmd_sync(cmd=cmd, log_obj=log_obj, write_dots=write_dots,
-                                 on_out=on_out, on_err=on_err, cwd=cwd)
+
+        ret = None
+        try:
+            ret = util.cli_cmd_sync(cmd=cmd, log_obj=log_obj, write_dots=write_dots,
+                                    on_out=on_out, on_err=on_err, cwd=cwd, shell=shell)
+
+            ret_code, out_acc, err_acc = ret
+            self.audit.audit_exec(cmd, cwd=cwd, retcode=ret_code, stdout=out_acc, stderr=err_acc)
+
+        except Exception as e:
+            self.audit.audit_exec(cmd, cwd=cwd, exception=e, exctrace=traceback.format_exc())
+            raise
+        return ret
 
     #
     # Memory
