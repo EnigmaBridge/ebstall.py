@@ -320,6 +320,7 @@ class Ejbca(object):
         :return:
         """
         self._setup_database_properties()
+        self.web_props['vpn.ejbca.home'] = self.get_ejbca_home()
 
         file_web = self.get_web_prop_file()
         file_ins = self.get_install_prop_file()
