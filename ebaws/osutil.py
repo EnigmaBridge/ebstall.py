@@ -107,6 +107,23 @@ class OSInfo(object):
         self.has_os_release = has_os_release
         self.fallback_detection = fallback_detection
 
+    def to_json(self):
+        """
+        Converts to the JSON
+        :return:
+        """
+        js = collections.OrderedDict()
+        js['name'] = self.name
+        js['long_name'] = self.long_name
+        js['version_major'] = self.version_major
+        js['version'] = self.version
+        js['like'] = self.like
+        js['packager'] = self.packager
+        js['start_system'] = self.start_system
+        js['has_os_release'] = self.has_os_release
+        js['fallback_detection'] = self.fallback_detection
+        return js
+
 
 def get_os():
     """
