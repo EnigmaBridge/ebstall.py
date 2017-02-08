@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 class SysConfig(object):
     """Basic system configuration object"""
 
-    def __init__(self, print_output=False, *args, **kwargs):
+    def __init__(self, print_output=False, audit=None, *args, **kwargs):
         self.print_output = print_output
+        self.audit = audit
         self.os = osutil.get_os()
         logger.debug('OS detection, name: %s, version: %s, version major: %s, like: %s, packager: %s, '
                      'start system: %s' % (self.os.name, self.os.version, self.os.version_major,
@@ -46,7 +47,9 @@ class SysConfig(object):
         :param shell:
         :return:
         """
-        # TODO: audit
+        if self.audit:
+            self.audit.audit_exec(cmd_exec)
+
         logger.debug('Execute: %s' % cmd_exec)
         p = subprocess.Popen(cmd_exec, shell=shell)
         return p
@@ -67,7 +70,9 @@ class SysConfig(object):
         Runs command line task synchronously
         :return:
         """
-        # TODO: audit
+        if self.audit:
+            self.audit.audit_exec(cmd, cwd=cwd)
+
         logger.debug('Execute: %s' % cmd)
         return util.cli_cmd_sync(cmd=cmd, log_obj=log_obj, write_dots=write_dots,
                                  on_out=on_out, on_err=on_err, cwd=cwd)

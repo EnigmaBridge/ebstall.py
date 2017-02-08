@@ -11,6 +11,7 @@ import traceback
 import pid
 import time
 import util
+import audit
 import errors
 import textwrap
 from blessed import Terminal
@@ -55,6 +56,7 @@ class Installer(InstallerBase):
         self.soft_config = None
         self.ejbca = None
         self.eb_cfg = None
+        self.audit = audit.AuditManager(to_root=True, auto_flush=True)
         self.syscfg = SysConfig(print_output=True)
 
         self.previous_registration_continue = False
