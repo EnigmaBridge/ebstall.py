@@ -18,6 +18,7 @@ import psutil
 import math
 import consts
 import osutil
+from audit import AuditManager
 import logging
 
 
@@ -31,6 +32,9 @@ class SysConfig(object):
     def __init__(self, print_output=False, audit=None, *args, **kwargs):
         self.print_output = print_output
         self.audit = audit
+        if self.audit is None:
+            self.audit = AuditManager(disabled=True)
+
         self.os = osutil.get_os()
         logger.debug('OS detection, name: %s, version: %s, version major: %s, like: %s, packager: %s, '
                      'start system: %s' % (self.os.name, self.os.version, self.os.version_major,
@@ -47,8 +51,7 @@ class SysConfig(object):
         :param shell:
         :return:
         """
-        if self.audit:
-            self.audit.audit_exec(cmd_exec)
+        self.audit.audit_exec(cmd_exec)
 
         logger.debug('Execute: %s' % cmd_exec)
         p = subprocess.Popen(cmd_exec, shell=shell)
@@ -70,8 +73,7 @@ class SysConfig(object):
         Runs command line task synchronously
         :return:
         """
-        if self.audit:
-            self.audit.audit_exec(cmd, cwd=cwd)
+        self.audit.audit_exec(cmd, cwd=cwd)
 
         logger.debug('Execute: %s' % cmd)
         return util.cli_cmd_sync(cmd=cmd, log_obj=log_obj, write_dots=write_dots,
@@ -173,9 +175,11 @@ class SysConfig(object):
         cron_path = os.path.join('/etc/cron.d', os.path.basename(file_name))
         if os.path.exists(cron_path):
             os.remove(cron_path)
+            self.audit.audit_delete(cron_path)
 
         with util.safe_open(cron_path, mode='w', chmod=0o644) as handle:
             handle.write(file_contents)
+        self.audit.audit_file_write(cron_path)
         return 0
 
     def install_cron_renew(self):
@@ -306,10 +310,12 @@ class SysConfig(object):
         initd_path = '/etc/systemd/system/enigmabridge-onboot.service'
         if os.path.exists(initd_path):
             os.remove(initd_path)
+            self.audit.audit_delete(initd_path)
 
         with util.safe_open(initd_path, mode='w', chmod=0o664) as handle:
             handle.write(self.get_onboot_init_script())
             handle.write('\n')
+        self.audit.audit_file_write(initd_path)
 
         # Set service to start after boot
         ret = self.exec_shell('sudo systemctl daemon-reload')
@@ -333,10 +339,12 @@ class SysConfig(object):
         initd_path = '/etc/init.d/enigmabridge-onboot'
         if os.path.exists(initd_path):
             os.remove(initd_path)
+            self.audit.audit_delete(initd_path)
 
         with util.safe_open(initd_path, mode='w', chmod=0o755) as handle:
             handle.write(self.get_onboot_init_script())
             handle.write('\n')
+        self.audit.audit_file_write(initd_path)
 
         # Set service to start after boot
         ret = self.exec_shell('sudo chkconfig --level=345 enigmabridge-onboot on', shell=True)
