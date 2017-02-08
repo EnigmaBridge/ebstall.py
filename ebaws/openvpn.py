@@ -301,6 +301,17 @@ class OpenVpn(object):
         self.set_config_value('ca', 'ca.crt')
         self.set_config_value('cert', 'server.crt')
         self.set_config_value('key', 'server.key')
+
+        self.set_config_value('user', 'nobody')
+        self.set_config_value('group', 'nobody')
+        self.set_config_value('server', '10.8.0.0 255.255.255.0')
+
+        # TODO: after dnsmasq deployment use this DNS '"dhcp-option DNS 10.8.0.1"',
+        push_values = ['"dhcp-option DNS 8.8.4.4"',
+                       '"dhcp-option DNS 8.8.8.8"',
+                       '"redirect-gateway def1 bypass-dhcp"']
+        self.set_config_value('push', push_values)
+
         return self.update_config_file()
 
     def store_server_cert(self, ca, cert, key):
