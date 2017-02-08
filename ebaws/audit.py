@@ -8,6 +8,7 @@ import time
 import util
 import os
 import traceback
+import types
 
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,24 @@ class AuditManager(object):
             log['evt'] = evt
         return log
 
+    def _valueize(self, value):
+        """
+        Normalizes value to JSON serializable element.
+        Tries to serialize value to JSON, if it fails, it is converted to the string.
+        :param value:
+        :return:
+        """
+        if isinstance(value, types.StringTypes):
+            return value
+        if isinstance(value, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
+            return value
+
+        try:
+            json.dumps(value)
+            return value
+        except TypeError:
+            return '%s' % value
+
     def _kwargs_to_log(self, log, **kwargs):
         """
         Translates kwargs to the log entries
@@ -82,7 +101,7 @@ class AuditManager(object):
             return
 
         for key, value in kwargs.iteritems():
-            log[str(key)] = '%s' % value
+            log[str(key)] = self._valueize(value)
 
     def flush(self):
         """
@@ -118,19 +137,19 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('exec')
-        log['cmd'] = cmd
+        log['cmd'] = self._valueize(cmd)
         if cwd is not None:
-            log['cwd'] = cwd
+            log['cwd'] = self._valueize(cwd)
         if retcode is not None:
-            log['retcode'] = retcode
+            log['retcode'] = self._valueize(retcode)
         if stdout is not None:
-            log['stdout'] = stdout
+            log['stdout'] = self._valueize(stdout)
         if stderr is not None:
-            log['stderr'] = stderr
+            log['stderr'] = self._valueize(stderr)
         if exception is not None:
-            log['exception'] = '%s' % exception
+            log['exception'] = self._valueize(exception)
         if exctrace is not None:
-            log['exctrace'] = '%s' % exctrace
+            log['exctrace'] = self._valueize(exctrace)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -143,8 +162,8 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('copy')
-        log['src'] = src
-        log['dst'] = dst
+        log['src'] = self._valueize(src)
+        log['dst'] = self._valueize(dst)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -157,8 +176,8 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('move')
-        log['src'] = src
-        log['dst'] = dst
+        log['src'] = self._valueize(src)
+        log['dst'] = self._valueize(dst)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -174,9 +193,9 @@ class AuditManager(object):
         log = self._newlog('fnew')
         log['name'] = fname
         if chmod is not None:
-            log['chmod'] = data
+            log['chmod'] = self._valueize(data)
         if data is not None:
-            log['data'] = data
+            log['data'] = self._valueize(data)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -191,7 +210,7 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('fdel')
-        log['name'] = fname
+        log['name'] = self._valueize(fname)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -204,9 +223,9 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('fread')
-        log['name'] = fname
+        log['name'] = self._valueize(fname)
         if data is not None:
-            log['data'] = data
+            log['data'] = self._valueize(data)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -220,23 +239,25 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('fwrite')
-        log['name'] = fname
+        log['name'] = self._valueize(fname)
         if chmod is not None:
-            log['chmod'] = data
+            log['chmod'] = self._valueize(data)
         if data is not None:
-            log['data'] = data
+            log['data'] = self._valueize(data)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
-    def audit_download(self, url, *args, **kwargs):
+    def audit_download(self, url, retcode=None, *args, **kwargs):
         """
         Download action
         :param url:
         :return:
         """
         log = self._newlog('download')
-        log['url'] = url
+        log['url'] = self._valueize(url)
+        if retcode is not None:
+            log['retcode'] = self._valueize(retcode)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -250,11 +271,11 @@ class AuditManager(object):
         """
         log = self._newlog('request')
         if url is not None:
-            log['url'] = url
+            log['url'] = self._valueize(url)
         if desc is not None:
-            log['desc'] = desc
+            log['desc'] = self._valueize(desc)
         if data is not None:
-            log['data'] = data
+            log['data'] = self._valueize(data)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -270,12 +291,12 @@ class AuditManager(object):
         """
         log = self._newlog('request')
         if exception is not None:
-            log['exception'] = '%s' % exception
+            log['exception'] = self._valueize(exception)
         if exctrace is not None:
-            log['exctrace'] = '%s' % exctrace
+            log['exctrace'] = self._valueize(exctrace)
         else:
             try:
-                log['exctrace'] = '%s' % traceback.format_exc()
+                log['exctrace'] = self._valueize(traceback.format_exc())
             except:
                 pass
 
@@ -305,9 +326,9 @@ class AuditManager(object):
         """
         log = self._newlog('print')
         if lines is not None:
-            log['lines'] = lines
+            log['lines'] = self._valueize(lines)
         if sensitive:
-            log['sensitive'] = sensitive
+            log['sensitive'] = self._valueize(sensitive)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -322,7 +343,7 @@ class AuditManager(object):
         """
         log = self._newlog('input_prompt')
         if question is not None:
-            log['question'] = question
+            log['question'] = self._valueize(question)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -339,11 +360,11 @@ class AuditManager(object):
         """
         log = self._newlog('input_prompt')
         if question is not None:
-            log['question'] = question
+            log['question'] = self._valueize(question)
         if answer is not None:
-            log['answer'] = question
+            log['answer'] = self._valueize(answer)
         if sensitive:
-            log['sensitive'] = sensitive
+            log['sensitive'] = self._valueize(sensitive)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
@@ -360,11 +381,11 @@ class AuditManager(object):
         """
         log = self._newlog('input_prompt')
         if key is not None:
-            log['key'] = key
+            log['key'] = self._valueize(key)
         if value is not None:
-            log['value'] = value
+            log['value'] = self._valueize(value)
         if sensitive:
-            log['sensitive'] = sensitive
+            log['sensitive'] = self._valueize(sensitive)
 
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
