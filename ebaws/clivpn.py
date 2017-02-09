@@ -134,6 +134,7 @@ class VpnInstaller(Installer):
 
         # If VPN server was running, stop it now - easier port testing, minimal interference.
         self.ovpn.switch(stop=True)
+        self.dnsmasq.switch(stop=True)
 
         # System check proceeds (mem, network).
         # We do this even if we continue with previous registration, to have fresh view on the system.
