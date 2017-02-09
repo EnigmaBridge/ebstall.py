@@ -13,6 +13,7 @@ import consts
 import OpenSSL
 import json
 import base64
+from audit import AuditManager
 from datetime import datetime
 from ebclient.eb_configuration import *
 from ebclient.eb_registration import *
@@ -115,13 +116,15 @@ class Registration(object):
     """
     Takes care about EnigmaBridge registration process
     """
-    def __init__(self, email=None, eb_config=None, config=None, debug=False, eb_settings=None, *args, **kwargs):
+    def __init__(self, email=None, eb_config=None, config=None, debug=False, eb_settings=None, audit=None,
+                 *args, **kwargs):
         self.email = email
         self.debug = debug
         self.eb_config = eb_config
         self.config = config
         self.eb_settings = eb_settings
         self.user_reg_type = None
+        self.audit = audit if audit is not None else AuditManager(disabled=True)
 
         self.key = None
         self.crt = None

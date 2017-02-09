@@ -230,7 +230,7 @@ class Installer(InstallerBase):
 
         # Initialize helper classes for registration & configuration.
         self.reg_svc = Registration(email=self.config.email, config=self.config,
-                                    eb_config=self.eb_cfg, eb_settings=self.eb_settings)
+                                    eb_config=self.eb_cfg, eb_settings=self.eb_settings, audit=self.audit)
 
         self.soft_config = SoftHsmV1Config()
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
@@ -937,7 +937,8 @@ class Installer(InstallerBase):
         eb_cfg = Core.get_default_eb_config()
 
         # Registration - for domain updates. Identity should already exist.
-        reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug)
+        reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug,
+                               audit=self.audit)
         ret = reg_svc.load_identity()
         if ret != 0:
                 self.tprint('\nError! Could not load identity (key-pair is missing)')
@@ -997,7 +998,8 @@ class Installer(InstallerBase):
 
         eb_cfg = Core.get_default_eb_config()
         try:
-            reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug)
+            reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug,
+                                   audit=self.audit)
             domains = config.domains
             if domains is not None and isinstance(domains, types.ListType) and len(domains) > 0:
                 self.tprint('\nDomains currently registered: ')
