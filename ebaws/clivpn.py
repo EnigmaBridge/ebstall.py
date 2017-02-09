@@ -51,6 +51,9 @@ class VpnInstaller(Installer):
         self.ovpn = None
         self.dnsmasq = None
 
+        self.vpn_keys = None, None, None
+        self.vpn_crl = None
+
     def init_argparse(self):
         """
         Adding new VPN related arguments
@@ -111,6 +114,84 @@ class VpnInstaller(Installer):
             pass
         self.tprint('Port %s, echo server, reachable: %s' % (port, succ2))
 
+    def init_ejbca_vpn(self):
+        """
+        Configures EJBCA for use for VPN
+        Throws an exception if something goes wrong.
+        :return:
+        """
+        ret = self.ejbca.vpn_create_ca()
+        if ret != 0:
+            raise errors.SetupError('Cannot create CA for the VPN')
+
+        ret = self.ejbca.vpn_create_profiles()
+        if ret != 0:
+            raise errors.SetupError('Cannot create new identity profiles in EJBCA for VPN')
+
+        ret = self.ejbca.vpn_create_server_certs()
+        if ret != 0:
+            raise errors.SetupError('Cannot create new certificate for VPN server')
+
+        ret = self.ejbca.vpn_create_crl()
+        if ret != 0:
+            raise errors.SetupError('Cannot generate new CRL for the VPN')
+
+        self.vpn_keys = self.ejbca.vpn_get_server_cert_paths()
+        self.vpn_crl = self.ejbca.vpn_get_crl_path()
+        self.ejbca.vpn_install_cron()
+
+    def init_vpn(self):
+        """
+        Installs and configures VPN daemon.
+        Throws an exception if something goes wrong.
+        :return:
+        """
+        ret = self.ovpn.install()
+        if ret != 0:
+            raise errors.SetupError('Cannot install openvpn package')
+
+        ret = self.ovpn.generate_dh_group()
+        if ret != 0:
+            raise errors.SetupError('Cannot generate a new DH group for VPN server')
+
+        self.ovpn.configure_server()
+
+        vpn_ca, vpn_cert, vpn_key = self.vpn_keys
+        ret = self.ovpn.store_server_cert(ca=vpn_ca, cert=vpn_cert, key=vpn_key)
+        if ret != 0:
+            raise errors.SetupError('Cannot install VPN certificate+key to the VPN server')
+
+        self.ovpn.configure_crl(crl_path=self.vpn_crl)
+
+        # Starting VPN server
+        ret = self.ovpn.enable()
+        if ret != 0:
+            raise errors.SetupError('Cannot set openvpn server to start after boot')
+
+        ret = self.ovpn.switch(restart=True)
+        if ret != 0:
+            raise errors.SetupError('Cannot start openvpn server')
+
+    def init_dnsmasq(self):
+        """
+        Initializes DNSMasq
+        Throws an exception if something goes wrong.
+        :return:
+        """
+        ret = self.dnsmasq.install()
+        if ret != 0:
+            raise errors.SetupError('Error with dnsmasq installation')
+
+        self.dnsmasq.configure_server()
+
+        ret = self.dnsmasq.enable()
+        if ret != 0:
+            raise errors.SetupError('Error with setting dnsmasq to start after boot')
+
+        ret = self.dnsmasq.switch(restart=True)
+        if ret != 0:
+            raise errors.SetupError('Error in starting dnsmasq daemon')
+
     def init_main_try(self):
         """
         Main installer block, called from the global try:
@@ -118,8 +199,8 @@ class VpnInstaller(Installer):
         """
         self.init_services()
         self.ejbca.do_vpn = True
-        self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg)
-        self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg)
+        self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, write_dots=True)
+        self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, write_dots=True)
 
         # Get registration options and choose one - network call.
         self.reg_svc.load_auth_types()
@@ -200,31 +281,14 @@ class VpnInstaller(Installer):
         self.ejbca.jboss_restart()
 
         # VPN setup
-        self.ejbca.vpn_create_ca()
-        self.ejbca.vpn_create_profiles()
-        self.ejbca.vpn_create_server_certs()
-        self.ejbca.vpn_create_crl()
-        vpn_ca, vpn_cert, vpn_key = self.ejbca.vpn_get_server_cert_paths()
-        crl_path = self.ejbca.vpn_get_crl_path()
+        self.init_ejbca_vpn()
 
         # VPN server
         self.tprint('Installing & configuring VPN server')
-        self.ovpn.install()
-        self.ovpn.generate_dh_group()
-        self.ovpn.configure_server()
-        self.ovpn.store_server_cert(ca=vpn_ca, cert=vpn_cert, key=vpn_key)
-        self.ovpn.configure_crl(crl_path=crl_path)
-
-        # Starting VPN server
-        self.ovpn.enable()
-        self.ovpn.switch(restart=True)
-        self.ejbca.vpn_install_cron()
+        self.init_vpn()
 
         # DNSMasq server
-        self.dnsmasq.install()
-        self.dnsmasq.configure_server()
-        self.dnsmasq.enable()
-        self.dnsmasq.switch(restart=True)
+        self.init_dnsmasq()
 
         # LetsEncrypt enrollment
         res = self.init_le_install()

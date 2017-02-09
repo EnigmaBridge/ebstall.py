@@ -94,8 +94,9 @@ class OpenVpn(object):
     SETTINGS_DIR = '/etc/openvpn'
     SETTINGS_FILE = 'server.conf'
 
-    def __init__(self, sysconfig=None, *args, **kwargs):
+    def __init__(self, sysconfig=None, write_dots=False, *args, **kwargs):
         self.sysconfig = sysconfig
+        self.write_dost = write_dots
 
         # Result of load_config_file_lines
         self.server_config_data = None
@@ -278,7 +279,7 @@ class OpenVpn(object):
         size = 2048  # constant for now
         dh_file = os.path.join(self.SETTINGS_DIR, 'dh%d.pem' % size)
         cmd = 'sudo openssl dhparam -out \'%s\' %d' % (dh_file, size)
-        return self.sysconfig.exec_shell(cmd)
+        return self.sysconfig.exec_shell(cmd, write_dots=self.write_dost)
 
     def configure_crl(self, crl_path):
         """
@@ -331,10 +332,12 @@ class OpenVpn(object):
         fh = util.safe_open(key_file, 'w', chmod=0o600)
         fh.close()
 
-        self.sysconfig.exec_shell('sudo chown root:root \'%s\'' % key_file, shell=True)
+        ret = self.sysconfig.exec_shell('sudo chown root:root \'%s\'' % key_file, shell=True, write_dots=self.write_dost)
+        if ret != 0:
+            return ret
 
         cmd_exec = 'sudo cat \'%s\' >> \'%s\'' % (key, key_file)
-        return self.sysconfig.exec_shell(cmd_exec)
+        return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dost)
 
     #
     # Installation
@@ -348,7 +351,7 @@ class OpenVpn(object):
         if self.sysconfig.get_packager() == osutil.PKG_APT:
             cmd_exec = 'sudo apt-get install -y openvpn'
 
-        return self.sysconfig.exec_shell(cmd_exec)
+        return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dost)
 
     def get_svc_map(self):
         """

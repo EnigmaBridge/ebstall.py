@@ -24,8 +24,9 @@ class DnsMasq(object):
     """
     SETTINGS_FILE = '/etc/dnsmasq.conf'
 
-    def __init__(self, sysconfig=None, *args, **kwargs):
+    def __init__(self, sysconfig=None, write_dots=False, *args, **kwargs):
         self.sysconfig = sysconfig
+        self.write_dots = write_dots
 
     #
     # server.conf reading & modification
@@ -80,7 +81,7 @@ class DnsMasq(object):
         if self.sysconfig.get_packager() == osutil.PKG_APT:
             cmd_exec = 'sudo apt-get install -y dnsmasq'
 
-        return self.sysconfig.exec_shell(cmd_exec)
+        return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
 
     def get_svc_map(self):
         """

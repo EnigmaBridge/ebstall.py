@@ -35,3 +35,7 @@ class NoSuchEndpoint(Error):
 class SubprocessError(Error):
     """Error when executing a subprocess"""
 
+
+class SetupError(Error):
+    """Generic error with the system setup"""
+
