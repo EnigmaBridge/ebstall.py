@@ -147,6 +147,17 @@ class AuditManager(object):
         else:
             return '%s' % value
 
+    def _as_dict(self, cls):
+        """
+        Serializes class as a dictionary
+        :param cls:
+        :return:
+        """
+        try:
+            return cls.__dict__
+        except:
+            return cls
+
     def _args_to_log(self, log, *args):
         """
         Transforms arguments to the log
@@ -459,11 +470,12 @@ class AuditManager(object):
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
-    def audit_value(self, key=None, value=None, sensitive=False, *args, **kwargs):
+    def audit_value(self, key=None, value=None, as_dict=None, sensitive=False, *args, **kwargs):
         """
         Command line auditing - printing
-        :param question:
-        :param answer:
+        :param key:
+        :param value:
+        :param as_dict:
         :param sensitive:
         :param args:
         :param kwargs:
@@ -474,6 +486,11 @@ class AuditManager(object):
             log['key'] = self._valueize(key)
         if value is not None:
             log['value'] = self._valueize(value)
+        if as_dict is not None:
+            if not isinstance(as_dict, (types.DictionaryType, types.ListType, types.StringType)):
+                log['value'] = self._valueize(self._as_dict(as_dict))
+            else:
+                log['value'] = self._valueize(as_dict)
         if sensitive:
             log['sensitive'] = self._valueize(sensitive)
 
