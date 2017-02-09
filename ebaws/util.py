@@ -38,6 +38,25 @@ import errors
 logger = logging.getLogger(__name__)
 
 
+class Port(object):
+    """
+    Defines a port
+    """
+    def __init__(self, port=None, tcp=True, service=None, *args, **kwargs):
+        self.port = port
+        self.tcp = tcp
+        self.service = None
+
+    def __repr__(self):
+        return '%s(port=%r, tcp=%r, service=%r)' % (self.__class__, self.port, self.tcp, self.service)
+
+    def __str__(self):
+        if self.service is None:
+            return '%s/%s' % ('tcp' if self.tcp else 'udp', self.port)
+        else:
+            return '%s/%s (%s)' % ('tcp' if self.tcp else 'udp', self.port, self.service)
+
+
 def run_script(params, shell=False):
     """Run the script with the given params.
 
