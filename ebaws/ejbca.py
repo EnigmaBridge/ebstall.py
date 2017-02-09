@@ -770,7 +770,7 @@ class Ejbca(object):
         :param write_dots:
         :param on_out:
         :param on_err:
-        :return:
+        :return: return code, stdout, stderr
         """
         cwd = self.pkcs11_get_cwd()
         ret, out, err = -1, None, None
@@ -827,7 +827,7 @@ class Ejbca(object):
         :param sign_key_alias:
         :param default_key_alias:
         :param test_key_alias:
-        :return:
+        :return: return code, stdout, stderr
         """
         aliases = [sign_key_alias, default_key_alias, test_key_alias]
         key_sizes = [2048, 2048, 2048]
@@ -851,7 +851,7 @@ class Ejbca(object):
     def vpn_get_ca_properties(self):
         """
         Returns contents of a property file for VPN CA. Used when creating VPN CA via comand line
-        :return:
+        :return: string - property file
         """
         props = 'sharedLibrary %s\n' % SoftHsmV1Config.SOFTHSM_SO_PATH
         props += 'slotLabelType=SLOT_INDEX\n'
@@ -869,7 +869,7 @@ class Ejbca(object):
     def vpn_create_tmp_ca_prop_file(self):
         """
         Creates temporary property file for VPN CA CLI.
-        :return: fname
+        :return: fname string
         """
         fpath = os.path.join('/tmp', 'vpn.ca.properties')
         fobj, fname = util.unique_file(fpath, mode=0o644)
@@ -881,7 +881,7 @@ class Ejbca(object):
         """
         Returns EJBCA cmd to create VPN CA. CA Validity = 25 years
         :param prop_file_path: file path to the property file with CA properties
-        :return:
+        :return: command string
         """
         cmd = "ca init --caname VPN "
         cmd += "--dn 'CN=%s'" % self.hostname
@@ -899,7 +899,7 @@ class Ejbca(object):
         """
         Creates VPN CA using EJBCA CLI.
         Corresponding SoftHSM token has to be already prepared with keys generated in it.
-        :return:
+        :return: 0 on success
         """
         fpath_prop = self.vpn_create_tmp_ca_prop_file()
         try:
@@ -913,7 +913,7 @@ class Ejbca(object):
         """
         Create required VPN certificate and end entity profiles
         VPN CA has to be created already
-        :return:
+        :return: 0 on success
         """
         cmd = 'vpn initprofiles'
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
@@ -923,7 +923,7 @@ class Ejbca(object):
         Creates VPN server credentials
         VPN CA and profiles have to be created already
         :param directory: if none, default directories are used.
-        :return:
+        :return: 0 on success
         """
         cmd = 'vpn genserver --create --regenerate --pem --password \'%s\'' \
               % (util.escape_shell(self.master_p12_pass))
@@ -935,7 +935,7 @@ class Ejbca(object):
         """
         Creates a new CRL forcefully. Used to generate first CRL to start OpenVPN.
         Or to regenerate CRL.
-        :return:
+        :return: 0 on success
         """
         cmd = 'vpn crl'
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
@@ -946,7 +946,7 @@ class Ejbca(object):
         Credentials are sent to the user email
         :param email:
         :param device:
-        :return:
+        :return: 0 on success
         """
         cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
               % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(util.random_password(16)))
@@ -955,7 +955,7 @@ class Ejbca(object):
     def vpn_get_crl_cron_file(self):
         """
         Returns contents of the cron.d file for generating a CRL
-        :return:
+        :return: crl cron file string
         """
         crl = '# Check each half an hour if regeneration is needed\n'
         crl += '*/30 * * * * %s %s vpn crl' % (self.JBOSS_USER, self.get_ejbca_sh())
@@ -964,7 +964,7 @@ class Ejbca(object):
     def vpn_install_cron(self):
         """
         Installs all cron.d files required by the VPN
-        :return:
+        :return: 0 on success, can throw exception
         """
         crl_cron = self.vpn_get_crl_cron_file()
         if self.sysconfig is None:
@@ -975,7 +975,7 @@ class Ejbca(object):
     def vpn_get_crl_path(self):
         """
         Returns path for the CRL file path
-        :return:
+        :return: string CRL path
         """
         return os.path.join(self.get_ejbca_home(), 'vpn', '%s.crl' % self.hostname)
 
