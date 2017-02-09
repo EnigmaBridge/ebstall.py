@@ -589,7 +589,7 @@ class Installer(InstallerBase):
 
         self.tprint('\nUnreachable ports detected:')
         for port in ports:
-            self.tprint('  - %s' % str(port.port))
+            self.tprint('  - %s' % str(port))
 
         if attempt == 0:
             self.tprint('\nIn order to make system work properly please enable the following ports on the firewall, ')
