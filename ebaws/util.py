@@ -23,6 +23,7 @@ import threading
 import time
 import types
 import psutil
+from builtins import input
 
 import OpenSSL
 import socketserver
@@ -801,10 +802,7 @@ def py_raw_input(question=None):
     :param question:
     :return:
     """
-    if sys.version_info[0] == 2:
-        return raw_input(question)
-    else:
-        return input(question)
+    return input(question)
 
 
 class EchoUpTCPHandler(socketserver.BaseRequestHandler):
