@@ -287,7 +287,7 @@ class InstallerBase(Cmd):
         while not confirmation:
             question = 'Please enter your email address%s: ' % ('' if is_required else ' [empty]')
             self.audit.audit_input_prompt(question=question)
-            var = raw_input().strip()
+            var = raw_input(question).strip()
             self.audit.audit_input_enter(question=question, answer=var, sensitive=True)
 
             question = None
