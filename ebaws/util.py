@@ -966,6 +966,7 @@ def test_port_routable(host='127.0.0.1', port=80, tcp=True, with_server=True, bi
                                  test_upper_read_write=False)
         audit.audit_evt('port-open', port=port, host=host, tcp=tcp, with_server=with_server, attempts=attempts,
                         is_open=is_open)
+        return is_open
 
     # Not listening - try anyway, listening detection may malfunction
     if not tcp:
