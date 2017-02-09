@@ -308,7 +308,7 @@ class VpnInstaller(Installer):
         self.ejbca.vpn_create_user(self.config.email, 'default')
 
         # Test if main admin port of EJBCA is reachable.
-        self.init_test_admin_port_reachability()
+        self.init_test_ejbca_ports_reachability()
 
         self.cli_sleep(5)
         return self.return_code(0)
