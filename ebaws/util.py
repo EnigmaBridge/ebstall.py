@@ -23,6 +23,7 @@ import threading
 import time
 import types
 import psutil
+from audit import AuditManager
 from builtins import input
 
 import OpenSSL
@@ -931,4 +932,62 @@ def test_port_open_with_server(bind='0.0.0.0', host='127.0.0.1', port=80, timeou
         return test_port_open(host=host, port=port, timeout=timeout, attempts=attempts,
                               test_upper_read_write=True, tcp=tcp)
     pass
+
+
+def test_port_routable(host='127.0.0.1', port=80, tcp=True, with_server=True, bind='0.0.0.0',
+                       timeout=7, attempts=3, audit=None):
+    """
+    Testing if EJBCA port is routable from the public IP address.
+    If server is True the echo server is spawned on the local server
+    :param host:
+    :param port:
+    :param tcp:
+    :param with_server: if true, the local server is bound to the socket to test the routability
+    :param bind: address to bind local server to
+    :param timeout:
+    :param attempts:
+    :param audit: Auditing module
+    :return: True if routable, false if not, None if cannot determine
+    """
+    if audit is None:
+        audit = AuditManager(disabled=True)
+
+    # Is listening? If yes, test directly
+    is_listening = is_port_listening(port=port)
+    audit.audit_evt('port-listening', port=port, host=host, tcp=tcp, with_server=with_server, bind=bind,
+                    is_listening=is_listening)
+
+    if is_listening:
+        # For UDP we just don't know :/
+        if not tcp:
+            return None
+
+        is_open = test_port_open(host=host, port=port, timeout=timeout, attempts=attempts, tcp=tcp,
+                                 test_upper_read_write=False)
+        audit.audit_evt('port-open', port=port, host=host, tcp=tcp, with_server=with_server, attempts=attempts,
+                        is_open=is_open)
+
+    # Not listening - try anyway, listening detection may malfunction
+    if not tcp:
+        is_open = test_port_open(host=host, port=port, timeout=timeout, attempts=attempts, tcp=tcp,
+                                 test_upper_read_write=False)
+        audit.audit_evt('port-open', port=port, host=host, tcp=tcp, with_server=with_server, attempts=attempts,
+                        is_open=is_open)
+        if is_open:
+            return True
+
+    if not with_server:
+        return None
+
+    # Read / write socket is not tried - does not work for UDPs.
+    succ2 = False
+    try:
+        succ2 = test_port_open_with_server(host=host, port=port, tcp=tcp, timeout=timeout)
+    except:
+        pass
+
+    audit.audit_evt('port-open-echo', port=port, host=host, tcp=tcp, attempts=attempts, timeout=timeout,
+                    is_open=succ2)
+    return succ2
+
 
