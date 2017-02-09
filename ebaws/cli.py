@@ -520,9 +520,94 @@ class Installer(InstallerBase):
         else:
             self.tprint('  https://%s:%d/ejbca/adminweb/' % (self.cfg_get_raw_hostname(), self.ejbca.PORT))
 
-    def init_test_ejbca_ports_reachability(self, check_public=False):
+    def init_test_ejbca_ports_routable(self, public=False, with_server=True, host=None, *args, **kwargs):
         """
-        Tests main EJBCA admin port reachability.
+        Testing if EJBCA port is routable from the public IP address.
+        If server is True the echo server is spawned on the local server
+        :param public:
+        :param with_server:
+        :param host:
+        :return: True if routable, false if not, None if cannot determine
+        """
+        host = util.defval(host, self.cfg_get_raw_ip())
+        port = self.ejbca.PORT_PUBLIC if public else self.ejbca.PORT
+        return util.test_port_routable(host=host, port=port, with_server=with_server, audit=self.audit)
+
+    def init_test_ports_pre_install_res(self, host=None, *args, **kwargs):
+        """
+        Tests ports routability before installation starts, returns failed port array.
+        This method can be extended.
+        :return: list of failed ports
+        """
+        host = util.defval(host, self.cfg_get_raw_ip())
+        failed_ports = []
+
+        admin_ok = self.init_test_ejbca_ports_routable(host=host, with_server=True, public=False)
+        if not admin_ok:
+            failed_ports.append(util.Port(port=Ejbca.PORT, tcp=True, service='EJBCA'))
+
+        public_ok = self.init_test_ejbca_ports_routable(host=host, with_server=True, public=True)
+        if not public_ok:
+            failed_ports.append(util.Port(port=Ejbca.PORT, tcp=True, service='EJBCA'))
+
+        return failed_ports
+
+    def init_test_ports_pre_install(self):
+        """
+        Tests ports routability before installation starts.
+        Performs the check
+        :return: 0 if it is OK and we should continue, quit otherwise
+        """
+        if self.last_is_vpc:
+            return
+
+        host = self.cfg_get_raw_ip()
+        attempts = 0
+        user_response = 2
+
+        while user_response == 2:
+            failed_ports = self.init_test_ports_pre_install_res(host=host)
+            self.audit.audit_value(key='failed_ports', value=failed_ports)
+
+            if len(failed_ports) > 0:
+                user_response = self.init_print_unreachable_ports(ports=failed_ports, attempt=attempts)
+                attempts += 1
+            else:
+                return 0
+
+        return user_response
+
+    def init_print_unreachable_ports(self, ports, attempt=0):
+        """
+        Prints an error about unreachable ports during the installation
+        :param ports:
+        :param attempt:
+        :return: return 0 if OK, 1 for fail, 2 for try again.
+        """
+        if ports is None or len(ports) == 0:
+            return 0
+
+        self.tprint('\nUnreachable ports detected:')
+        for port in ports:
+            self.tprint('  - %s' % str(port.port))
+
+        if attempt == 0:
+            self.tprint('\nIn order to make system work properly please enable the following ports on the firewall, ')
+            self.tprint('or please consult AWS security groups')
+
+        answer = self.ask_options('Do you want to continue with the installation (y), quit (q) or try again (a)? ',
+                                  allowed_options=['y', 'q', 'a'], support_non_interactive=True,
+                                  non_interactive_return='y')
+        if answer == 'y':
+            return 0
+        elif answer == 'q':
+            return 1
+        else:
+            return 2
+
+    def init_test_ejbca_ports_reachability(self, check_public=False, with_server=False):
+        """
+        Tests main EJBCA admin port reachability. Done after EJBCA is installed - service is assumed to be running.
         :param: check_public public port not checked by default
         :return:
         """
@@ -531,7 +616,7 @@ class Installer(InstallerBase):
         if self.last_is_vpc:
             return
 
-        ejbca_open = self.ejbca.test_port_open(host=self.cfg_get_raw_ip())
+        ejbca_open = self.init_test_ejbca_ports_routable(public=False, with_server=with_server)
         if not ejbca_open:
             self.cli_sleep(2)
             self.init_print_ejbca_unreachable_error()
@@ -540,7 +625,7 @@ class Installer(InstallerBase):
         if not check_public:
             return
 
-        ejbca_public_open = self.ejbca.test_port_open(host=self.cfg_get_raw_ip(), port=self.ejbca.PORT_PUBLIC)
+        ejbca_public_open = self.init_test_ejbca_ports_routable(public=True, with_server=with_server)
         if not ejbca_public_open:
             self.cli_sleep(2)
             self.init_print_ejbca_unreachable_public_error()
@@ -605,6 +690,10 @@ class Installer(InstallerBase):
         # We test this to detect VPC also. If 443 is reachable, we are not in VPC
         res, args_le_preferred_method = self.init_le_vpc_check(self.get_args_le_verification(),
                                                                self.get_args_vpc(), reg_svc=self.reg_svc)
+        if res != 0:
+            return self.return_code(res)
+
+        res = self.init_test_ports_pre_install()
         if res != 0:
             return self.return_code(res)
 
