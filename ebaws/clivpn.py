@@ -99,20 +99,22 @@ class VpnInstaller(Installer):
         tcp = False
 
         self.tprint('Testing IP: %s, ports %s' % (public_ip, port))
-
-        # Test if server is running:
-        server_running = util.is_port_listening(port, tcp=tcp)
-        if server_running:
+        res_value = util.test_port_routable(host=public_ip, port=port, tcp=tcp, with_server=True)
+        if res_value is None:
             self.tprint('Server seems to be running, UDP scan cannot be performed')
             return
 
-        # Read / write socket is not tried - does not work for UDPs.
-        succ2 = False
-        try:
-            succ2 = util.test_port_open_with_server(host=public_ip, port=port, tcp=tcp, timeout=7)
-        except:
-            pass
-        self.tprint('Port %s, echo server, reachable: %s' % (port, succ2))
+        self.tprint('Port %s, echo server, reachable: %s' % (port, res_value))
+
+    def init_test_ports_pre_install_res(self, host=None, *args, **kwargs):
+        failed_ports = Installer.init_test_ports_pre_install_res(self, host, *args, **kwargs)
+
+        vpn_ok = util.test_port_routable(host=host, port=openvpn.OpenVpn.PORT_NUM, tcp=openvpn.OpenVpn.PORT_TCP,
+                                         with_server=True, audit=self.audit)
+        if not vpn_ok:
+            failed_ports.append(util.Port(port=openvpn.OpenVpn.PORT_NUM, tcp=openvpn.OpenVpn.PORT_TCP,
+                                          service='OpenVPN'))
+        return failed_ports
 
     def init_main_try(self):
         """
@@ -157,6 +159,11 @@ class VpnInstaller(Installer):
         # We test this to detect VPC also. If 443 is reachable, we are not in VPC
         res, args_le_preferred_method = self.init_le_vpc_check(self.get_args_le_verification(),
                                                                self.get_args_vpc(), reg_svc=self.reg_svc)
+        if res != 0:
+            return self.return_code(res)
+
+        # Test ports opened here...
+        res = self.init_test_ports_pre_install()
         if res != 0:
             return self.return_code(res)
 
@@ -230,7 +237,7 @@ class VpnInstaller(Installer):
         # Generate VPN client for the admin. openvpn link will be emailed
         self.ejbca.vpn_create_user(self.config.email, 'default')
 
-        # Test if main admin port of EJBCA is reachable. Public port needed for VPN config download
+        # Test if main admin port of EJBCA is reachable - server is running. Public port needed for VPN config download
         self.init_test_ejbca_ports_reachability(check_public=True)
 
         self.cli_sleep(5)

@@ -93,6 +93,8 @@ class OpenVpn(object):
 
     SETTINGS_DIR = '/etc/openvpn'
     SETTINGS_FILE = 'server.conf'
+    PORT_NUM = 1194
+    PORT_TCP = False
 
     def __init__(self, sysconfig=None, write_dots=False, *args, **kwargs):
         self.sysconfig = sysconfig
