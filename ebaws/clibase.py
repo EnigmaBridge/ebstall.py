@@ -170,6 +170,37 @@ class InstallerBase(Cmd):
             self.tprint('')
             time.sleep(0.1)
 
+    def ask_options(self, question=None, allowed_options=None, support_non_interactive=False,
+                    non_interactive_return=None):
+        """
+        Generic asking for choice.
+        :param question: question to ask, if None, default is given
+        :param allowed_options: iterable of allowed options
+        :param support_non_interactive: if False an exception is thrown in non-interactive mode
+        :param non_interactive_return: what to return in a non-interactive mode (if allowed)
+        :return:
+        """
+        if allowed_options is None:
+            raise ValueError('Invalid allowed options')
+
+        opts = '/'.join(allowed_options)
+        question = question if question is not None else ('Please enter your choice (%s): ' % opts)
+
+        if self.noninteractive and not support_non_interactive:
+            raise errors.Error('Non-interactive mode not supported for this prompt')
+
+        if self.noninteractive and support_non_interactive:
+            self.tprint(non_interactive_return)
+            return non_interactive_return
+
+        # Classic interactive prompt
+        answer = None
+        while answer not in [x.lower() for x in allowed_options]:
+            self.audit.audit_input_prompt(question=question)
+            answer = util.py_raw_input(question).strip().lower()
+            self.audit.audit_input_enter(question=question, answer=answer)
+        return answer
+
     def ask_proceed_quit(self, question=None, support_non_interactive=False,
                          non_interactive_return=PROCEED_YES, quit_enabled=True):
         """
