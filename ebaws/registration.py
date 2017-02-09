@@ -257,7 +257,17 @@ class Registration(object):
         }
 
         get_auth_req = GetClientAuthRequest(client_data=client_data_req, env=self.config.env, config=self.eb_config)
-        get_auth_resp = get_auth_req.call()
+        try:
+            get_auth_resp = get_auth_req.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=client_data_req,
+                                     request=get_auth_req.request, response=get_auth_req.response)
+            logger.debug('API req: %s' % client_data_req)
+            logger.debug('API req_full: %s' % get_auth_req.request)
+            logger.debug('API res: %s' % get_auth_req.response)
+            raise
+
         if 'authentication' not in get_auth_resp:
             raise InvalidResponse('Authentication types not present in the response')
 
@@ -317,7 +327,17 @@ class Registration(object):
         }
 
         init_auth_req = InitClientAuthRequest(client_data=client_data_req, env=self.config.env, config=self.eb_config)
-        init_auth_resp = init_auth_req.call()
+        try:
+            init_auth_resp = init_auth_req.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=client_data_req,
+                                     request=init_auth_req.request, response=init_auth_req.response)
+            logger.debug('API req: %s' % client_data_req)
+            logger.debug('API req_full: %s' % init_auth_req.request)
+            logger.debug('API res: %s' % init_auth_req.response)
+            raise
+
         if 'clientid' not in init_auth_resp:
             raise InvalidResponse('Authentication initialization fails')
 
@@ -361,7 +381,16 @@ class Registration(object):
             client_data_reg['clientid'] = clid
 
         regreq = RegistrationRequest(client_data=client_data_reg, env=self.config.env, config=self.eb_config)
-        regresponse = regreq.call()
+        try:
+            regresponse = regreq.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=client_data_reg,
+                                     request=regreq.request, response=regreq.response)
+            logger.debug('API req: %s' % client_data_reg)
+            logger.debug('API req_full: %s' % regreq.request)
+            logger.debug('API res: %s' % regreq.response)
+            raise
 
         if 'username' not in regresponse:
             raise InvalidResponse('Username was not present in the response')
@@ -383,7 +412,15 @@ class Registration(object):
 
         apireq = ApiKeyRequest(client_data=client_api_req, endpoint=endpoint,
                                env=self.config.env, config=self.eb_config)
-        apiresponse = apireq.call()
+        try:
+            apiresponse = apireq.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=client_api_req, request=apireq.request, response=apireq.response)
+            logger.debug('API req: %s' % client_api_req)
+            logger.debug('API req_full: %s' % apireq.request)
+            logger.debug('API res: %s' % apireq.response)
+            raise
 
         if 'apikey' not in apiresponse:
             raise InvalidResponse('ApiKey was not present in the getApiKey response')
@@ -412,9 +449,12 @@ class Registration(object):
         req = EnrolDomainRequest(api_data=api_data_reg, env=self.config.env, config=self.eb_config)
         try:
             resp = req.call()
-        except Exception:
-            print api_data_reg
-            print req.response
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=api_data_reg, request=req.request, response=req.response)
+            logger.debug('API req: %s' % api_data_reg)
+            logger.debug('API req_full: %s' % req.request)
+            logger.debug('API res: %s' % req.response)
             raise
 
         if resp is None:
@@ -466,7 +506,15 @@ class Registration(object):
         }
 
         req = GetDomainChallengeRequest(api_data=api_data_req_body, env=self.config.env, config=self.eb_config)
-        resp = req.call()
+        try:
+            resp = req.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=api_data_req_body, request=req.request, response=req.response)
+            logger.debug('API req: %s' % api_data_req_body)
+            logger.debug('API req_full: %s' % req.request)
+            logger.debug('API res: %s' % req.response)
+            raise
 
         if 'authentication' not in resp:
             raise InvalidResponse('Authentication not present in the response')
@@ -501,15 +549,16 @@ class Registration(object):
 
         req_upd = UpdateDomainRequest(api_data=api_data_req, env=self.config.env, config=self.eb_config)
         req_upd.aux_data = signature_aux
-
         try:
             resp_update = req_upd.call()
-        except Exception:
-            if self.debug:
-                print api_data_req_body
-                print signature_aux
-                print req_upd.response
-                print req_upd.request.body
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=api_data_req, request=req_upd.request,
+                                     response=req_upd.response, signature_aux=signature_aux)
+            logger.debug('API req: %s' % api_data_req)
+            logger.debug('Signature: %s' % signature_aux)
+            logger.debug('API req_full: %s' % req.request)
+            logger.debug('API res: %s' % req.response)
             raise
 
         if 'domains' not in resp_update:
