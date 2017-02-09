@@ -58,7 +58,7 @@ class DnsMasq(object):
         """
 
         tpl = self.load_static_config()
-        tpl.replace('{{ dnsmasq_openvpn_ip }}', '10.8.0.1')
+        tpl = tpl.replace('{{ dnsmasq_openvpn_ip }}', '10.8.0.1')
         tpl += '\nserver=8.8.8.8'
         tpl += '\nserver=8.8.4.4'
 
