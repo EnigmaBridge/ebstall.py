@@ -5,4 +5,6 @@ include ebaws/consts/*
 include ovpn-server.conf
 include eb-init.sh
 include eb-systemd.conf
+include dnsmasq.conf
+
 

@@ -14,6 +14,7 @@ import util
 import errors
 import textwrap
 import openvpn
+import dnsmasq
 from blessed import Terminal
 from consts import *
 from core import Core
@@ -48,6 +49,7 @@ class VpnInstaller(Installer):
         """
         Installer.__init__(self, *args, **kwargs)
         self.ovpn = None
+        self.dnsmasq = None
 
     def init_argparse(self):
         """
@@ -117,6 +119,7 @@ class VpnInstaller(Installer):
         self.init_services()
         self.ejbca.do_vpn = True
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg)
+        self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg)
 
         # Get registration options and choose one - network call.
         self.reg_svc.load_auth_types()
@@ -216,6 +219,12 @@ class VpnInstaller(Installer):
         self.ovpn.enable()
         self.ovpn.switch(restart=True)
         self.ejbca.vpn_install_cron()
+
+        # DNSMasq server
+        self.dnsmasq.install()
+        self.dnsmasq.configure_server()
+        self.dnsmasq.enable()
+        self.dnsmasq.switch(restart=True)
 
         # LetsEncrypt enrollment
         res = self.init_le_install()
