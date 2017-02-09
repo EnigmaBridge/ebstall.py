@@ -520,9 +520,10 @@ class Installer(InstallerBase):
         else:
             self.tprint('  https://%s:%d/ejbca/adminweb/' % (self.cfg_get_raw_hostname(), self.ejbca.PORT))
 
-    def init_test_ejbca_ports_reachability(self):
+    def init_test_ejbca_ports_reachability(self, check_public=False):
         """
         Tests main EJBCA admin port reachability.
+        :param: check_public public port not checked by default
         :return:
         """
         # Test if EJBCA is reachable on outer interface
@@ -534,6 +535,9 @@ class Installer(InstallerBase):
         if not ejbca_open:
             self.cli_sleep(2)
             self.init_print_ejbca_unreachable_error()
+            return
+
+        if not check_public:
             return
 
         ejbca_public_open = self.ejbca.test_port_open(host=self.cfg_get_raw_ip(), port=self.ejbca.PORT_PUBLIC)

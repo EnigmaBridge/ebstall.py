@@ -307,8 +307,8 @@ class VpnInstaller(Installer):
         # Generate VPN client for the admin. openvpn link will be emailed
         self.ejbca.vpn_create_user(self.config.email, 'default')
 
-        # Test if main admin port of EJBCA is reachable.
-        self.init_test_ejbca_ports_reachability()
+        # Test if main admin port of EJBCA is reachable. Public port needed for VPN config download
+        self.init_test_ejbca_ports_reachability(check_public=True)
 
         self.cli_sleep(5)
         return self.return_code(0)
