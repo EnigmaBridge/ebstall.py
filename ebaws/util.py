@@ -659,7 +659,7 @@ def test_port_open(host='127.0.0.1', port=80, timeout=15, attempts=3, test_upper
         the test is successful if socket reads something.
     :param tcp: if True, TCP is tested, if false, UDP
     :param test_write_read: if True, socket is written / read
-    :param test_write_read: if True, socket is written
+    :param test_write: if True, socket is written
     :return:
     """
     idx = 0
