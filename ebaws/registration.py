@@ -264,7 +264,8 @@ class Registration(object):
         except Exception as e:
             self.audit.audit_exception(e)
             self.audit.audit_request(api_data=client_data_req,
-                                     request=get_auth_req.request, response=get_auth_req.response)
+                                     request=get_auth_req.request, response=get_auth_req.response,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % client_data_req)
             logger.debug('API req_full: %s' % get_auth_req.request)
             logger.debug('API res: %s' % get_auth_req.response)
@@ -336,7 +337,8 @@ class Registration(object):
         except Exception as e:
             self.audit.audit_exception(e)
             self.audit.audit_request(api_data=client_data_req,
-                                     request=init_auth_req.request, response=init_auth_req.response)
+                                     request=init_auth_req.request, response=init_auth_req.response,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % client_data_req)
             logger.debug('API req_full: %s' % init_auth_req.request)
             logger.debug('API res: %s' % init_auth_req.response)
@@ -392,7 +394,8 @@ class Registration(object):
         except Exception as e:
             self.audit.audit_exception(e)
             self.audit.audit_request(api_data=client_data_reg,
-                                     request=regreq.request, response=regreq.response)
+                                     request=regreq.request, response=regreq.response,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % client_data_reg)
             logger.debug('API req_full: %s' % regreq.request)
             logger.debug('API res: %s' % regreq.response)
@@ -424,7 +427,8 @@ class Registration(object):
             apiresponse = apireq.call()
         except Exception as e:
             self.audit.audit_exception(e)
-            self.audit.audit_request(api_data=client_api_req, request=apireq.request, response=apireq.response)
+            self.audit.audit_request(api_data=client_api_req, request=apireq.request, response=apireq.response,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % client_api_req)
             logger.debug('API req_full: %s' % apireq.request)
             logger.debug('API res: %s' % apireq.response)
@@ -461,7 +465,8 @@ class Registration(object):
             resp = req.call()
         except Exception as e:
             self.audit.audit_exception(e)
-            self.audit.audit_request(api_data=api_data_reg, request=req.request, response=req.response)
+            self.audit.audit_request(api_data=api_data_reg, request=req.request, response=req.response,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % api_data_reg)
             logger.debug('API req_full: %s' % req.request)
             logger.debug('API res: %s' % req.response)
@@ -522,7 +527,8 @@ class Registration(object):
             resp = req.call()
         except Exception as e:
             self.audit.audit_exception(e)
-            self.audit.audit_request(api_data=api_data_req_body, request=req.request, response=req.response)
+            self.audit.audit_request(api_data=api_data_req_body, request=req.request, response=req.response,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % api_data_req_body)
             logger.debug('API req_full: %s' % req.request)
             logger.debug('API res: %s' % req.response)
@@ -568,7 +574,8 @@ class Registration(object):
         except Exception as e:
             self.audit.audit_exception(e)
             self.audit.audit_request(api_data=api_data_req, request=req_upd.request,
-                                     response=req_upd.response, signature_aux=signature_aux)
+                                     response=req_upd.response, signature_aux=signature_aux,
+                                     env=self.config.env, config=self.eb_config)
             logger.debug('API req: %s' % api_data_req)
             logger.debug('Signature: %s' % signature_aux)
             logger.debug('API req_full: %s' % req.request)
