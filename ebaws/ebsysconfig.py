@@ -33,6 +33,8 @@ class SysConfig(object):
 
     def __init__(self, print_output=False, audit=None, *args, **kwargs):
         self.print_output = print_output
+        self.write_dots = False
+
         self.audit = audit
         if self.audit is None:
             self.audit = AuditManager(disabled=True)
@@ -74,23 +76,29 @@ class SysConfig(object):
         self.audit.audit_exec(cmd_exec, retcode=p.returncode)
         return p.returncode
 
-    def exec_shell(self, cmd_exec, shell=True, write_dots=False):
+    def exec_shell(self, cmd_exec, shell=True, write_dots=None, sensitive=None):
         """
         Simple execution wrapper with audit logging, executes the command, returns return code
         :param cmd_exec:
         :param shell:
+        :param write_dots:
+        :param sensitive:
         :return: return code
         """
         ret = self.cli_cmd_sync(cmd_exec, shell=shell, write_dots=write_dots)
         return ret[0]
 
-    def cli_cmd_sync(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None, shell=True):
+    def cli_cmd_sync(self, cmd, log_obj=None, write_dots=None, on_out=None, on_err=None, cwd=None, shell=True,
+                     sensitive=None):
         """
         Runs command line task synchronously
         :return:
         """
         self.audit.audit_exec(cmd, cwd=cwd)
         logger.debug('Execute: %s' % cmd)
+
+        if write_dots is None:
+            write_dots = self.write_dots
 
         ret = None
         try:
