@@ -1417,6 +1417,7 @@ class Installer(InstallerBase):
             handler.addFilter(util.SargeLogFilter('hnd'))
         logging.getLogger().addFilter(util.SargeLogFilter('root'))
 
+        self.audit.audit_value(key='args', as_dict=self.args)
         self.cmdloop()
         sys.argv = args_src
 
