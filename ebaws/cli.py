@@ -548,7 +548,7 @@ class Installer(InstallerBase):
 
         public_ok = self.init_test_ejbca_ports_routable(host=host, with_server=True, public=True)
         if not public_ok:
-            failed_ports.append(util.Port(port=Ejbca.PORT, tcp=True, service='EJBCA'))
+            failed_ports.append(util.Port(port=Ejbca.PORT_PUBLIC, tcp=True, service='EJBCA'))
 
         return failed_ports
 
