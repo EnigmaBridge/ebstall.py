@@ -257,6 +257,8 @@ class Registration(object):
         }
 
         get_auth_req = GetClientAuthRequest(client_data=client_data_req, env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=get_auth_req.__class__, data=client_data_req)
+
         try:
             get_auth_resp = get_auth_req.call()
         except Exception as e:
@@ -327,6 +329,8 @@ class Registration(object):
         }
 
         init_auth_req = InitClientAuthRequest(client_data=client_data_req, env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=init_auth_req.__class__, data=client_data_req)
+
         try:
             init_auth_resp = init_auth_req.call()
         except Exception as e:
@@ -381,6 +385,8 @@ class Registration(object):
             client_data_reg['clientid'] = clid
 
         regreq = RegistrationRequest(client_data=client_data_reg, env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=regreq.__class__, data=client_data_reg)
+
         try:
             regresponse = regreq.call()
         except Exception as e:
@@ -412,6 +418,8 @@ class Registration(object):
 
         apireq = ApiKeyRequest(client_data=client_api_req, endpoint=endpoint,
                                env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=apireq.__class__, data=client_api_req)
+
         try:
             apiresponse = apireq.call()
         except Exception as e:
@@ -447,6 +455,8 @@ class Registration(object):
         }
 
         req = EnrolDomainRequest(api_data=api_data_reg, env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=req.__class__, data=api_data_reg)
+
         try:
             resp = req.call()
         except Exception as e:
@@ -506,6 +516,8 @@ class Registration(object):
         }
 
         req = GetDomainChallengeRequest(api_data=api_data_req_body, env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=req.__class__, data=api_data_req_body)
+
         try:
             resp = req.call()
         except Exception as e:
@@ -549,6 +561,8 @@ class Registration(object):
 
         req_upd = UpdateDomainRequest(api_data=api_data_req, env=self.config.env, config=self.eb_config)
         req_upd.aux_data = signature_aux
+        self.audit.audit_request(req_type=req_upd.__class__, data=api_data_req)
+
         try:
             resp_update = req_upd.call()
         except Exception as e:
