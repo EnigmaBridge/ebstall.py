@@ -206,7 +206,7 @@ class InstallerBase(Cmd):
         confirmation = None
         while confirmation != 'y' and confirmation != 'n' and confirmation != 'q':
             self.audit.audit_input_prompt(question=question)
-            confirmation = raw_input(question).strip().lower()
+            confirmation = util.py_raw_input(question).strip().lower()
             self.audit.audit_input_enter(question=question, answer=confirmation)
 
         if confirmation == 'y':
@@ -287,7 +287,7 @@ class InstallerBase(Cmd):
         while not confirmation:
             question = 'Please enter your email address%s: ' % ('' if is_required else ' [empty]')
             self.audit.audit_input_prompt(question=question)
-            var = raw_input(question).strip()
+            var = util.py_raw_input(question).strip()
             self.audit.audit_input_enter(question=question, answer=var, sensitive=True)
 
             question = None
@@ -337,7 +337,7 @@ class InstallerBase(Cmd):
         while not confirmation:
             question = 'Please enter the challenge: '
             self.audit.audit_input_prompt(question=question)
-            var = raw_input(question).strip()
+            var = util.py_raw_input(question).strip()
             self.audit.audit_input_enter(question=question, answer=var, sensitive=True)
 
             question = None

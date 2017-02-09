@@ -795,6 +795,18 @@ def escape_shell(inp):
     return quote(inp)
 
 
+def py_raw_input(question=None):
+    """
+    Python compatibility wrapper for standard raw_input()
+    :param question:
+    :return:
+    """
+    if sys.version_info[0] == 2:
+        return raw_input(question)
+    else:
+        return input(question)
+
+
 class EchoUpTCPHandler(socketserver.BaseRequestHandler):
     """Handler for a dummy socket server for firewall testing"""
     def handle(self):
