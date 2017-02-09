@@ -152,16 +152,16 @@ class Installer(InstallerBase):
         """Dumps the current configuration to the terminal"""
         config = Core.read_configuration()
         if config is None:
-            print('None configuration is stored.')
-            print('init was probably not called on this machine.')
+            self.tprint('None configuration is stored.')
+            self.tprint('init was probably not called on this machine.')
         else:
-            print(config.to_string())
+            self.tprint(config.to_string())
 
     def do_usage(self, line):
         """Writes simple usage hints"""
-        print('init   - initializes the PKI key management instance with new identity')
-        print('renew  - renews publicly trusted certificate for secure web access')
-        print('usage  - writes this usage info')
+        self.tprint('init   - initializes the PKI key management instance with new identity')
+        self.tprint('renew  - renews publicly trusted certificate for secure web access')
+        self.tprint('usage  - writes this usage info')
 
     def do_install(self, line):
         """Alias for init"""
@@ -377,14 +377,14 @@ class Installer(InstallerBase):
         Adds SoftHSM crypto token to the EJBCA
         :return:
         """
-        print('\nAdding an EnigmaBridge crypto token to your PKI instance:')
+        self.tprint('\nAdding an EnigmaBridge crypto token to your PKI instance:')
         ret, out, err = self.ejbca.ejbca_add_softhsm_token(softhsm=self.soft_config, name=name, slot_id=slot_id)
         if ret != 0:
-            print('\nError in adding EnigmaBridge token to the PKI instance')
-            print('You can add it manually in the PKI (EJBCA) admin page later')
-            print('Pin for the EnigmaBridge token is 0000')
+            self.tprint('\nError in adding EnigmaBridge token to the PKI instance')
+            self.tprint('You can add it manually in the PKI (EJBCA) admin page later')
+            self.tprint('Pin for the EnigmaBridge token is 0000')
         else:
-            print('\nEnigmaBridgeToken added to the PKI instance')
+            self.tprint('\nEnigmaBridgeToken added to the PKI instance')
         return 0
 
     def init_create_new_eb_keys(self):
