@@ -280,14 +280,14 @@ class VpnInstaller(Installer):
         # JBoss restart is needed - so it sees the new keys
         self.ejbca.jboss_restart()
 
-        # VPN setup
+        # VPN setup - create CA, profiles, server keys, CRL
         self.init_ejbca_vpn()
 
-        # VPN server
+        # VPN server - install, configure, enable, start
         self.tprint('Installing & configuring VPN server')
         self.init_vpn()
 
-        # DNSMasq server
+        # dnsmasq server - install, configure, enable, start
         self.init_dnsmasq()
 
         # LetsEncrypt enrollment
@@ -304,7 +304,7 @@ class VpnInstaller(Installer):
         new_p12 = self.ejbca.copy_p12_file()
         self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
 
-        # Generate VPN client for the admin
+        # Generate VPN client for the admin. openvpn link will be emailed
         self.ejbca.vpn_create_user(self.config.email, 'default')
 
         # Test if main admin port of EJBCA is reachable.

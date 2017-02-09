@@ -701,7 +701,8 @@ class Installer(InstallerBase):
         except Exception as e:
             logger.debug(traceback.format_exc())
             self.audit.audit_exception(e)
-            self.tprint('Exception in the registration process, cannot continue.')
+            self.tprint('Exception in the installation process, cannot continue.')
+            # TODO: submit audit json file for analysis?
 
         return self.return_code(1)
 
