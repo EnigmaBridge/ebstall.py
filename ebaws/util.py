@@ -215,15 +215,16 @@ def delete_file_backup(path, chmod=0o644, backup_dir=None):
     return backup_path
 
 
-def safe_create_with_backup(path, mode='w', chmod=0o644):
+def safe_create_with_backup(path, mode='w', chmod=0o644, backup_dir=None):
     """
     Safely creates a new file, backs up the old one if existed
     :param path:
     :param mode:
     :param chmod:
+    :param backup_dir:
     :return: file handle, backup path
     """
-    backup_path = delete_file_backup(path, chmod)
+    backup_path = delete_file_backup(path, chmod, backup_dir=backup_dir)
     return safe_open(path, mode, chmod), backup_path
 
 
