@@ -283,6 +283,35 @@ class SysConfig(object):
     # System changes / services
     #
 
+    def _get_systemd_svc_state(self, svc):
+        """
+        Runs systemctl and obtains service state
+        :param svc:
+        :return: (loadState, activeState)
+        """
+        cmd = 'sudo systemctl show ' + svc
+        ret, stdout, stderr = self.cli_cmd_sync(cmd, shell=True)
+
+        if ret != 0:
+            logger.debug('Error executing systemctl show command, code: %d' % ret)
+            return None, None
+
+        load_state = None
+        active_state = None
+
+        lines = [x.strip() for x in stdout.split('\n')]
+        for line in lines:
+            parts = line.split('=', 2)
+            if len(parts) < 2:
+                continue
+
+            cmd, val = [x.strip().lower() for x in parts]
+            if cmd == 'loadstate':
+                load_state = val
+            if cmd == 'activestate':
+                active_state = val
+        return load_state, active_state
+
     def enable_svc(self, svcmap, enable=True):
         """
         Enables given service after OS start
