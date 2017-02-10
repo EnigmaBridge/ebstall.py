@@ -669,6 +669,41 @@ class SysConfig(object):
         else:
             raise EnvironmentError('Unknown firewall %s' % fw_name)
 
+    def _ufw_accept_forward(self):
+        """
+        Changes UFW configuration so it accepts forwarding
+        DEFAULT_FORWARD_POLICY="ACCEPT"
+        :return:
+        """
+        default_ufw = '/etc/default/ufw'
+        new_data = []
+
+        with open(default_ufw, 'r') as fh:
+            data = fh.readlines()
+            self.audit.audit_file_read(default_ufw, data=data)
+
+            was_changed = False
+            for line in data:
+                match = re.match(r'^DEFAULT_FORWARD_POLICY\s*=(.+?)\s*$', line)
+                if match:
+                    cur = match.group(1).strip().lower()
+                    if cur in ['accept', '"accept"', "'accept'"]:
+                        logger.debug('UFW already set to forward')
+                        return 0
+
+                    else:
+                        new_data.append('DEFAULT_FORWARD_POLICY="ACCEPT"\n')
+                        was_changed = True
+                else:
+                    new_data.append(line)
+
+            if not was_changed:
+                new_data.append('DEFAULT_FORWARD_POLICY="ACCEPT"\n')
+
+        with open(default_ufw, 'w') as fh:
+            fh.write(''.join(new_data))
+            self.audit.audit_file_write(default_ufw, data=new_data)
+
     def _masquerade_ufw(self, net, net_size):
         """
         Adds masquerade rules to the UFW (Universal firewall)
