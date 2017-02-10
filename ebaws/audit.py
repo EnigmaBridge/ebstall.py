@@ -10,6 +10,7 @@ import os
 import sys
 import traceback
 import types
+from six import iteritems
 
 
 logger = logging.getLogger(__name__)
@@ -151,6 +152,42 @@ class AuditManager(object):
         else:
             return '%s' % value
 
+    def _sec_fix(self, value, secrets=None):
+        """
+        Replaces secrets withs stars in the value recursively.
+        :param value:
+        :param secrets:
+        :return:
+        """
+        if value is None:
+            return value
+        if isinstance(value, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
+            return value
+
+        if secrets is None:
+            with self.secrets_lock:
+                secrets = list(self.secrets)
+
+        if isinstance(value, types.StringTypes):
+            for sec in secrets:
+                value = value.replace(sec, '***')
+            return value
+
+        # Tuple - convert to list
+        if isinstance(value, types.TupleType):
+            value = list(value)
+
+        # Special support for lists and dictionaries
+        # Preserve type, encode sub-values
+        if isinstance(value, types.ListType):
+            return [self._sec_fix(x) for x in value]
+
+        elif isinstance(value, types.DictionaryType):
+            return {self._valueize_key(key): self._sec_fix(value) for (key, value) in value}
+
+        else:
+            return value
+
     def _as_dict(self, cls):
         """
         Serializes class as a dictionary
@@ -162,7 +199,7 @@ class AuditManager(object):
         except:
             return cls
 
-    def _args_to_log(self, log, *args):
+    def _args_to_log_raw(self, log, sensitive_=False, secrets_=None, *args):
         """
         Transforms arguments to the log
         :param log:
@@ -173,9 +210,19 @@ class AuditManager(object):
             return
 
         for idx, arg in enumerate(args):
-            log['arg%d' % idx] = self._valueize(arg)
+            val = self._valueize(arg)
+            if sensitive_:
+                val = self._sec_fix(val, secrets=secrets_)
 
-    def _kwargs_to_log(self, log, **kwargs):
+            log['arg%d' % idx] = val
+
+    def _args_to_log(self, log, *args):
+        self._args_to_log_raw(log, False, None, *args)
+
+    def _args_to_log_sec(self, log, *args):
+        self._args_to_log_raw(log, True, None, *args)
+
+    def _kwargs_to_log_raw(self, log, sensitive_=False, secrets_=None,  **kwargs):
         """
         Translates kwargs to the log entries
         :param log:
@@ -185,8 +232,42 @@ class AuditManager(object):
         if kwargs is None:
             return
 
-        for key, value in kwargs.iteritems():
-            log[self._valueize_key(key)] = self._valueize(value)
+        for key, value in iteritems(kwargs):
+            val = self._valueize(value)
+            if sensitive_:
+                val = self._sec_fix(val, secrets=secrets_)
+
+            log[self._valueize_key(key)] = val
+
+    def _kwargs_to_log(self, log, **kwargs):
+        self._kwargs_to_log_raw(log, False, None, **kwargs)
+
+    def _kwargs_to_log_sec(self, log, **kwargs):
+        self._kwargs_to_log_raw(log, True, None, **kwargs)
+
+    def fix_val(self, value):
+        """
+        Fixes value
+        :param value:
+        :return:
+        """
+        return self._valueize(value)
+
+    def fix_key(self, key):
+        """
+        Fixes key for audit
+        :param key:
+        :return:
+        """
+        return self._valueize_key(key)
+
+    def fix_secret(self, val):
+        """
+        Removes secret from the value. Should be called on fix_val result.
+        :param val:
+        :return:
+        """
+        return self._sec_fix(val)
 
     def add_secrets(self, secrets):
         """
@@ -257,15 +338,15 @@ class AuditManager(object):
         :return:
         """
         log = self._newlog('exec')
-        log['cmd'] = self._valueize(cmd)
+        log['cmd'] = self._sec_fix(self._valueize(cmd))
         if cwd is not None:
             log['cwd'] = self._valueize(cwd)
         if retcode is not None:
             log['retcode'] = self._valueize(retcode)
         if stdout is not None:
-            log['stdout'] = self._valueize(stdout)
+            log['stdout'] = self._sec_fix(self._valueize(stdout))
         if stderr is not None:
-            log['stderr'] = self._valueize(stderr)
+            log['stderr'] = self._sec_fix(self._valueize(stderr))
         if exception is not None:
             log['exception'] = self._valueize(exception)
         if exctrace is not None:
@@ -383,7 +464,7 @@ class AuditManager(object):
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
-    def audit_request(self, url=None, data=None, desc=None, *args, **kwargs):
+    def audit_request(self, url=None, data=None, desc=None, sensitive=False, *args, **kwargs):
         """
         API request (e.g., JSON)
         :param url:
@@ -394,12 +475,12 @@ class AuditManager(object):
         if url is not None:
             log['url'] = self._valueize(url)
         if desc is not None:
-            log['desc'] = self._valueize(desc)
+            log['desc'] = self._sec_fix(self._valueize(desc))
         if data is not None:
-            log['data'] = self._valueize(data)
+            log['data'] = self._sec_fix(self._valueize(data))
 
-        self._args_to_log(log, *args)
-        self._kwargs_to_log(log, **kwargs)
+        self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
+        self._kwargs_to_log(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_exception(self, exception=None, exctrace=None, *args, **kwargs):
@@ -475,8 +556,8 @@ class AuditManager(object):
         log = self._newlog('print')
         log['sensitive'] = True
 
-        self._args_to_log(log, *args)
-        self._kwargs_to_log(log, **kwargs)
+        self._args_to_log_sec(log, *args)
+        self._kwargs_to_log_sec(log, **kwargs)
         self._log(log)
 
     def audit_input_prompt(self, question=None, sensitive=False, *args, **kwargs):
@@ -491,8 +572,8 @@ class AuditManager(object):
         if question is not None:
             log['question'] = self._valueize(question)
 
-        self._args_to_log(log, *args)
-        self._kwargs_to_log(log, **kwargs)
+        self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
+        self._kwargs_to_log(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_input_enter(self, question=None, answer=None, sensitive=False, *args, **kwargs):
@@ -509,12 +590,12 @@ class AuditManager(object):
         if question is not None:
             log['question'] = self._valueize(question)
         if answer is not None:
-            log['answer'] = self._valueize(answer)
+            log['answer'] = self._sec_fix(self._valueize(answer))
         if sensitive:
             log['sensitive'] = self._valueize(sensitive)
 
-        self._args_to_log(log, *args)
-        self._kwargs_to_log(log, **kwargs)
+        self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
+        self._kwargs_to_log_raw(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_value(self, key=None, value=None, as_dict=None, sensitive=False, *args, **kwargs):
@@ -541,8 +622,8 @@ class AuditManager(object):
         if sensitive:
             log['sensitive'] = self._valueize(sensitive)
 
-        self._args_to_log(log, *args)
-        self._kwargs_to_log(log, **kwargs)
+        self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
+        self._kwargs_to_log(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_evt(self, evt, *args, **kwargs):
