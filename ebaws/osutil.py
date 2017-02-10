@@ -90,16 +90,25 @@ START_SYSTEMD = 'systemd'
 PKG_YUM = 'yum'
 PKG_APT = 'apt-get'
 
+FAMILY_REDHAT = 'redhat'
+FAMILY_DEBIAN = 'debian'
+
+# redhat / debian
+YUMS = ['redhat', 'fedora', 'centos', 'rhel', 'amzn', 'amazon']
+DEBS = ['debian', 'ubuntu', 'kali']
+
 
 class OSInfo(object):
     """OS information, name, version, like - similarity"""
-    def __init__(self, name=None, version=None, version_major=None, like=None, packager=None, start_system=None,
-                 has_os_release=False, fallback_detection=False, long_name=None, *args, **kwargs):
+    def __init__(self, name=None, version=None, version_major=None, like=None, family=None,
+                 packager=None, start_system=None, has_os_release=False, fallback_detection=False, long_name=None,
+                 *args, **kwargs):
         self.name = name
         self.long_name = long_name
         self.version_major = version_major
         self.version = version
         self.like = like
+        self.family = family
 
         self.packager = packager
         self.start_system = start_system
@@ -118,6 +127,7 @@ class OSInfo(object):
         js['version_major'] = self.version_major
         js['version'] = self.version
         js['like'] = self.like
+        js['family'] = self.family
         js['packager'] = self.packager
         js['start_system'] = self.start_system
         js['has_os_release'] = self.has_os_release
@@ -152,6 +162,7 @@ def get_os():
 
     # like detection
     os_like_detect(ros)
+    os_family_detect(ros)
 
     # Major version
     os_major_version(ros)
@@ -165,23 +176,37 @@ def get_os():
     return ros
 
 
-def os_packager(ros):
-    yums = ['redhat', 'fedora', 'centos', 'rhel', 'amzn', 'amazon']
-    debs = ['debian', 'ubuntu', 'kali']
+def os_family_detect(ros):
+    """
+    OS Family (redhat, debian, ...)
+    :param ros:
+    :return:
+    """
+    if util.startswith(ros.like, YUMS):
+        ros.family = FAMILY_REDHAT
+    if util.startswith(ros.like, DEBS):
+        ros.family = FAMILY_DEBIAN
 
+    if ros.family is not None:
+        if sum([1 for x in YUMS if ros.name.lower().startswith(x)]) > 0:
+            ros.family = FAMILY_REDHAT
+        if sum([1 for x in DEBS if ros.name.lower().startswith(x)]) > 0:
+            ros.family = FAMILY_DEBIAN
+        return
+
+
+def os_packager(ros):
     if ros.like is not None:
-        if util.startswith(ros.like, yums):
+        if util.startswith(ros.like, YUMS):
             ros.packager = PKG_YUM
-        if util.startswith(ros.like, debs):
+        if util.startswith(ros.like, DEBS):
             ros.packager = PKG_APT
         return ros
 
     if ros.name is not None:
-
-        if sum([1 for x in yums if ros.name.lower().startswith(x)]) > 0:
+        if sum([1 for x in YUMS if ros.name.lower().startswith(x)]) > 0:
             ros.packager = PKG_YUM
-
-        if sum([1 for x in debs if ros.name.lower().startswith(x)]) > 0:
+        if sum([1 for x in DEBS if ros.name.lower().startswith(x)]) > 0:
             ros.packager = PKG_APT
         return
 
@@ -224,6 +249,7 @@ def os_debian_version(ros):
         with open('/etc/debian_version', 'r') as fh:
             debver = fh.readline().strip()
             ros.like = 'debian'
+            ros.family = FAMILY_DEBIAN
             if ros.version is None:
                 ros.version = debver.strip()
     return ros
@@ -234,6 +260,7 @@ def os_redhat_release(ros):
         with open('/etc/redhat-release', 'r') as fh:
             redhatrel = fh.readline().strip()
             ros.like = 'redhat'
+            ros.family = FAMILY_REDHAT
             match = re.match(r'^(.+?)\s+release\s+(.+?)$', redhatrel, re.IGNORECASE)
             if match is not None:
                 ros.long_name = match.group(1).strip()
