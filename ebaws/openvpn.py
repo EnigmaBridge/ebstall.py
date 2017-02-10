@@ -424,3 +424,6 @@ class OpenVpn(object):
         if ret != 0:
             return ret
 
+        # Set the masquerade
+        return self.sysconfig.masquerade(self.get_ip_net(), self.get_ip_net_size())
+
