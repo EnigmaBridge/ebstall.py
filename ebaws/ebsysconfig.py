@@ -92,7 +92,7 @@ class SysConfig(object):
                      sensitive=None):
         """
         Runs command line task synchronously
-        :return:
+        :return: ret_code, stdout, stderr
         """
         self.audit.audit_exec(cmd, cwd=cwd)
         logger.debug('Execute: %s' % cmd)
@@ -274,7 +274,7 @@ class SysConfig(object):
             return svcmap
 
     #
-    # System changes
+    # System changes / services
     #
 
     def enable_svc(self, svcmap, enable=True):
@@ -405,6 +405,10 @@ class SysConfig(object):
         resource_package = __name__
         resource_path = '/'.join(('consts', 'eb-systemd.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
+
+    #
+    # Networking / Firewall
+    #
 
     def packet_forwarding(self, enable=True):
         """
