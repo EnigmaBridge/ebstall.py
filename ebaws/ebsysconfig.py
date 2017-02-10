@@ -484,6 +484,182 @@ class SysConfig(object):
         ret = self.exec_shell('sudo sysctl -p', shell=True)
         return ret
 
+    def get_firewall(self):
+        """
+        Gets the installed firewall info.
+
+        :return: [(firewall-type, running)]
+        """
+        # TODO: allow override via cmdline / configuration
+
+        results = []
+
+        start_system = self.get_start_system()
+        if start_system == osutil.START_SYSTEMD:
+
+            firewalls = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
+            for fw in firewalls:
+                load_state, active_state = self._get_systemd_svc_state(fw)
+                loaded = load_state == 'loaded'
+                if not loaded:
+                    continue
+
+                active = active_state == 'active'
+                results.append((fw, active))
+
+        else:  # initd autodetect
+            path_base = '/etc/init.d/'
+            firewalls = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
+            for fw in firewalls:
+                init_file = os.path.join(path_base, fw)
+                if not os.path.exists(init_file):
+                    continue
+
+                ret = self.exec_shell('sudo %s status' % init_file, shell=True)
+                results.append((fw, ret == 0))
+
+        # Sort by running
+        results.sort(key=lambda x: x[1])
+        return results
+
+    def _get_default_firewall(self):
+        """
+        Returns default firewall for the current OS
+        :return:
+        """
+        if self.os.family == osutil.FAMILY_DEBIAN:
+            if self.get_start_system() == osutil.START_SYSTEMD:
+                return FIREWALL_UFW
+            else:
+                return FIREWALL_IPTABLES
+
+        elif self.os.family == osutil.FAMILY_REDHAT:
+            if self.get_start_system() == osutil.START_SYSTEMD:
+                return FIREWALL_FIREWALLD
+            else:
+                return FIREWALL_IPTABLES
+
+        else:
+            self.audit.audit_evt('unknown-family', family=self.os.family, context='Default firewall detection')
+            logger.debug('Unknown family for firewall detection: %s' % self.os.family)
+
+            return FIREWALL_IPTABLES
+
+    def _install_firewall(self, preference=None, enable=True, start=True):
+        """
+        Installs missing firewall.
+        Should be run only if the firewall is not already installed
+        :return:
+        """
+        pkg = self.get_packager()
+        start_system = self.get_start_system()
+
+        firewall_to_install = util.strip(preference)
+        if firewall_to_install is None:
+            firewall_to_install = self._get_default_firewall()
+        if firewall_to_install not in FIREWALLS:
+            raise ValueError('Unknown firewall to install: %s' % firewall_to_install)
+
+        ret = None
+        if pkg == osutil.PKG_YUM:
+            ret = self.exec_shell('sudo yum install -y %s' % firewall_to_install)
+        elif pkg == osutil.PKG_APT:
+            ret = self.exec_shell('sudo yum install -y %s' % firewall_to_install)
+        else:
+            raise OSError('Unknown package manager, cannot install firewall %s' % firewall_to_install)
+
+        if ret != 0:
+            raise OSError('Could not install firewall %s' % firewall_to_install)
+
+        # Enable
+        if enable:
+            ret = self.enable_svc(firewall_to_install, True)
+            if ret != 0:
+                raise OSError('Could not enable firewall %s' % firewall_to_install)
+
+        # Start
+        if start:
+            ret = self.switch_svc(firewall_to_install, restart=True)
+            if ret != 0:
+                raise OSError('Could not start firewall %s' % firewall_to_install)
+
+        return 0
+
+    def masquerade(self, net, net_size):
+        """
+        Add firewall masquerade rule
+        :param net:
+        :param net_size:
+        :return:
+        """
+
+        firewalls = self.get_firewall()
+
+        if len(firewalls) == 0:
+            logger.debug('No firewall / iptables detected. ')
+            self.audit.audit_evt('no-firewalls')
+
+            self._install_firewall()
+            firewalls = self.get_firewall()
+
+        if len(firewalls) == 0:
+            logger.debug('Firewall installation failed')
+            self.audit.audit_evt('no-firewalls-end')
+            raise OSError('Could not get firewall running')
+
+        if len(firewalls) > 1:
+            logger.debug('Multiple firewalls detected: %s' % firewalls)
+            self.audit.audit_evt('multiple-firewalls', firewalls=firewalls)
+
+        fw_name, fw_running = firewalls[0]
+        self.audit.audit_evt('firewall', firewall=fw_name, running=fw_running)
+
+        ret = self.enable_svc(fw_name, True)
+        if ret != 0:
+            raise OSError('Could not enable firewall %s' % fw_name)
+
+        if not fw_running:
+            ret = self.switch_svc(fw_name, restart=True)
+            if ret != 0:
+                raise OSError('Could not start firewall %s' % fw_name)
+
+        if fw_name == FIREWALL_UFW:
+            return self._masquerade_ufw(net=net, net_size=net_size)
+        elif fw_name == FIREWALL_FIREWALLD:
+            return self._masquerade_firewalld(net=net, net_size=net_size)
+        elif fw_name == FIREWALL_IPTABLES:
+            return self._masquerade_iptables(net=net, net_size=net_size)
+        else:
+            raise EnvironmentError('Unknown firewall %s' % fw_name)
+
+    def _masquerade_ufw(self, net, net_size):
+        """
+        Adds masquerade rules to the UFW (Universal firewall)
+        :param net:
+        :param net_size:
+        :return:
+        """
+        # TODO: implement
+
+    def _masquerade_iptables(self, net, net_size):
+        """
+        Adds masquerade rules to the iptables
+        :param net:
+        :param net_size:
+        :return:
+        """
+        # TODO: implement
+
+    def _masquerade_firewalld(self, net, net_size):
+        """
+        Adds masquerade rules to the firewalld
+        :param net:
+        :param net_size:
+        :return:
+        """
+        cmd = 'sudo firewall-cmd --permanent --zone=external --add-masquerade'
+        ret = self.exec_shell(cmd, shell=True)
+        return ret
 
 
 
