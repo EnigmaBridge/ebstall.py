@@ -198,6 +198,10 @@ class SysConfig(object):
         if self.print_output:
             sys.stderr.write(msg)
 
+    #
+    # Cron
+    #
+
     def install_crond_file(self, file_name, file_contents):
         """
         Installs a new cron.d file name.
@@ -268,6 +272,10 @@ class SysConfig(object):
                     and not svcmap.endswith('.daemon'):
                 svcmap += '.service'
             return svcmap
+
+    #
+    # System changes
+    #
 
     def enable_svc(self, svcmap, enable=True):
         """
@@ -397,5 +405,45 @@ class SysConfig(object):
         resource_package = __name__
         resource_path = '/'.join(('consts', 'eb-systemd.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
+
+    def packet_forwarding(self, enable=True):
+        """
+        Enable packet forwarding
+        net.ipv4.ip_forward = 1
+
+        :param enable:
+        :return: 0 on success, otherwise error. Exception may happen.
+        """
+        sysctl = '/etc/sysctl.conf'
+        new_data = []
+
+        with open(sysctl, 'r') as fh:
+            data = fh.readlines()
+            self.audit.audit_file_read(sysctl, data=data)
+
+            was_fixed = False
+            for line in data:
+                if len(line.strip()) == 0:
+                    new_data.append(line)
+                    continue
+                if re.match(r'^\s*#.*$', line):
+                    new_data.append(line)
+                    continue
+                if re.match(r'^net\.ipv4\.ip_forward', line):
+                    line = 'net.ipv4.ip_forward = %d' % (1 if enable else 0)
+                    was_fixed = True
+                    new_data.append(line)
+
+            if not was_fixed:
+                new_data.append('net.ipv4.ip_forward = %d\n' % (1 if enable else 0))
+
+        with open(sysctl, 'w') as fh:
+            fh.write('\n'.join(new_data))
+            self.audit.audit_file_write(sysctl, data=new_data)
+
+        ret = self.exec_shell('sudo sysctl -p', shell=True)
+        return ret
+
+
 
 
