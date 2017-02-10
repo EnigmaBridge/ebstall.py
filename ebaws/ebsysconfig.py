@@ -28,6 +28,12 @@ __author__ = 'dusanklinec'
 logger = logging.getLogger(__name__)
 
 
+FIREWALL_IPTABLES = 'iptables'
+FIREWALL_FIREWALLD = 'firewalld'
+FIREWALL_UFW = 'ufw'
+FIREWALLS = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
+
+
 class SysConfig(object):
     """Basic system configuration object"""
 
