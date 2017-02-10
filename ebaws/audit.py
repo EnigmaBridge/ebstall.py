@@ -30,6 +30,9 @@ class AuditManager(object):
         self.disabled = disabled
         self.auto_flush = auto_flush
 
+        self.secrets = set()
+        self.secrets_lock = Lock()
+
     def _log(self, log):
         """
         Appends audit log to the buffer. Lock protected.
@@ -184,6 +187,40 @@ class AuditManager(object):
 
         for key, value in kwargs.iteritems():
             log[self._valueize_key(key)] = self._valueize(value)
+
+    def add_secrets(self, secrets):
+        """
+        Adds secrets - removed from sensitive logs
+        :param secrets:
+        :return:
+        """
+        if not isinstance(secrets, types.ListType):
+            secrets = [secrets]
+
+        with self.secrets_lock:
+            for sec in secrets:
+                self.secrets.add(sec)
+
+    def remove_secrets(self, secrets):
+        """
+        Removes given secrets
+        :param secrets:
+        :return:
+        """
+        if not isinstance(secrets, types.ListType):
+            secrets = [secrets]
+
+        with self.secrets_lock:
+            for sec in secrets:
+                self.secrets.discard(sec)
+
+    def clear_secrets(self):
+        """
+        Removes all secrets
+        :return:
+        """
+        with self.secrets_lock:
+            self.secrets.clear()
 
     def flush(self):
         """
@@ -418,8 +455,6 @@ class AuditManager(object):
     def audit_print(self, *args, **kwargs):
         """
         Command line auditing - printing
-        :param lines:
-        :param sensitive:
         :param args:
         :param kwargs:
         :return:
@@ -433,8 +468,6 @@ class AuditManager(object):
     def audit_print_sensitive(self, *args, **kwargs):
         """
         Command line auditing - printing
-        :param lines:
-        :param sensitive:
         :param args:
         :param kwargs:
         :return:
