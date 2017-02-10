@@ -292,6 +292,11 @@ class VpnInstaller(Installer):
 
         self.ovpn.configure_crl(crl_path=self.vpn_crl)
 
+        # OS configuration
+        ret = self.ovpn.setup_os()
+        if ret != 0:
+            raise errors.SetupError('Cannot configure OS for the openvpn server (ip forwarding, masquerade)')
+
         # Starting VPN server
         ret = self.ovpn.enable()
         if ret != 0:

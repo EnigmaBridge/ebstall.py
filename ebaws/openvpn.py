@@ -413,4 +413,14 @@ class OpenVpn(object):
         """
         return self.sysconfig.switch_svc(self.get_svc_map(), start=start, stop=stop, restart=restart)
 
+    def setup_os(self):
+        """
+        Configures OS
+        Enables packet forwarding, sets up the masquerade
+        :return:
+        """
+        # Enable packet forwarding
+        ret = self.sysconfig.packet_forwarding()
+        if ret != 0:
+            return ret
 
