@@ -222,6 +222,7 @@ class Installer(InstallerBase):
         # Database settings.
         self.config.mysql_root_password = self.get_db_root_password()
         self.config.ejbca_db_type = self.get_db_type()
+        self.audit.add_secrets(self.config.mysql_root_password)
 
         # Determine the environment we are going to use in EB.
         self.config.env = self.get_env()

@@ -280,6 +280,8 @@ class AuditManager(object):
 
         with self.secrets_lock:
             for sec in secrets:
+                if sec is None:
+                    continue
                 self.secrets.add(sec)
 
     def remove_secrets(self, secrets):
@@ -293,6 +295,8 @@ class AuditManager(object):
 
         with self.secrets_lock:
             for sec in secrets:
+                if sec is None:
+                    continue
                 self.secrets.discard(sec)
 
     def clear_secrets(self):

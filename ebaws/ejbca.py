@@ -141,6 +141,9 @@ class Ejbca(object):
         if self.audit is None:
             self.audit = AuditManager(disabled=True)
 
+        # Remove secrets from audit logging
+        self.audit.add_secrets([self.http_pass, self.superadmin_pass, self.db_pass, self.master_p12_pass])
+
         self.ejbca_install_result = 1
 
         # Initialize settings
