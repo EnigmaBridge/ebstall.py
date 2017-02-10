@@ -711,7 +711,7 @@ class Ejbca(object):
 
         :param cmd:
         :param retry_attempts:
-        :return:
+        :return: return code, stdout, stderr
         """
         cwd = self.ejbca_get_cwd()
         ret, out, err = -1, None, None
@@ -904,7 +904,7 @@ class Ejbca(object):
         fpath_prop = self.vpn_create_tmp_ca_prop_file()
         try:
             cmd = self.vpn_create_ca_cmd(fpath_prop)
-            return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+            return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
         finally:
             util.safely_remove(fpath_prop)
@@ -916,7 +916,7 @@ class Ejbca(object):
         :return: 0 on success
         """
         cmd = 'vpn initprofiles'
-        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
     def vpn_create_server_certs(self, directory=None):
         """
@@ -929,7 +929,7 @@ class Ejbca(object):
               % (util.escape_shell(self.master_p12_pass))
         if directory is not None:
             cmd += ' --directory \'%s\'' % util.escape_shell(directory)
-        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
     def vpn_create_crl(self, force=True):
         """
@@ -938,7 +938,7 @@ class Ejbca(object):
         :return: 0 on success
         """
         cmd = 'vpn crl'
-        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
     def vpn_create_user(self, email, device='default'):
         """
@@ -950,7 +950,7 @@ class Ejbca(object):
         """
         cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
               % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(util.random_password(16)))
-        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+        return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
     def vpn_get_crl_cron_file(self):
         """
