@@ -430,15 +430,16 @@ class SysConfig(object):
                     new_data.append(line)
                     continue
                 if re.match(r'^net\.ipv4\.ip_forward', line):
-                    line = 'net.ipv4.ip_forward = %d' % (1 if enable else 0)
+                    new_data.append('net.ipv4.ip_forward = %d\n' % (1 if enable else 0))
                     was_fixed = True
+                else:
                     new_data.append(line)
 
             if not was_fixed:
                 new_data.append('net.ipv4.ip_forward = %d\n' % (1 if enable else 0))
 
         with open(sysctl, 'w') as fh:
-            fh.write('\n'.join(new_data))
+            fh.write(''.join(new_data))
             self.audit.audit_file_write(sysctl, data=new_data)
 
         ret = self.exec_shell('sudo sysctl -p', shell=True)
