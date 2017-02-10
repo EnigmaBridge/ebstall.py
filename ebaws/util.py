@@ -825,6 +825,22 @@ def py_raw_input(question=None):
     return input(question)
 
 
+def net_size_to_mask(bits):
+    """
+    Converts network size in bits to the network mask
+    e.g., 24 -> 255.255.255.0
+    :param bits:
+    :return:
+    """
+    segs = []
+    for i in range(0, 4):
+        sub = 8 if bits >= 8 else bits
+        bits -= 8 if bits >= 8 else sub
+        print(sub, bits)
+        segs.append((((2**sub) - 1) << (8-sub)))
+    return '.'.join(['%d' % x for x in segs])
+
+
 class EchoUpTCPHandler(socketserver.BaseRequestHandler):
     """Handler for a dummy socket server for firewall testing"""
     def handle(self):
