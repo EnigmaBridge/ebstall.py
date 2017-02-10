@@ -105,6 +105,37 @@ class OpenVpn(object):
         self.server_config_modified = False
 
     #
+    # Settings
+    #
+    def get_ip_net(self):
+        """
+        Network address for the VPN server
+        :return:
+        """
+        return '10.8.0.0'
+
+    def get_ip_vpn_server(self):
+        """
+        Returns IP address of the VPN server for clients on the VPN
+        :return:
+        """
+        return '10.8.0.1'
+
+    def get_ip_net_size(self):
+        """
+        returns network size of the network allocated for OpenVPN
+        :return:
+        """
+        return 24
+
+    def get_ip_mask(self):
+        """
+        Returns the mask of the network used by OpenVPN
+        :return:
+        """
+        util.net_size_to_mask(self.get_ip_net_size())
+
+    #
     # server.conf reading & modification
     #
     def get_config_dir(self):
@@ -307,11 +338,11 @@ class OpenVpn(object):
 
         self.set_config_value('user', 'nobody')
         self.set_config_value('group', 'nobody')
-        self.set_config_value('server', '10.8.0.0 255.255.255.0')
+        self.set_config_value('server', '%s %s' % (self.get_ip_net(), self.get_ip_mask()))
 
         # '"dhcp-option DNS 8.8.4.4"',
         # '"dhcp-option DNS 8.8.8.8"',
-        push_values = ['"dhcp-option DNS 10.8.0.1"',
+        push_values = ['"dhcp-option DNS %s"' % self.get_ip_vpn_server(),
                        '"redirect-gateway def1 bypass-dhcp"']
         self.set_config_value('push', push_values)
 
