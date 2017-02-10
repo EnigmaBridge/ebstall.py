@@ -585,6 +585,43 @@ class SysConfig(object):
 
         return 0
 
+    def _get_routes(self):
+        """
+        ip route
+        :return:
+        """
+        ret, stdout, stderr = self.cli_cmd_sync('sudo ip route')
+        if ret != 0:
+            raise OSError('Could not get routes')
+
+        return [x.strip() for x in stdout]
+
+    def _get_default_dev(self):
+        """
+        Default device - e.g., eth0
+        :return:
+        """
+        routes = self._get_routes()
+        for route in routes:
+            if not route.startswith('default'):
+                continue
+
+            m = re.match(r'.+?\bdev\s+([^\s]+?)\b', route)
+            if m is not None:
+                return m.group(1)
+
+    def _try_get_default_dev(self):
+        """
+        Tries to obtain default gateway device, returns None if cannot detect.
+        :return:
+        """
+        try:
+            return self._get_default_dev()
+        except Exception as e:
+            self.audit.audit_exception()
+            logger.debug('Cannot obtain default device %s' % e)
+        return None
+
     def masquerade(self, net, net_size):
         """
         Add firewall masquerade rule
@@ -640,6 +677,7 @@ class SysConfig(object):
         :return:
         """
         # TODO: implement
+        raise OSError('UFW not implemented yet')
 
     def _masquerade_iptables(self, net, net_size):
         """
@@ -648,7 +686,68 @@ class SysConfig(object):
         :param net_size:
         :return:
         """
-        # TODO: implement
+        cmd = 'sudo iptables --flush'
+        ret = self.exec_shell(cmd, shell=True)
+        if ret != 0:
+            raise OSError('Cannot flush iptables')
+
+        # Analyze if not present already
+        ret, stdout, stderr = self.cli_cmd_sync('sudo iptables-save')
+        if ret != 0:
+            raise OSError('Cannot get current iptables state')
+
+        default_dev = self._try_get_default_dev()
+        is_there = None
+        net_desc = '%s/%d' % (net, net_size)
+        is_nat = False
+        for rule in [x.strip() for x in stdout]:
+            if len(rule) == 0:
+                continue
+            if re.match(r'^\s*#.*', rule):
+                continue
+            if rule.startswith(':'):
+                continue
+
+            rlow = rule.lower()
+            if rlow == 'commit':
+                continue
+
+            m_sec = re.match(r'^\*(.+?)$', rule)
+            if m_sec is not None:
+                is_nat = util.strip(m_sec.group(1)) == 'nat'
+
+            if not is_nat:
+                continue
+
+            m_routing = re.match(r'.*?\b-A\s+POSTROUTING\b.*', rule)
+            m_mask = re.match(r'.*?\b-j\s+MASQUERADE\b.*', rule)
+            m_src = re.match(r'.*?\b-s\s+%s\b.*' % net_desc, rule)
+            m_out = re.match(r'.*?\b-o\s+([a-zA-Z0-9_]+)\b.*', rule)
+
+            if m_routing is None or m_mask is None or m_src is None:
+                continue
+
+            if m_out is None or m_out.group(1) == default_dev:
+                is_there = rule
+
+        if is_there is None:
+            dev_part = '' if default_dev is None else ' -o %s' % default_dev
+            new_rule = '-A POSTROUTING -s %s%s -j MASQUERADE' % (net_desc, dev_part)
+
+            ret = self.exec_shell('sudo iptables -t nat %s' % new_rule, shell=True)
+            if ret != 0:
+                raise OSError('Cannot add a new rule to iptables: %s' % new_rule)
+
+            ret = self.exec_shell('sudo iptables-save | sudo tee /etc/sysconfig/iptables >/dev/null', shell=True)
+            if ret != 0:
+                raise OSError('Cannot save new iptables rules')
+
+            self.audit.audit_evt('firewall-modified', rule=new_rule, firewall=FIREWALL_IPTABLES)
+            logger.debug('Rule added to iptables %s' % new_rule)
+        else:
+            logger.debug('Rule already there: %s' % is_there)
+
+        return 0
 
     def _masquerade_firewalld(self, net, net_size):
         """
@@ -659,6 +758,8 @@ class SysConfig(object):
         """
         cmd = 'sudo firewall-cmd --permanent --zone=external --add-masquerade'
         ret = self.exec_shell(cmd, shell=True)
+        if ret == 0:
+            self.audit.audit_evt('firewall-modified', rule='--add-masquerade', firewall=FIREWALL_FIREWALLD)
         return ret
 
 
