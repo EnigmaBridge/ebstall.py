@@ -217,10 +217,10 @@ class AuditManager(object):
             log['arg%d' % idx] = val
 
     def _args_to_log(self, log, *args):
-        self._args_to_log_raw(log, False, None, *args)
+        self._args_to_log_raw(log, sensitive_=False, secrets_=None, *args)
 
     def _args_to_log_sec(self, log, *args):
-        self._args_to_log_raw(log, True, None, *args)
+        self._args_to_log_raw(log, sensitive_=True, secrets_=None, *args)
 
     def _kwargs_to_log_raw(self, log, sensitive_=False, secrets_=None,  **kwargs):
         """
@@ -240,10 +240,10 @@ class AuditManager(object):
             log[self._valueize_key(key)] = val
 
     def _kwargs_to_log(self, log, **kwargs):
-        self._kwargs_to_log_raw(log, False, None, **kwargs)
+        self._kwargs_to_log_raw(log, sensitive_=False, secrets_=None, **kwargs)
 
     def _kwargs_to_log_sec(self, log, **kwargs):
-        self._kwargs_to_log_raw(log, True, None, **kwargs)
+        self._kwargs_to_log_raw(log, sensitive_=True, secrets_=None, **kwargs)
 
     def fix_val(self, value):
         """
@@ -484,7 +484,7 @@ class AuditManager(object):
             log['data'] = self._sec_fix(self._valueize(data))
 
         self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
-        self._kwargs_to_log(log, sensitive_=sensitive, secrets_=None, **kwargs)
+        self._kwargs_to_log_raw(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_exception(self, exception=None, exctrace=None, *args, **kwargs):
@@ -577,7 +577,7 @@ class AuditManager(object):
             log['question'] = self._valueize(question)
 
         self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
-        self._kwargs_to_log(log, sensitive_=sensitive, secrets_=None, **kwargs)
+        self._kwargs_to_log_raw(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_input_enter(self, question=None, answer=None, sensitive=False, *args, **kwargs):
@@ -627,7 +627,7 @@ class AuditManager(object):
             log['sensitive'] = self._valueize(sensitive)
 
         self._args_to_log_raw(log, sensitive_=sensitive, secrets_=None, *args)
-        self._kwargs_to_log(log, sensitive_=sensitive, secrets_=None, **kwargs)
+        self._kwargs_to_log_raw(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
     def audit_evt(self, evt, *args, **kwargs):
