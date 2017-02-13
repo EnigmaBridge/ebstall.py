@@ -872,11 +872,11 @@ class SysConfig(object):
         if ret != 0:
             raise OSError('Cannot reload ufw (enable step)')
 
-    def _iptables_get_rules(self, flush=True):
+    def _iptables_get_rules(self, flush=False):
         """
         Gets current iptables rules as lines.
         Throws an exception if dump cannot be done.
-        :param flush: if true iptables rules are flushed to the config at first
+        :param flush: if true iptables rules are flushed (removed)
         :return:
         """
         if flush:
