@@ -147,7 +147,7 @@ class AuditManager(object):
             return [self._valueize(x) for x in value]
 
         elif isinstance(value, types.DictionaryType):
-            return {self._valueize_key(key): self._valueize(value) for (key, value) in value}
+            return {self._valueize_key(key): self._valueize(value[key]) for key in value}
 
         else:
             return '%s' % value
@@ -183,7 +183,7 @@ class AuditManager(object):
             return [self._sec_fix(x) for x in value]
 
         elif isinstance(value, types.DictionaryType):
-            return {self._valueize_key(key): self._sec_fix(value) for (key, value) in value}
+            return {self._valueize_key(key): self._sec_fix(value[key]) for key in value}
 
         else:
             return value
