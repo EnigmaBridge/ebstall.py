@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 from threading import Lock as Lock
 import json
 import collections
@@ -170,7 +171,10 @@ class AuditManager(object):
 
         if isinstance(value, types.StringTypes):
             for sec in secrets:
-                value = value.replace(sec, '***')
+                try:
+                    value = value.encode('utf-8').replace(sec, '***')
+                except UnicodeDecodeError:
+                    pass
             return value
 
         # Tuple - convert to list
