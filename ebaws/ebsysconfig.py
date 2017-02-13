@@ -632,14 +632,14 @@ class SysConfig(object):
             logger.debug('Cannot obtain default device %s' % e)
         return None
 
-    def masquerade(self, net, net_size):
+    def _resolve_firewalls(self, enable=True, start=True):
         """
-        Add firewall masquerade rule - NATing
-        :param net:
-        :param net_size:
-        :return:
+        Tries to get the firewall used on the system, install one if there is none.
+        Enables firewall after the OS start, restarts the firewall if it is not running.
+        :param: enable if true the firewall is enabled to start after boot
+        :param: start if true the firewall is restarted if not running
+        :return: firewall name
         """
-
         firewalls = self.get_firewall()
 
         if len(firewalls) == 0:
@@ -661,14 +661,26 @@ class SysConfig(object):
         fw_name, fw_running = firewalls[0]
         self.audit.audit_evt('firewall', firewall=fw_name, running=fw_running)
 
-        ret = self.enable_svc(fw_name, True)
-        if ret != 0:
-            raise OSError('Could not enable firewall %s' % fw_name)
+        if enable:
+            ret = self.enable_svc(fw_name, True)
+            if ret != 0:
+                raise OSError('Could not enable firewall %s' % fw_name)
 
-        if not fw_running:
+        if start and not fw_running:
             ret = self.switch_svc(fw_name, restart=True)
             if ret != 0:
                 raise OSError('Could not start firewall %s' % fw_name)
+
+        return fw_name
+
+    def masquerade(self, net, net_size):
+        """
+        Add firewall masquerade rule - NATing
+        :param net:
+        :param net_size:
+        :return:
+        """
+        fw_name = self._resolve_firewalls()
 
         if fw_name == FIREWALL_UFW:
             return self._masquerade_ufw(net=net, net_size=net_size)
@@ -838,22 +850,11 @@ class SysConfig(object):
         # Flush before-rules to the config file.
         return self._ufw_save_before_rules(before_rules)
 
-    def _masquerade_ufw(self, net, net_size):
+    def _ufw_reload(self):
         """
-        Adds masquerade rules to the UFW (Universal firewall)
-        :param net:
-        :param net_size:
+        Reloads UFW firewall rules
         :return:
         """
-        default_dev = self._try_get_default_dev()
-
-        # Set policy to accept forwarding
-        self._ufw_accept_forward()
-
-        # Update before rules - add a masquerade rule to the table
-        self._ufw_masquerade_before_rules(net, net_size, default_dev)
-
-        # Reload rules
         ret = self.exec_shell('sudo ufw disable', shell=True)
         if ret != 0:
             raise OSError('Cannot reload ufw (disable step)')
@@ -861,7 +862,6 @@ class SysConfig(object):
         ret = self.exec_shell('sudo ufw enable', shell=True)
         if ret != 0:
             raise OSError('Cannot reload ufw (enable step)')
-        return 0
 
     def _iptables_get_rules(self, flush=True):
         """
@@ -882,9 +882,39 @@ class SysConfig(object):
             raise OSError('Cannot get current iptables state')
         return [x.strip() for x in stdout]
 
+    def _iptables_save(self):
+        """
+        Saves in-memory iptables rules to the file
+        :return:
+        """
+        ret = self.exec_shell('sudo iptables-save | sudo tee /etc/sysconfig/iptables >/dev/null', shell=True)
+        if ret != 0:
+            raise OSError('Cannot save new iptables rules')
+        return 0
+
+    def _masquerade_ufw(self, net, net_size):
+        """
+        Adds masquerade rules to the UFW (Universal firewall)
+        :param net:
+        :param net_size:
+        :return:
+        """
+        default_dev = self._try_get_default_dev()
+
+        # Set policy to accept forwarding
+        self._ufw_accept_forward()
+
+        # Update before rules - add a masquerade rule to the table
+        self._ufw_masquerade_before_rules(net, net_size, default_dev)
+
+        # Reload rules
+        self._ufw_reload()
+        self.audit.audit_evt('firewall-modified', rule='add-masquerade', firewall=FIREWALL_UFW)
+        return 0
+
     def _masquerade_iptables(self, net, net_size):
         """
-        Adds masquerade rules to the iptables
+        Adds masquerade rules to the iptables - permanent.
         :param net:
         :param net_size:
         :return:
@@ -934,12 +964,10 @@ class SysConfig(object):
             if ret != 0:
                 raise OSError('Cannot add a new rule to iptables: %s' % new_rule)
 
-            ret = self.exec_shell('sudo iptables-save | sudo tee /etc/sysconfig/iptables >/dev/null', shell=True)
-            if ret != 0:
-                raise OSError('Cannot save new iptables rules')
-
+            self._iptables_save()
             self.audit.audit_evt('firewall-modified', rule=new_rule, firewall=FIREWALL_IPTABLES)
             logger.debug('Rule added to iptables %s' % new_rule)
+
         else:
             logger.debug('Rule already there: %s' % is_there)
 
@@ -956,7 +984,118 @@ class SysConfig(object):
         ret = self.exec_shell(cmd, shell=True)
         if ret == 0:
             self.audit.audit_evt('firewall-modified', rule='--add-masquerade', firewall=FIREWALL_FIREWALLD)
+
+        self.audit.audit_evt('firewall-modified', rule='add-masquerade', firewall=FIREWALL_FIREWALLD)
         return ret
+
+    def allow_port(self, port, tcp=True, reload=True):
+        """
+        Allows given port to the public
+        :param port:
+        :param tcp:
+        :return:
+        """
+        fw_name = self._resolve_firewalls()
+
+        if fw_name == FIREWALL_UFW:
+            return self._allow_ufw(port=port, tcp=tcp, reload=reload)
+        elif fw_name == FIREWALL_FIREWALLD:
+            return self._allow_firewalld(port=port, tcp=tcp, reload=reload)
+        elif fw_name == FIREWALL_IPTABLES:
+            return self._allow_iptables(port=port, tcp=tcp, reload=reload)
+        else:
+            raise EnvironmentError('Unknown firewall %s' % fw_name)
+
+    def _allow_ufw(self, port, tcp=True, reload=True):
+        """
+        Adds port allow rule to the UFW
+        :param port:
+        :param tcp:
+        :param reload:
+        :return:
+        """
+        port_desc = '%d/%s' % (port, 'tcp' if tcp else 'udp')
+
+        ret = self.exec_shell('sudo ufw allow %s' % port_desc, shell=True)
+        if ret != 0:
+            raise OSError('Cannot add ufw allow rule')
+
+        self.audit.audit_evt('firewall-modified', rule='allow-port', port=port, tcp=tcp, firewall=FIREWALL_UFW)
+        return 0
+
+    def _allow_firewalld(self, port, tcp=True, reload=True):
+        """
+        Adds port allow rule to the firewalld
+        :param port:
+        :param tcp:
+        :param reload:
+        :return:
+        """
+        port_desc = '%d/%s' % (port, 'tcp' if tcp else 'udp')
+        ret = self.exec_shell('sudo firewall-cmd --permanent --zone=public --add-port=%s' % port_desc, shell=True)
+        if ret != 0:
+            raise OSError('Cannot add ufw allow rule')
+
+        self.audit.audit_evt('firewall-modified', rule='allow-port', port=port, tcp=tcp, firewall=FIREWALL_FIREWALLD)
+        return 0
+
+    def _allow_iptables(self, port, tcp=True, reload=True):
+        """
+        Adds port allow rule to the iptables
+        :param port:
+        :param tcp:
+        :param reload:
+        :return:
+        """
+        rules = self._iptables_get_rules()
+        proto = 'tcp' if tcp else 'udp'
+        ' -A INPUT -m state --state NEW -m tcp -p tcp --dport 25 -j ACCEPT'
+
+        is_there = None
+        is_filter = False
+        for rule in rules:
+            if len(rule) == 0:
+                continue
+            if re.match(r'^\s*#.*', rule):
+                continue
+            if rule.startswith(':'):
+                continue
+            if rule.lower() == 'commit':
+                continue
+
+            m_sec = re.match(r'^\*(.+?)$', rule)
+            if m_sec is not None:
+                is_nat = util.strip(m_sec.group(1)) == 'filter'
+            if not is_filter:
+                continue
+
+            m_input = re.match(r'.*?\b-A\s+INPUT\b.*', rule)
+            m_proto = re.match(r'.*?\b-p\s+%s\b.*' % proto, rule, re.IGNORECASE)
+            m_port = re.match(r'.*?\b--dport\s+%d\b.*' % port, rule)
+            m_accept = re.match(r'.*?\b-j\s+ACCEPT\b.*', rule)
+
+            if m_input is None or m_proto is None or m_port is None or m_accept is None:
+                continue
+            is_there = True
+            break
+
+        if is_there is None:
+            new_rule = '-A INPUT -m state --state NEW -m tcp -p tcp --dport %s -j ACCEPT' % port
+            if not tcp:
+                new_rule = '-A INPUT -m udp -p udp --dport %s -j ACCEPT' % port
+
+            ret = self.exec_shell('sudo iptables -t nat %s' % new_rule, shell=True)
+            if ret != 0:
+                raise OSError('Cannot add a new rule to iptables: %s' % new_rule)
+
+            self._iptables_save()
+            self.audit.audit_evt('firewall-modified', rule=new_rule, firewall=FIREWALL_IPTABLES)
+            self.audit.audit_evt('firewall-modified', rule='allow-port', port=port, tcp=tcp, firewall=FIREWALL_IPTABLES)
+            logger.debug('Rule added to iptables %s' % new_rule)
+
+        else:
+            logger.debug('Rule already there: %s' % is_there)
+
 
 
 
