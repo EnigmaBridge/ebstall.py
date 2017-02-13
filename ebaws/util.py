@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import binascii
 import errno
@@ -25,6 +26,7 @@ import types
 import psutil
 from audit import AuditManager
 from builtins import input
+from builtins import bytes
 
 import OpenSSL
 import socketserver
@@ -460,7 +462,7 @@ def gen_ss_cert(key, domains, not_before=None,
     cert.gmtime_adj_notAfter(validity)
 
     cert.set_pubkey(key)
-    cert.sign(key, "sha256")
+    cert.sign(key, bytes(b'sha256'))
     return cert
 
 
