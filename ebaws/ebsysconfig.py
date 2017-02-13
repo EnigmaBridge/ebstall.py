@@ -38,6 +38,15 @@ class SysConfig(object):
     """Basic system configuration object"""
     SYSCONFIG_BACKUP = '/root/ebstall.backup'
 
+    REGEX_IPTABLES_POSTROUTING = re.compile(r'.*?(?:^|\b|\s)-A\s+POSTROUTING(?:$|\b|\s).*')
+    REGEX_IPTABLES_MASQUERADE = re.compile(r'.*?(?:^|\b|\s)-j\s+MASQUERADE(?:$|\b|\s).*')
+    REGEX_IPTABLES_SRC = r'.*?(?:^|\b|\s)-s\s+%s(?:$|\b|\s).*'
+    REGEX_IPTABLES_OUTPUT_DEV = re.compile(r'.*?(?:^|\b|\s)-o\s+([a-zA-Z0-9_]+)(?:$|\b|\s).*')
+    REGEX_IPTABLES_INPUT = re.compile(r'.*?\b-A\s+INPUT\b.*')
+    REGEX_IPTABLES_PROTO = r'.*?(?:^|\b|\s)-p\s+%s(?:$|\b|\s).*'
+    REGEX_IPTABLES_PORT = r'.*?(?:^|\b|\s)--dport\s+%d(?:$|\b|\s).*'
+    REGEX_IPTABLES_ACCEPT = re.compile(r'.*?(?:^|\b|\s)-j\s+ACCEPT(?:$|\b|\s).*')
+
     def __init__(self, print_output=False, audit=None, *args, **kwargs):
         self.print_output = print_output
         self.write_dots = False
@@ -804,10 +813,10 @@ class SysConfig(object):
                 continue
 
             # Particular rule
-            m_routing = re.match(r'.*?\b-A\s+POSTROUTING\b.*', rule)
-            m_mask = re.match(r'.*?\b-j\s+MASQUERADE\b.*', rule)
-            m_src = re.match(r'.*?\b-s\s+%s\b.*' % net_desc, rule)
-            m_out = re.match(r'.*?\b-o\s+([a-zA-Z0-9_]+)\b.*', rule)
+            m_routing = re.match(self.REGEX_IPTABLES_POSTROUTING, rule)
+            m_mask = re.match(self.REGEX_IPTABLES_MASQUERADE, rule)
+            m_src = re.match(self.REGEX_IPTABLES_SRC % re.escape(net_desc), rule)
+            m_out = re.match(self.REGEX_IPTABLES_OUTPUT_DEV, rule)
 
             if m_routing is None or m_mask is None or m_src is None:
                 continue
@@ -945,10 +954,10 @@ class SysConfig(object):
             if not is_nat:
                 continue
 
-            m_routing = re.match(r'.*?\b-A\s+POSTROUTING\b.*', rule)
-            m_mask = re.match(r'.*?\b-j\s+MASQUERADE\b.*', rule)
-            m_src = re.match(r'.*?\b-s\s+%s\b.*' % net_desc, rule)
-            m_out = re.match(r'.*?\b-o\s+([a-zA-Z0-9_]+)\b.*', rule)
+            m_routing = re.match(self.REGEX_IPTABLES_POSTROUTING, rule)
+            m_mask = re.match(self.REGEX_IPTABLES_MASQUERADE, rule)
+            m_src = re.match(self.REGEX_IPTABLES_SRC % re.escape(net_desc), rule)
+            m_out = re.match(self.REGEX_IPTABLES_OUTPUT_DEV, rule)
 
             if m_routing is None or m_mask is None or m_src is None:
                 continue
@@ -1069,10 +1078,10 @@ class SysConfig(object):
             if not is_filter:
                 continue
 
-            m_input = re.match(r'.*?\b-A\s+INPUT\b.*', rule)
-            m_proto = re.match(r'.*?\b-p\s+%s\b.*' % proto, rule, re.IGNORECASE)
-            m_port = re.match(r'.*?\b--dport\s+%d\b.*' % port, rule)
-            m_accept = re.match(r'.*?\b-j\s+ACCEPT\b.*', rule)
+            m_input = re.match(self.REGEX_IPTABLES_INPUT, rule)
+            m_proto = re.match(self.REGEX_IPTABLES_PROTO % proto, rule, re.IGNORECASE)
+            m_port = re.match(self.REGEX_IPTABLES_PORT % port, rule)
+            m_accept = re.match(self.REGEX_IPTABLES_ACCEPT, rule)
 
             if m_input is None or m_proto is None or m_port is None or m_accept is None:
                 continue
