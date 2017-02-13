@@ -61,6 +61,10 @@ class SysConfig(object):
                      'start system: %s' % (self.os.name, self.os.version, self.os.version_major,
                                            self.os.like, self.os.packager, self.os.start_system))
 
+        # Firewall name -> set enabled in the system.
+        # Not to repeat the same enable action
+        self.firewall_enabled = {}
+
     #
     # Execution
     #
@@ -670,10 +674,11 @@ class SysConfig(object):
         fw_name, fw_running = firewalls[0]
         self.audit.audit_evt('firewall', firewall=fw_name, running=fw_running)
 
-        if enable:
+        if enable and fw_name not in self.firewall_enabled or not self.firewall_enabled[fw_name]:
             ret = self.enable_svc(fw_name, True)
             if ret != 0:
                 raise OSError('Could not enable firewall %s' % fw_name)
+            self.firewall_enabled[fw_name] = True
 
         if start and not fw_running:
             ret = self.switch_svc(fw_name, restart=True)
