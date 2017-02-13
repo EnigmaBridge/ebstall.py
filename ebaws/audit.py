@@ -217,10 +217,10 @@ class AuditManager(object):
             log['arg%d' % idx] = val
 
     def _args_to_log(self, log, *args):
-        self._args_to_log_raw(log, sensitive_=False, secrets_=None, *args)
+        self._args_to_log_raw(log, False, None, *args)
 
     def _args_to_log_sec(self, log, *args):
-        self._args_to_log_raw(log, sensitive_=True, secrets_=None, *args)
+        self._args_to_log_raw(log, True, None, *args)
 
     def _kwargs_to_log_raw(self, log, sensitive_=False, secrets_=None,  **kwargs):
         """
