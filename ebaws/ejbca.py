@@ -1248,3 +1248,19 @@ class Ejbca(object):
         """
         return os.path.exists(self.get_ejbca_home()) and os.path.exists(self.get_jboss_home())
 
+    def setup_os(self):
+        """
+        Configures OS
+        Enables packet forwarding, sets up the masquerade
+        :return:
+        """
+        ret = self.sysconfig.allow_port(port=self.PORT, tcp=True)
+        if ret != 0:
+            return ret
+
+        ret = self.sysconfig.allow_port(port=self.PORT_PUBLIC, tcp=True)
+        if ret != 0:
+            return ret
+
+        return 0
+
