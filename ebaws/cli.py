@@ -1231,7 +1231,7 @@ class Installer(InstallerBase):
             try:
                 succ_admin2 = util.test_port_open_with_server(host=public_ip, port=Ejbca.PORT)
             except:
-                pass
+                logger.debug(traceback.format_exc())
             self.tprint('Port %s, echo server, reachable: %s' % (Ejbca.PORT, succ_admin2))
 
         if not succ_publ:
@@ -1239,7 +1239,7 @@ class Installer(InstallerBase):
             try:
                 succ_publ2 = util.test_port_open_with_server(host=public_ip, port=Ejbca.PORT_PUBLIC)
             except:
-                pass
+                logger.debug(traceback.format_exc())
             self.tprint('Port %s, echo server, reachable: %s' % (Ejbca.PORT_PUBLIC, succ_publ2))
 
     #
