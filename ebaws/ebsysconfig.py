@@ -36,6 +36,7 @@ FIREWALLS = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
 
 class SysConfig(object):
     """Basic system configuration object"""
+    SYSCONFIG_BACKUP = '/root/ebstall.backup'
 
     def __init__(self, print_output=False, audit=None, *args, **kwargs):
         self.print_output = print_output
@@ -633,7 +634,7 @@ class SysConfig(object):
 
     def masquerade(self, net, net_size):
         """
-        Add firewall masquerade rule
+        Add firewall masquerade rule - NATing
         :param net:
         :param net_size:
         :return:
@@ -713,6 +714,130 @@ class SysConfig(object):
             fh.write(''.join(new_data))
             self.audit.audit_file_write(default_ufw, data=new_data)
 
+    def _ufw_get_before_rules(self):
+        """
+        Loads /etc/ufw/before.rules
+        :return:
+        """
+        # Analyze if not present already
+        ret, stdout, stderr = self.cli_cmd_sync('sudo cat /etc/ufw/before.rules')
+        if ret != 0:
+            raise OSError('Cannot load /etc/ufw/before.rules')
+        return [x.strip() for x in stdout]
+
+    def _ufw_save_before_rules(self, new_lines):
+        """
+        Updates /etc/ufw/before.rules
+        :param new_lines:
+        :return:
+        """
+        util.make_or_verify_dir(self.SYSCONFIG_BACKUP, mode=0o750)
+        fh, backup = util.safe_create_with_backup('/etc/ufw/before.rules', mode='w', chmod=0o640,
+                                                  backup_dir=self.SYSCONFIG_BACKUP)
+        with fh:
+            pass
+
+        new_content = '\n'.join(x.strip() for x in new_lines)
+        ret = self.exec_shell_subprocess(cmd_exec='sudo tee /etc/ufw/before.rules > /dev/null', shell=True,
+                                         stdin_string=new_content)
+        if ret != 0:
+            raise OSError('Cannot save new /etc/ufw/before.rules')
+        return 0
+
+    def _ufw_masquerade_before_rules(self, net, net_size, default_dev):
+        """
+        Adds masquerade to the before rules
+        :return:
+        """
+        before_rules = self._ufw_get_before_rules()
+        net_desc = '%s/%d' % (net, net_size)
+
+        is_there = None
+        nat_idx_start = None
+        nat_commit_idx = None
+        nat_postrouting_accept = None
+        first_non_comment = None
+
+        is_nat = False
+        for idx, rule in enumerate(before_rules):
+            if re.match(r'^\s*#.*', rule):
+                continue
+
+            if first_non_comment is None:
+                first_non_comment = idx
+
+            if len(rule) == 0:
+                continue
+
+            # Table name
+            m_sec = re.match(r'^\*(.+?)$', rule)
+            if m_sec is not None:
+                is_nat = util.strip(m_sec.group(1)) == 'nat'
+
+            # Interested only in NAT table
+            if not is_nat:
+                continue
+
+            if nat_idx_start is None:
+                nat_idx_start = idx
+
+            rlow = rule.lower()
+            if rlow == 'commit':
+                if nat_commit_idx is None:
+                    nat_commit_idx = idx
+                continue
+
+            if re.match(r'\s*:\s*POSTROUTING ACCEPT \[0:0\]\s*', re.IGNORECASE):
+                nat_postrouting_accept = idx
+                continue
+
+            # Particular rule
+            m_routing = re.match(r'.*?\b-A\s+POSTROUTING\b.*', rule)
+            m_mask = re.match(r'.*?\b-j\s+MASQUERADE\b.*', rule)
+            m_src = re.match(r'.*?\b-s\s+%s\b.*' % net_desc, rule)
+            m_out = re.match(r'.*?\b-o\s+([a-zA-Z0-9_]+)\b.*', rule)
+
+            if m_routing is None or m_mask is None or m_src is None:
+                continue
+
+            if m_out is None or m_out.group(1) == default_dev:
+                is_there = rule
+
+        # Adding a new rule to the file
+        idx_offset = 0
+        if is_there:
+            logger.debug('Masquerade rule is already added')
+            return 0
+
+        if nat_idx_start is not None and nat_commit_idx is None:
+            logger.debug('NAT table exists, but without commit')
+            raise EnvironmentError('Cannto modify UFW before rules to add masquerade rules')
+
+        if nat_idx_start is not None and nat_commit_idx is not None and nat_postrouting_accept is None:
+            before_rules.insert(nat_idx_start + 1, ':POSTROUTING ACCEPT [0:0]')
+            idx_offset += 1
+
+        dev_part = '' if default_dev is None else ' -o %s' % default_dev
+        new_rule = '-A POSTROUTING -s %s%s -j MASQUERADE' % (net_desc, dev_part)
+
+        if nat_commit_idx is not None:
+            before_rules.insert(nat_commit_idx + idx_offset, new_rule)
+
+        else:
+            new_lines = ['# START OPENVPN RULES',
+                         '# NAT table rules',
+                         '*nat',
+                         ':POSTROUTING ACCEPT [0:0] ',
+                         '# Allow traffic from OpenVPN client',
+                         new_rule,
+                         'COMMIT',
+                         '# END OPENVPN RULES']
+
+            before_rules = before_rules[:first_non_comment] + new_lines + before_rules[first_non_comment:]
+
+        # Flush before-rules to the config file.
+        return self._ufw_save_before_rules(before_rules)
+
     def _masquerade_ufw(self, net, net_size):
         """
         Adds masquerade rules to the UFW (Universal firewall)
@@ -720,8 +845,42 @@ class SysConfig(object):
         :param net_size:
         :return:
         """
-        # TODO: implement
-        raise OSError('UFW not implemented yet')
+        default_dev = self._try_get_default_dev()
+
+        # Set policy to accept forwarding
+        self._ufw_accept_forward()
+
+        # Update before rules - add a masquerade rule to the table
+        self._ufw_masquerade_before_rules(net, net_size, default_dev)
+
+        # Reload rules
+        ret = self.exec_shell('sudo ufw disable', shell=True)
+        if ret != 0:
+            raise OSError('Cannot reload ufw (disable step)')
+
+        ret = self.exec_shell('sudo ufw enable', shell=True)
+        if ret != 0:
+            raise OSError('Cannot reload ufw (enable step)')
+        return 0
+
+    def _iptables_get_rules(self, flush=True):
+        """
+        Gets current iptables rules as lines.
+        Throws an exception if dump cannot be done.
+        :param flush: if true iptables rules are flushed to the config at first
+        :return:
+        """
+        if flush:
+            cmd = 'sudo iptables --flush'
+            ret = self.exec_shell(cmd, shell=True)
+            if ret != 0:
+                raise OSError('Cannot flush iptables')
+
+        # Analyze if not present already
+        ret, stdout, stderr = self.cli_cmd_sync('sudo iptables-save')
+        if ret != 0:
+            raise OSError('Cannot get current iptables state')
+        return [x.strip() for x in stdout]
 
     def _masquerade_iptables(self, net, net_size):
         """
@@ -730,21 +889,14 @@ class SysConfig(object):
         :param net_size:
         :return:
         """
-        cmd = 'sudo iptables --flush'
-        ret = self.exec_shell(cmd, shell=True)
-        if ret != 0:
-            raise OSError('Cannot flush iptables')
-
-        # Analyze if not present already
-        ret, stdout, stderr = self.cli_cmd_sync('sudo iptables-save')
-        if ret != 0:
-            raise OSError('Cannot get current iptables state')
 
         default_dev = self._try_get_default_dev()
+        iptables_rules = self._iptables_get_rules()
+
         is_there = None
         net_desc = '%s/%d' % (net, net_size)
         is_nat = False
-        for rule in [x.strip() for x in stdout]:
+        for rule in iptables_rules:
             if len(rule) == 0:
                 continue
             if re.match(r'^\s*#.*', rule):
