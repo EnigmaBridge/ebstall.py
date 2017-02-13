@@ -1096,6 +1096,8 @@ class SysConfig(object):
         else:
             logger.debug('Rule already there: %s' % is_there)
 
+        return 0
+
 
 
 
