@@ -951,8 +951,11 @@ class Ejbca(object):
         :param device:
         :return: 0 on success
         """
+        client_password = util.random_password(16)
+        self.audit.add_secrets(client_password)
+
         cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
-              % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(util.random_password(16)))
+              % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(client_password))
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
     def vpn_get_crl_cron_file(self):
