@@ -162,6 +162,10 @@ class VpnInstaller(Installer):
         if res != 0:
             return self.return_code(res)
 
+        # Firewall tuning
+        self.ejbca.setup_os()
+        self.ovpn.setup_os()
+
         # Test ports opened here...
         res = self.init_test_ports_pre_install()
         if res != 0:
