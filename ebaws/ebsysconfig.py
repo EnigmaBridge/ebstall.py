@@ -42,7 +42,7 @@ class SysConfig(object):
     REGEX_IPTABLES_MASQUERADE = re.compile(r'.*?(?:^|\b|\s)-j\s+MASQUERADE(?:$|\b|\s).*')
     REGEX_IPTABLES_SRC = r'.*?(?:^|\b|\s)-s\s+%s(?:$|\b|\s).*'
     REGEX_IPTABLES_OUTPUT_DEV = re.compile(r'.*?(?:^|\b|\s)-o\s+([a-zA-Z0-9_]+)(?:$|\b|\s).*')
-    REGEX_IPTABLES_INPUT = re.compile(r'.*?\b-A\s+INPUT\b.*')
+    REGEX_IPTABLES_INPUT = re.compile(r'.*?(?:^|\b|\s)-A\s+INPUT(?:$|\b|\s).*')
     REGEX_IPTABLES_PROTO = r'.*?(?:^|\b|\s)-p\s+%s(?:$|\b|\s).*'
     REGEX_IPTABLES_PORT = r'.*?(?:^|\b|\s)--dport\s+%d(?:$|\b|\s).*'
     REGEX_IPTABLES_ACCEPT = re.compile(r'.*?(?:^|\b|\s)-j\s+ACCEPT(?:$|\b|\s).*')
