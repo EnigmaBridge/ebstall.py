@@ -55,31 +55,40 @@ class SysConfig(object):
     # Execution
     #
 
-    def exec_shell_open(self, cmd_exec, shell=True):
+    def exec_shell_open(self, cmd_exec, shell=True, stdin=None, stdout=None, stderr=None):
         """
         Simple execution wrapper with audit logging.
         :param cmd_exec:
         :param shell:
+        :param stdin:
+        :param stdout:
+        :param stderr:
         :return: subprocess
         """
-        self.audit.audit_exec(cmd_exec)
+        self.audit.audit_exec(cmd_exec, stdin=stdin, stdout=stdout, stderr=stderr)
 
         logger.debug('Execute: %s' % cmd_exec)
-        p = subprocess.Popen(cmd_exec, shell=shell)
+        p = subprocess.Popen(cmd_exec, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr)
         return p
 
-    def exec_shell_subprocess(self, cmd_exec, shell=True):
+    def exec_shell_subprocess(self, cmd_exec, shell=True, stdin_string=None):
         """
         Simple execution wrapper with audit logging, executes the command, returns return code.
         Uses subprocess.Popen()
         :param cmd_exec:
         :param shell:
+        :param stdin_string: string to pass to the stdin
         :return: return code
         """
-        p = self.exec_shell_open(cmd_exec=cmd_exec, shell=shell)
-        p.communicate()
+        stdin = None if stdin_string is None else subprocess.PIPE
+        stdout = None if stdin_string is None else subprocess.PIPE
+        stderr = None if stdin_string is None else subprocess.PIPE
+        p = self.exec_shell_open(cmd_exec=cmd_exec, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr)
 
-        self.audit.audit_exec(cmd_exec, retcode=p.returncode)
+        input = None if stdin_string is None else stdin_string
+        sout, serr = p.communicate(input=input)
+
+        self.audit.audit_exec(cmd_exec, retcode=p.returncode, stdout=sout, stderr=serr, stdin_string=stdin_string)
         return p.returncode
 
     def exec_shell(self, cmd_exec, shell=True, write_dots=None, sensitive=None):
