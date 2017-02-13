@@ -135,6 +135,13 @@ class OpenVpn(object):
         """
         util.net_size_to_mask(self.get_ip_net_size())
 
+    def get_port(self):
+        """
+        Returns port to use for OpenVPN
+        :return: (port, tcp)
+        """
+        return self.PORT_NUM, self.PORT_TCP
+
     #
     # server.conf reading & modification
     #
@@ -425,5 +432,12 @@ class OpenVpn(object):
             return ret
 
         # Set the masquerade
-        return self.sysconfig.masquerade(self.get_ip_net(), self.get_ip_net_size())
+        ret = self.sysconfig.masquerade(self.get_ip_net(), self.get_ip_net_size())
+        if ret != 0:
+            return ret
+
+        # Allow port on the firewall
+        port, tcp = self.get_port()
+        ret = self.sysconfig.allow_port(port=port, tcp=tcp)
+        return ret
 
