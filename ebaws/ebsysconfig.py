@@ -1065,7 +1065,7 @@ class SysConfig(object):
 
             m_sec = re.match(r'^\*(.+?)$', rule)
             if m_sec is not None:
-                is_nat = util.strip(m_sec.group(1)) == 'filter'
+                is_filter = util.strip(m_sec.group(1)) == 'filter'
             if not is_filter:
                 continue
 
