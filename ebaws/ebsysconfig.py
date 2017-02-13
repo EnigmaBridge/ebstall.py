@@ -1084,7 +1084,7 @@ class SysConfig(object):
             if not tcp:
                 new_rule = '-A INPUT -m udp -p udp --dport %s -j ACCEPT' % port
 
-            ret = self.exec_shell('sudo iptables -t nat %s' % new_rule, shell=True)
+            ret = self.exec_shell('sudo iptables %s' % new_rule, shell=True)
             if ret != 0:
                 raise OSError('Cannot add a new rule to iptables: %s' % new_rule)
 
