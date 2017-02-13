@@ -772,12 +772,12 @@ class Installer(InstallerBase):
         Previous configuration data is backed up.
         :type line: object
         """
-        if not self.check_root() or not self.check_pid():
-            return self.return_code(1)
-
         # Main try-catch block for the overall init operation.
         # noinspection PyBroadException
         try:
+            if not self.check_root() or not self.check_pid():
+                return self.return_code(1)
+
             self.tprint('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
 
             # EB Settings read. Optional.
