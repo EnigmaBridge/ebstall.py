@@ -71,7 +71,7 @@ class Ejbca(object):
         'ca.keytype': 'RSA',
         'ca.keyspec': '2048',
         'ca.signaturealgorithm': 'SHA256WithRSA',
-        'ca.validity': '3650',
+        'ca.validity': '7650',
         'ca.policy': 'null'
     }
 
