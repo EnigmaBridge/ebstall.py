@@ -843,6 +843,18 @@ def net_size_to_mask(bits):
     return '.'.join(['%d' % x for x in segs])
 
 
+def get_leftmost_domain(hostname):
+    """
+    Extracts leftmost domain from the hostname
+    :param hostname:
+    :return:
+    """
+    if hostname is None:
+        return None
+    parts = hostname.split('.', 1)
+    return parts[0]
+
+
 class EchoUpTCPHandler(socketserver.BaseRequestHandler):
     """Handler for a dummy socket server for firewall testing"""
     def handle(self):

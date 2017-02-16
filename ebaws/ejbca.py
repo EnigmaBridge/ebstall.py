@@ -65,8 +65,8 @@ class Ejbca(object):
 
     # Default installation settings
     INSTALL_PROPERTIES = {
-        'ca.name': 'ManagementCA',
-        'ca.dn': 'CN=ManagementCA,O=Enigma Bridge Ltd,C=GB',
+        'ca.name': 'SystemCA',
+        'ca.dn': 'CN=SystemCA,O=Enigma Bridge Ltd,C=GB',
         'ca.tokentype': 'soft',
         'ca.keytype': 'RSA',
         'ca.keyspec': '2048',
@@ -290,6 +290,10 @@ class Ejbca(object):
 
         self.web_props['httpsserver.hostname'] = hostname
         self.web_props['httpsserver.dn'] = 'CN=%s,O=Enigma Bridge Ltd,C=GB' % hostname
+
+        leftmost_domain = util.get_leftmost_domain(hostname)
+        self.install_props['ca.name'] = 'SystemCA-%s' % leftmost_domain
+        self.install_props['ca.dn'] = 'CN=SystemCA-%s,O=Enigma Bridge Ltd,C=GB' % leftmost_domain
 
         # Update another hostname related properties
         if self.do_vpn:
