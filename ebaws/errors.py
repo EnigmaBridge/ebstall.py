@@ -33,7 +33,7 @@ class Error(Exception):
         self.base_message = message
 
         self.exc_type, self.exc_value, self.exc_traceback = None, None, None
-        self.traceback_formated = None
+        self.traceback_formatted = None
         self.traceback = None
 
         self.load(cause)
@@ -48,7 +48,7 @@ class Error(Exception):
             self.message = error_message(self, self.base_message, cause)
 
         self.exc_type, self.exc_value, self.exc_traceback = sys.exc_info()
-        self.traceback_formated = traceback.format_exc()
+        self.traceback_formatted = traceback.format_exc()
         self.traceback = traceback.extract_tb(self.exc_traceback)
 
 
