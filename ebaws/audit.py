@@ -505,28 +505,46 @@ class AuditManager(object):
             log['exception'] = self._valueize(exception)
         if exctrace is not None:
             log['exctrace'] = self._valueize(exctrace)
-        else:
-            try:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                log['exc_type'] = self._valueize(exc_type)
 
-                if exception is None:
-                    log['exception'] = self._valueize(exc_value)
+        try:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            log['exc_type'] = self._valueize(exc_type)
+            log['exc_value'] = self._valueize(exc_value)
 
-                log['exc_value'] = self._valueize(exc_value)
+            if exception is None:
+                log['exception'] = self._valueize(exc_value)
 
+            if exctrace is None:
                 log['exctrace'] = self._valueize(traceback.format_exc())
                 log['exctrace_struct'] = self._valueize(traceback.extract_tb(exc_traceback))
 
-                # Last line - fails probably
-                log['cause'] = exc_value.cause
+            # Last line - fails probably
+            log['cause'] = self._audit_exception_cause(exc_value)
 
-            except:
-                pass
+        except:
+            pass
 
         self._args_to_log(log, *args)
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
+
+    def _audit_exception_cause(self, exc_value):
+        """
+        Audits exception to the log
+        :param exc_value:
+        :param level:
+        :return:
+        """
+        try:
+            sub_log = collections.OrderedDict()
+            cause = exc_value.cause
+
+            sub_log['exc_value'] = cause
+            sub_log['exc_type'] = cause.__class__
+            sub_log['cause'] = self._audit_exception_cause(cause)
+            return sub_log
+        except:
+            return None
 
     def audit_error(self, *args, **kwargs):
         """
