@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 from threading import Lock as Lock
 import json
 import collections
@@ -329,6 +328,26 @@ class AuditManager(object):
                     for x in self.audit_records_buffered:
                         fa.write(json.dumps(x) + "\n")
                 self.audit_records_buffered = []
+            except Exception as e:
+                logger.debug(traceback.format_exc())
+                logger.error('Exception in audit log dump %s' % e)
+
+    def get_content(self):
+        """
+        Dumps content of the audit file and returns it as a string.
+        :return:
+        """
+        self.flush()
+        with self.audit_lock:
+            if self.disabled:
+                return
+
+            if self.audit_file is None or not os.path.exists(self.audit_file):
+                return []
+
+            try:
+                with open(self.audit_file, 'r') as fa:
+                    return fa.readlines()
             except Exception as e:
                 logger.debug(traceback.format_exc())
                 logger.error('Exception in audit log dump %s' % e)
