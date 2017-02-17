@@ -983,7 +983,7 @@ def test_port_routable(host='127.0.0.1', port=80, tcp=True, with_server=True, bi
         audit = AuditManager(disabled=True)
 
     # Is listening? If yes, test directly
-    is_listening = is_port_listening(port=port)
+    is_listening = is_port_listening(port=port, tcp=tcp)
     audit.audit_evt('port-listening', port=port, host=host, tcp=tcp, with_server=with_server, bind=bind,
                     is_listening=is_listening)
 
