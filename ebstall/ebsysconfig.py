@@ -3,7 +3,7 @@
 
 import os
 
-import ebaws.osutil
+import ebstall.osutil
 import util
 from sarge import run, Capture, Feeder
 from ebclient.eb_utils import EBUtils
@@ -257,7 +257,7 @@ class SysConfig(object):
         data = '# Daily certificate renewal for the PKI key management system (EJBCA LetsEncrypt)\n'
         data += '*/5 * * * * root /usr/local/bin/ebstall-cli -n --pid-lock 3 renew >/dev/null 2>/dev/null \n'
 
-        return self.install_crond_file('ebaws-renew', data)
+        return self.install_crond_file('ebstall-renew', data)
 
     #
     # OR detection / specific settings

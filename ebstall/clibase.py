@@ -427,7 +427,7 @@ class InstallerBase(Cmd):
 
         if uid != 0 and euid != 0:
             self.tprint('Error: This action requires root privileges')
-            self.tprint('Please, start the client with: sudo -E -H ebaws')
+            self.tprint('Please, start the client with: sudo -E -H ebstall')
             return False
         return True
 

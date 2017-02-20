@@ -1,7 +1,7 @@
 import logging
 import unittest
 import json
-from ebaws.config import Config
+from ebstall.config import Config
 
 
 __author__ = 'dusanklinec'

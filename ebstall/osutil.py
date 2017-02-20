@@ -19,7 +19,7 @@ from datetime import datetime
 import time
 import types
 import util
-from ebaws.util import normalize_string
+from ebstall.util import normalize_string
 
 logger = logging.getLogger(__name__)
 

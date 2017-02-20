@@ -686,7 +686,7 @@ def test_port_open(host='127.0.0.1', port=80, timeout=15, attempts=3, test_upper
 
             # read/write test on the dummy server - our.
             if test_upper_read_write or test_write_read or test_write:
-                random_nonce = 'ebaws-letsencrypt-test-' + (random_password(32).lower())
+                random_nonce = 'ebstall-letsencrypt-test-' + (random_password(32).lower())
 
                 if tcp:
                     sock.sendall(random_nonce)
