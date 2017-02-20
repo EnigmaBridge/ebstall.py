@@ -100,3 +100,9 @@ class SetupError(Error):
     def __init__(self, message=None, cause=None):
         super(SetupError, self).__init__(message=message, cause=cause)
 
+
+class AccessForbiddenError(Error):
+    """Access to the resource was forbidden"""
+    def __init__(self, message=None, cause=None):
+        super(AccessForbiddenError, self).__init__(message=message, cause=cause)
+
