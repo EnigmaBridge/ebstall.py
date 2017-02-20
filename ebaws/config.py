@@ -456,3 +456,21 @@ class EBSettings(object):
     def mysql_root_password(self, val):
         self.set_config('mysql_root_password', val)
 
+    # JBOSS home
+    @property
+    def jboss_home(self):
+        return self.get_config('jboss_home')
+
+    @jboss_home.setter
+    def jboss_home(self, val):
+        self.set_config('jboss_home', val)
+
+    # EJBCA home
+    @property
+    def ejbca_home(self):
+        return self.get_config('ejbca_home')
+
+    @ejbca_home.setter
+    def ejbca_home(self, val):
+        self.set_config('ejbca_home', val)
+

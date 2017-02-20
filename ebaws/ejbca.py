@@ -172,8 +172,13 @@ class Ejbca(object):
         """
         if 'EJBCA_HOME' in os.environ and len(os.environ['EJBCA_HOME']) > 0:
             return os.path.abspath(os.environ['EJBCA_HOME'])
-        else:
-            return os.path.abspath(self.EJBCA_HOME)
+
+        if self.eb_config is not None:
+            config_home = self.eb_config.ejbca_home
+            if config_home is not None:
+                return config_home
+
+        return os.path.abspath(self.EJBCA_HOME)
 
     def get_ejbca_sh(self):
         """
@@ -189,7 +194,12 @@ class Ejbca(object):
         """
         if 'JBOSS_HOME' in os.environ and len(os.environ['JBOSS_HOME']) > 0:
             return os.path.abspath(os.environ['JBOSS_HOME'])
-        else:
+
+        if self.eb_config is not None:
+            config_home = self.eb_config.jboss_home
+            if config_home is not None:
+                return config_home
+
             return os.path.abspath(self.JBOSS_HOME)
 
     def get_jboss_config(self):
