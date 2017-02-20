@@ -231,6 +231,24 @@ class SysConfig(object):
     # Cron
     #
 
+    def get_cron_file(self, file_name):
+        """
+        Returns cron file path
+        :param file_name:
+        :return:
+        """
+        return os.path.join('/etc/cron.d', os.path.basename(file_name))
+
+    def delete_cron_file(self, cron_path):
+        """
+        Deletes cron file
+        :param cron_path:
+        :return:
+        """
+        if os.path.exists(cron_path):
+            os.remove(cron_path)
+            self.audit.audit_delete(cron_path)
+
     def install_crond_file(self, file_name, file_contents):
         """
         Installs a new cron.d file name.
@@ -239,15 +257,21 @@ class SysConfig(object):
         :param file_contents:
         :return:
         """
-        cron_path = os.path.join('/etc/cron.d', os.path.basename(file_name))
-        if os.path.exists(cron_path):
-            os.remove(cron_path)
-            self.audit.audit_delete(cron_path)
+        cron_path = self.get_cron_file(file_name)
+        self.delete_cron_file(cron_path)
 
         with util.safe_open(cron_path, mode='w', chmod=0o644) as handle:
             handle.write(file_contents)
         self.audit.audit_file_write(cron_path)
         return 0
+
+    def remove_cron_renew(self):
+        """
+        Removes previous cron file
+        :return:
+        """
+        cron_path = self.get_cron_file('ebstall-renew')
+        self.delete_cron_file(cron_path)
 
     def install_cron_renew(self):
         """
