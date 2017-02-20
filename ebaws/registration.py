@@ -56,6 +56,7 @@ class InfoLoader(object):
         self.ami_local_ip = None
         self.ami_public_hostname = None
         self.ec2_metadata_executable = None
+        self.public_ip = None
         self.audit = audit
         self.sysconfig = sysconfig
 
@@ -65,6 +66,9 @@ class InfoLoader(object):
                 self.ec2_metadata_executable = candidate
         if self.ec2_metadata_executable is None:
             raise EnvError('ec2-metadata executable was not found')
+
+    def _load_ipfy(self, attempts=3):
+        return util.determine_public_ip(attempts=attempts, audit=self.audit)
 
     def load(self):
         self.env_check()
@@ -105,7 +109,9 @@ class InfoLoader(object):
                 self.ami_public_ip = c_val
             elif c_key == self.AMI_KEY_PUBLIC_HOSTNAME:
                 self.ami_public_hostname = c_val
-        pass
+
+        # load public IP
+        self.public_ip = self._load_ipfy()
 
 
 class EBRegAuth(object):
