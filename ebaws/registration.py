@@ -151,7 +151,7 @@ class Registration(object):
         self.reg_token = None
         self.auth_data = None
 
-        self.info_loader = InfoLoader(audit=self.audit, sysconfig=self.syscfg)
+        self.info_loader = InfoLoader(audit=self.audit, sysconfig=self.sysconfig)
         self.info_loader.load()
         pass
 
