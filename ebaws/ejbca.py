@@ -573,7 +573,7 @@ class Ejbca(object):
         :return:
         """
         self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule01', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule02', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
 
     def jboss_add_rewrite_vpn(self):
         """
@@ -581,7 +581,7 @@ class Ejbca(object):
         :return:
         """
         self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule01', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule02', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
 
     def jboss_configure_rewrite_ejbca(self):
         """
