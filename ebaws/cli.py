@@ -846,27 +846,27 @@ class Installer(InstallerBase):
         Sends the audit log
         :return:
         """
-        collision_src = '%s;%s;%s;%s;' \
-                        % (random.randint(0, 2 ** 64 - 1), int(time.time()), self.cfg_get_raw_ip(), self.version)
-
-        logger.debug('Generating collisions, src: %s' % collision_src)
-        collision_start = time.time()
-        collision_nonce = util.collision_generator(collision_src, prefix_len=20)
-        collision_total = '%s%s' % (collision_src, collision_nonce)
-        logger.debug('Collision generated, nonce: %d' % collision_nonce)
-
-        self.audit.audit_evt('collision-generated', nonce=collision_nonce, src=collision_src,
-                             elapsed=time.time() - collision_start)
-
-        audit_lines = self.audit.get_content()
-        audit_json = [json.loads(x) for x in audit_lines]
-
         if self.reg_svc is None:
             self.reg_svc = Registration(email=self.config.email, config=self.config,
                                         eb_config=self.eb_cfg, eb_settings=self.eb_settings,
                                         audit=self.audit, sysconfig=self.syscfg)
         for attempt in range(3):
             try:
+                collision_src = '%s;%s;%s;%s;' % (random.randint(0, 2 ** 64 - 1), int(time.time()),
+                                                  self.cfg_get_raw_ip(), self.version)
+
+                logger.debug('Generating collisions, src: %s' % collision_src)
+                collision_start = time.time()
+                collision_nonce = util.collision_generator(collision_src, prefix_len=20)
+                collision_total = '%s%s' % (collision_src, collision_nonce)
+                logger.debug('Collision generated, nonce: %d' % collision_nonce)
+
+                self.audit.audit_evt('collision-generated', nonce=collision_nonce, src=collision_src,
+                                     elapsed=time.time() - collision_start)
+
+                audit_lines = self.audit.get_content()
+                audit_json = [json.loads(x) for x in audit_lines]
+
                 return self.reg_svc.send_audit_logs(preimage=collision_total, log=audit_json)
 
             except Exception as e:
