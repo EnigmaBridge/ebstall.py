@@ -847,7 +847,6 @@ def net_size_to_mask(bits):
     for i in range(0, 4):
         sub = 8 if bits >= 8 else bits
         bits -= 8 if bits >= 8 else sub
-        print(sub, bits)
         segs.append((((2**sub) - 1) << (8-sub)))
     return '.'.join(['%d' % x for x in segs])
 
