@@ -25,6 +25,7 @@ import threading
 import time
 import types
 import psutil
+import requests
 from audit import AuditManager
 from builtins import input
 from builtins import bytes
@@ -1075,5 +1076,32 @@ def collision_generator(src, prefix_len=20, nonce_init=1):
                     break
         nonce += 1
 
+
+def determine_public_ip(attempts=3, audit=None):
+    """
+    Tries to determine public IP address by querying IPfy interface.
+    :return: IP address or None if detection was not successful.
+    """
+    url = 'https://api.ipify.org?format=json'
+    for attempt in range(attempts):
+        try:
+            if audit is not None:
+                audit.audit_evt('ipify-load')
+
+            res = requests.get(url=url, timeout=10)
+            res.raise_for_status()
+            js = res.json()
+
+            if audit is not None:
+                audit.audit_evt('ipify-loaded', response=js)
+
+            return js['ip']
+
+        except Exception as e:
+            logger.debug('Exception in obtaining IP address: ' % e)
+            if audit is not None:
+                audit.audit_exception(e, process='ipify')
+
+    return None
 
 
