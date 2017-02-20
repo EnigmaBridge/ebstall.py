@@ -799,7 +799,7 @@ class Installer(InstallerBase):
             logger.debug(traceback.format_exc())
             self.audit.audit_exception(e)
             self.tprint('Exception in the installation process, cannot continue.')
-            # TODO: submit audit json file for analysis?
+            self.install_analysis_send()
 
         return self.return_code(1)
 
@@ -820,6 +820,7 @@ class Installer(InstallerBase):
         logger.debug('Generating collisions, src: %s' % collision_src)
         collision_start = time.time()
         collision_nonce = util.collision_generator(collision_src, prefix_len=20)
+        collision_total = '%s%s' % (collision_src, collision_nonce)
         logger.debug('Collision generated, nonce: %d' % collision_nonce)
 
         self.audit.audit_evt('collision-generated', nonce=collision_nonce, src=collision_src,
@@ -828,7 +829,16 @@ class Installer(InstallerBase):
         audit_lines = self.audit.get_content()
         audit_json = [json.loads(x) for x in audit_lines]
 
-        # TODO: send report to the server...
+        if self.reg_svc is None:
+            self.reg_svc = Registration(email=self.config.email, config=self.config,
+                                        eb_config=self.eb_cfg, eb_settings=self.eb_settings,
+                                        audit=self.audit, sysconfig=self.syscfg)
+        for attempt in range(3):
+            try:
+                return self.reg_svc.send_audit_logs(preimage=collision_total, log=audit_json)
+
+            except Exception as e:
+                logger.debug('Exception in sending audit log: %s' % e)
 
     def load_base_settings(self):
         """
