@@ -530,9 +530,9 @@ class Installer(InstallerBase):
 
         if self.domain_is_ok:
             for domain in new_config.domains:
-                self.tprint('  https://%s:%d/ejbca/adminweb/' % (domain, self.ejbca.PORT))
+                self.tprint('  https://%s:%d' % (domain, self.ejbca.PORT))
         else:
-            self.tprint('  https://%s:%d/ejbca/adminweb/' % (self.cfg_get_raw_hostname(), self.ejbca.PORT))
+            self.tprint('  https://%s:%d' % (self.cfg_get_raw_hostname(), self.ejbca.PORT))
 
     def init_test_ejbca_ports_routable(self, public=False, with_server=True, host=None, *args, **kwargs):
         """
