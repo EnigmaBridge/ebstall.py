@@ -4,10 +4,18 @@
 import os
 import json
 import collections
+from ebstall.audit import AuditManager
+from ebstall import osutil
+import util
+import random
+import errors
+import logging
 
 """
 Basic database utils.
 """
+
+logger = logging.getLogger(__name__)
 
 
 # Database credentials loaded from the DB config file
@@ -93,5 +101,178 @@ def process_db_config(js):
     creds = DatabaseCredentials(constr=con_string, dbtype=dbtype, host=host, port=port, dbfile=dbfile,
                                 user=user, passwd=passwd, db=db, dbengine=dbengine, data=js)
     return creds
+
+
+class MySQL(object):
+    """
+    MySQL management, installation & stuff
+    """
+
+    def __init__(self, audit=None, sysconfig=None, write_dots=False, root_passwd=None, *args, **kwargs):
+        self.audit = audit if audit is not None else AuditManager(disabled=True)
+        self.sysconfig = sysconfig
+        self.write_dots = write_dots
+
+        self.secure_config = None
+        self.secure_query = None
+        self.root_passwd = root_passwd
+
+    def check_installed(self):
+        """
+        Checks if the MySQL is installed on the system
+        :return:
+        """
+        cmd = 'mysql --no-defaults --help >/dev/null 2>/dev/null'
+        ret, out, stderr = self.sysconfig.cli_cmd_sync(cmd=cmd)
+        return ret == 0
+
+    def _escape_single_quote(self, inp):
+        """
+        Escapes single quoted
+        :param inp:
+        :return:
+        """
+        return inp.replace("'", "\\'")
+
+    def _prepare_files(self, root_password=None):
+        """
+        Prepares configuration file.
+        :return:
+        """
+        self.secure_config = os.path.join('/tmp', 'ebstall-sql.cnf.%s' % random.randint(0, 65535))
+        util.safely_remove(self.secure_config)
+
+        if root_password is None:
+            root_password = self.root_passwd
+
+        self.audit.add_secrets(root_password)
+        with util.safe_open(self.secure_config, 'rw', chmod=0o600) as fh:
+            fh.write('# mysql_secure_installation config file\n')
+            fh.write('[mysql]\n')
+            fh.write('user=root\n')
+            fh.write('password=\'%s\'\n' % self._escape_single_quote(root_password))
+
+    def _sql_command(self, sql, root_password=None):
+        """
+        Executes sql command, returns return code, stdout, stderr
+        Uses configuration & root password already given.
+        :param sql:
+        :param root_password: optional root password - another from the one set in the self
+        :return:
+        """
+        self._prepare_files(root_password=root_password)
+        self.secure_query = os.path.join('/tmp', 'ebstall-sql.query.%s' % random.randint(0, 65535))
+        with util.safe_open(self.secure_config, 'w', chmod=0o600) as fh:
+            fh.write(sql)
+
+        cmd = 'mysql --defaults-file="%s" < "%s"' % (self.secure_config, self.secure_query)
+        res, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=self.write_dots)
+        self.audit.audit_sql(sql=sql, user='root', res_code=res, result=out, sensitive=True)
+
+        util.safely_remove(self.secure_query)
+        return res, out, err
+
+    def test_root_passwd(self, root_password=None):
+        """
+        Tries to test root password, returns True if valid.
+        _prepare_files() has to be already called.
+        :param root_password: optional root password - another from the one set in the self
+        :return: returns
+        """
+        res, out, err = self._sql_command('select 1;', root_password=root_password)
+        return res == 0
+
+    #
+    # Installation
+    #
+
+    def _is_maria(self):
+        """
+        Returns true if this OS uses maria DB by default
+        :return:
+        """
+        os = self.sysconfig.os
+        if os.name.lower() in ['centos', 'rhel'] and os.version_major >= 7:
+            return True
+
+        return False
+
+    def get_svc_map(self):
+        """
+        Returns service naming for different start systems
+        :return:
+        """
+        if self._is_maria():
+            return {
+                osutil.START_SYSTEMD: 'mariadb.service',
+                osutil.START_INITD: 'mariadb'
+            }
+        else:
+            return {
+                osutil.START_SYSTEMD: 'mysql.service',
+                osutil.START_INITD: 'mysqld'
+            }
+
+    def install(self, force=True):
+        """
+        Installs itself
+        :return: installer return code
+        """
+        package_name = 'mariadb-server' if self._is_maria() else 'mysql-server'
+        installed = False if force else self.check_installed()
+        if installed:
+            logger.debug('Mysql server already installed %s' % package_name)
+
+        cmd_exec = 'sudo yum install -y %s' % package_name
+        if self.sysconfig.get_packager() == osutil.PKG_APT:
+            cmd_exec = 'sudo apt-get install -y %s' % package_name
+
+        return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
+
+    def change_root_password(self, new_password):
+        """
+        Changes root password for the database
+        :param new_password:
+        :return:
+        """
+        if not self.test_root_passwd(new_password):
+            raise errors.AccessForbiddenError('Invalid mysql root password')
+
+        sql = "UPDATE mysql.user SET Password=PASSWORD('%s') WHERE User='root';" \
+              % self._escape_single_quote(new_password)
+
+        ret, out, err = self._sql_command(sql)
+        if ret == 0:
+            self.root_passwd = new_password
+        return ret
+
+    def configure(self):
+        """
+        Secure configuration - like mysql_secure_installation does
+        :return:
+        """
+        self._sql_command("DELETE FROM mysql.user WHERE User='';")
+        self._sql_command("DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');")
+        self._sql_command("DROP DATABASE test;")
+        self._sql_command("DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';")
+        self._sql_command("FLUSH PRIVILEGES;")
+
+    def enable(self):
+        """
+        Enables service after OS start
+        :return:
+        """
+        return self.sysconfig.enable_svc(self.get_svc_map())
+
+    def switch(self, start=None, stop=None, restart=None):
+        """
+        Starts/stops/restarts the service
+        :param start:
+        :param stop:
+        :param restart:
+        :return:
+        """
+        return self.sysconfig.switch_svc(self.get_svc_map(), start=start, stop=stop, restart=restart)
+
 
 
