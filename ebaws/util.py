@@ -1030,6 +1030,8 @@ def jboss_to_json(output):
     :param output:
     :return:
     """
+    if isinstance(output, types.ListType):
+        output = ''.join(output)
     parser = JbossParser()
     return parser.parse(output)
 
