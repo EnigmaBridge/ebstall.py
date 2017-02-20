@@ -829,7 +829,6 @@ class Installer(InstallerBase):
         audit_json = [json.loads(x) for x in audit_lines]
 
         # TODO: send report to the server...
-        logger.debug('Report: %s' % audit_json)
 
     def load_base_settings(self):
         """
