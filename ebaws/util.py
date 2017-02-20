@@ -8,6 +8,7 @@ import binascii
 import errno
 import grp
 import hashlib
+import math
 import hmac
 import logging
 import os
@@ -1031,5 +1032,46 @@ def jboss_to_json(output):
     """
     parser = JbossParser()
     return parser.parse(output)
+
+
+def collision_generator(src, prefix_len=20, nonce_init=1):
+    """
+    Simple SHA prefix collision generator.
+    Returns a nonce such that SHA1(src+nonce) = 00000....
+    where length of the zeros is prefix_len in bytes.
+
+    :param src:
+    :param prefix_len:
+    :param nonce_init:
+    :return:
+    """
+    nonce = nonce_init
+    prefix_len_4 = int(math.ceil(prefix_len / float(4)))
+    prefix_len_4_zero = '0' * prefix_len_4
+    prefix_len_is_mod = prefix_len % 4 == 0
+
+    prefix_len_bytes = int(math.ceil(prefix_len / float(8)))
+    prefix_len_mod_8 = prefix_len % 8
+    prefix_last_byte = (2**prefix_len_mod_8 - 1) << (8 - prefix_len_mod_8)
+
+    while True:
+        m = hashlib.sha1()
+        m.update(src + str(nonce))
+
+        if prefix_len_is_mod:
+            hx = m.hexdigest()
+            if hx[0:prefix_len_4] == prefix_len_4_zero:
+                return nonce
+        else:
+            dg = m.digest()
+            dgb = bytes(dg)
+            for c_byte in range(prefix_len_bytes):
+                if c_byte + 1 == prefix_len_bytes:
+                    if int(dgb[c_byte]) & prefix_last_byte == prefix_last_byte:
+                        return nonce
+                elif int(dgb[c_byte]) != 0:
+                    break
+        nonce += 1
+
 
 
