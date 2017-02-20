@@ -550,7 +550,7 @@ class Ejbca(object):
         pattern = pattern.replace('"', '\\"')
         subs = subs.replace('"', '\\"')
         flags = flags.replace('"', '\\"')
-        cmd = '/subsystem=web/virtual-server=default-host/rewrite=%s:add(pattern="%s", substitution="%s", flags="%s”)' \
+        cmd = '/subsystem=web/virtual-server=default-host/rewrite=%s:add(pattern="%s", substitution="%s", flags="%s")' \
               % (rule_id, pattern, subs, flags)
         ret, out, err = self.jboss_cmd(cmd)
         if ret != 0:
