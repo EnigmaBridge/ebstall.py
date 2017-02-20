@@ -112,7 +112,7 @@ class Installer(InstallerBase):
         if self.reg_svc is not None and self.reg_svc.info_loader is not None:
             return self.reg_svc.info_loader.ami_public_ip
 
-        info = InfoLoader()
+        info = InfoLoader(audit=self.audit, sysconfig=self.syscfg)
         info.load()
         return info.ami_public_ip
 
@@ -233,7 +233,8 @@ class Installer(InstallerBase):
 
         # Initialize helper classes for registration & configuration.
         self.reg_svc = Registration(email=self.config.email, config=self.config,
-                                    eb_config=self.eb_cfg, eb_settings=self.eb_settings, audit=self.audit)
+                                    eb_config=self.eb_cfg, eb_settings=self.eb_settings,
+                                    audit=self.audit, sysconfig=self.syscfg)
 
         self.soft_config = SoftHsmV1Config()
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
@@ -1058,7 +1059,7 @@ class Installer(InstallerBase):
 
         # Registration - for domain updates. Identity should already exist.
         reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug,
-                               audit=self.audit)
+                               audit=self.audit, sysconfig=self.syscfg)
         ret = reg_svc.load_identity()
         if ret != 0:
                 self.tprint('\nError! Could not load identity (key-pair is missing)')
@@ -1119,7 +1120,7 @@ class Installer(InstallerBase):
         eb_cfg = Core.get_default_eb_config()
         try:
             reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug,
-                                   audit=self.audit)
+                                   audit=self.audit, sysconfig=self.syscfg)
             domains = config.domains
             if domains is not None and isinstance(domains, types.ListType) and len(domains) > 0:
                 self.tprint('\nDomains currently registered: ')
@@ -1278,7 +1279,7 @@ class Installer(InstallerBase):
 
     def le_check_port(self, ip=None, letsencrypt=None, critical=False, one_attempt=False):
         if ip is None:
-            info = InfoLoader()
+            info = InfoLoader(audit=self.audit, sysconfig=self.syscfg)
             info.load()
             ip = info.ami_public_ip
 

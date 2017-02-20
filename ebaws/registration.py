@@ -45,7 +45,7 @@ class InfoLoader(object):
     AMI_KEYS = [AMI_KEY_ID, AMI_KEY_INSTANCE_ID, AMI_KEY_INSTANCE_TYPE, AMI_KEY_PLACEMENT, AMI_KEY_PRODUCT_CODES,
                 AMI_KEY_PUBLIC_IP, AMI_KEY_LOCAL_IP, AMI_KEY_PUBLIC_HOSTNAME]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, audit=None, sysconfig=None, *args, **kwargs):
         self.ami_id = None
         self.ami_instance_id = None
         self.ami_instance_type = None
@@ -56,6 +56,8 @@ class InfoLoader(object):
         self.ami_local_ip = None
         self.ami_public_hostname = None
         self.ec2_metadata_executable = None
+        self.audit = audit
+        self.sysconfig = sysconfig
 
     def env_check(self):
         for candidate in consts.EC2META_FILES:
@@ -117,7 +119,7 @@ class Registration(object):
     Takes care about EnigmaBridge registration process
     """
     def __init__(self, email=None, eb_config=None, config=None, debug=False, eb_settings=None, audit=None,
-                 *args, **kwargs):
+                 sysconfig=None, *args, **kwargs):
         self.email = email
         self.debug = debug
         self.eb_config = eb_config
@@ -125,6 +127,7 @@ class Registration(object):
         self.eb_settings = eb_settings
         self.user_reg_type = None
         self.audit = audit if audit is not None else AuditManager(disabled=True)
+        self.sysconfig = sysconfig
 
         self.key = None
         self.crt = None
@@ -148,7 +151,7 @@ class Registration(object):
         self.reg_token = None
         self.auth_data = None
 
-        self.info_loader = InfoLoader()
+        self.info_loader = InfoLoader(audit=self.audit, sysconfig=self.syscfg)
         self.info_loader.load()
         pass
 
