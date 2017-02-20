@@ -814,7 +814,7 @@ class Installer(InstallerBase):
             return 0
 
         self.tprint('Please wait for a while, generating report...')
-        collision_src = '%s;%s;%s;%s' \
+        collision_src = '%s;%s;%s;%s;' \
                         % (random.randint(0, 1000000), int(time.time()), self.cfg_get_raw_ip(), self.version)
 
         logger.debug('Generating collisions, src: %s' % collision_src)
