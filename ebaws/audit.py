@@ -558,8 +558,8 @@ class AuditManager(object):
             sub_log = collections.OrderedDict()
             cause = exc_value.cause
 
-            sub_log['exc_value'] = cause
-            sub_log['exc_type'] = cause.__class__
+            sub_log['exc_value'] = self._valueize(cause)
+            sub_log['exc_type'] = self._valueize(cause.__class__)
             sub_log['cause'] = self._audit_exception_cause(cause)
             return sub_log
         except:
