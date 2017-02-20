@@ -671,6 +671,22 @@ class AuditManager(object):
         self._kwargs_to_log_raw(log, sensitive_=sensitive, secrets_=None, **kwargs)
         self._log(log)
 
+    def audit_sql(self, sql=None, user=None, res_code=None, result=None, sensitive=False, **kwargs):
+        log = self._newlog('value')
+        if sql is not None:
+            log['sql'] = self._sec_fix(self._valueize(sql))
+        if user is not None:
+            log['user'] = self._valueize(user)
+        if res_code is not None:
+            log['res_code'] = self._valueize(res_code)
+        if result is not None:
+            log['result'] = self._sec_fix(self._valueize(result))
+        if sensitive:
+            log['sensitive'] = self._valueize(sensitive)
+
+        self._kwargs_to_log_raw(log, sensitive_=sensitive, secrets_=None, **kwargs)
+        self._log(log)
+
     def audit_evt(self, evt, *args, **kwargs):
         """
         General audit logging
