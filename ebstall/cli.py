@@ -275,6 +275,13 @@ class Installer(InstallerBase):
 
         return 0
 
+    def init_prepare_install(self):
+        """
+        Prepares installation - e.g., disables renew cron
+        :return:
+        """
+        self.syscfg.remove_cron_renew()
+
     def init_test_environment(self):
         """
         Tests if the given environment corresponds to the profile set.
@@ -676,6 +683,9 @@ class Installer(InstallerBase):
         if res != 0:
             self.return_code(res)
 
+        # Disable services which may interfere installation.
+        self.init_prepare_install()
+
         # System check proceeds (mem, network).
         # We do this even if we continue with previous registration, to have fresh view on the system.
         # Check if we have EJBCA resources on the drive
@@ -720,11 +730,6 @@ class Installer(InstallerBase):
         if res != 0:
             return self.return_code(res)
 
-        # Install to the OS - cron job & on boot service
-        res = self.init_install_os_hooks()
-        if res != 0:
-            return self.return_code(res)
-
         # Dump config & SoftHSM
         conf_file = Core.write_configuration(new_config)
         self.tprint('New configuration was written to: %s\n' % conf_file)
@@ -751,6 +756,11 @@ class Installer(InstallerBase):
 
         # LetsEncrypt enrollment
         res = self.init_le_install()
+        if res != 0:
+            return self.return_code(res)
+
+        # Install to the OS - cron job & on boot service
+        res = self.init_install_os_hooks()
         if res != 0:
             return self.return_code(res)
 

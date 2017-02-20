@@ -168,6 +168,9 @@ class VpnInstaller(Installer):
         self.ovpn.switch(stop=True)
         self.dnsmasq.switch(stop=True)
 
+        # Disable services which may interfere installation.
+        self.init_prepare_install()
+
         # System check proceeds (mem, network).
         # We do this even if we continue with previous registration, to have fresh view on the system.
         # Check if we have EJBCA resources on the drive
@@ -214,11 +217,6 @@ class VpnInstaller(Installer):
         # Assign a new dynamic domain for the host
         res, self.domain_is_ok = self.init_domains_check(reg_svc=self.reg_svc)
         new_config = self.reg_svc.config
-        if res != 0:
-            return self.return_code(res)
-
-        # Install to the OS - cron job & on boot service
-        res = self.init_install_os_hooks()
         if res != 0:
             return self.return_code(res)
 
@@ -270,6 +268,11 @@ class VpnInstaller(Installer):
 
         # Generate VPN client for the admin. openvpn link will be emailed
         self.ejbca.vpn_create_user(self.config.email, 'default')
+
+        # Install to the OS - cron job & on boot service
+        res = self.init_install_os_hooks()
+        if res != 0:
+            return self.return_code(res)
 
         # Test if main admin port of EJBCA is reachable - server is running. Public port needed for VPN config download
         self.init_test_ejbca_ports_reachability(check_public=True)
