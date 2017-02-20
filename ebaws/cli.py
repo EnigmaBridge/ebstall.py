@@ -9,8 +9,10 @@ import math
 import types
 import traceback
 import pid
+import json
 import time
 import util
+import random
 import audit
 import errors
 import textwrap
@@ -799,6 +801,34 @@ class Installer(InstallerBase):
             # TODO: submit audit json file for analysis?
 
         return self.return_code(1)
+
+    def install_analysis_send(self):
+        """
+        Prompts user to send audit file for analysis
+        :return:
+        """
+        confirmation = self.ask_proceed_quit('Do you want to submit audit log file for analysis to help '
+                                             'resolve problems? (y/n): ')
+        if confirmation != self.PROCEED_YES:
+            return 0
+
+        self.tprint('Please wait for a while, generating report...')
+        collision_src = '%s;%s;%s;%s' \
+                        % (random.randint(0, 1000000), int(time.time()), self.cfg_get_raw_ip(), self.version)
+
+        logger.debug('Generating collisions, src: %s' % collision_src)
+        collision_start = time.time()
+        collision_nonce = util.collision_generator(collision_src, prefix_len=20)
+        logger.debug('Collision generated, nonce: %d' % collision_nonce)
+
+        self.audit.audit_evt('collision-generated', nonce=collision_nonce, src=collision_src,
+                             elapsed=time.time() - collision_start)
+
+        audit_lines = self.audit.get_content()
+        audit_json = [json.loads(x) for x in audit_lines]
+
+        # TODO: send report to the server...
+        logger.debug('Report: %s' % audit_json)
 
     def load_base_settings(self):
         """
