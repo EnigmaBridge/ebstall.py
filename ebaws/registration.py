@@ -596,6 +596,69 @@ class Registration(object):
             raise InvalidResponse('domains not in the response')
         return resp_update
 
+    def install_status(self, status):
+        """
+        Uploads install status to the EB server.
+        :return:
+        """
+        # Request config.
+        api_data_req_body = {
+            'username': self.config.username,
+            'apikey': self.config.apikey
+        }
+
+        req = InstallStatusRequest(api_data=api_data_req_body, statusdata=status,
+                                   env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=req.__class__, data=api_data_req_body)
+
+        try:
+            resp = req.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=api_data_req_body, request=req.request, response=req.response,
+                                     env=self.config.env, config=self.eb_config)
+            logger.debug('API req: %s' % api_data_req_body)
+            logger.debug('API req_full: %s' % req.request)
+            logger.debug('API res: %s' % req.response)
+            raise
+
+        return resp
+
+    def send_audit_logs(self, preimage, log):
+        """
+        Sends audit log file to the EB server for debugging
+        :param preimage:
+        :param log:
+        :return:
+        """
+        api_data_req_body = {
+            'username': self.config.username,
+            'apikey': self.config.apikey
+        }
+
+        effort = {
+            'preimage': preimage,
+            'secondpreimage': util.sha1(preimage, as_hex=True),
+            'collision': 20
+        }
+
+        req = SendLogRequest(api_data=api_data_req_body, effort=effort, log=log,
+                             env=self.config.env, config=self.eb_config)
+        self.audit.audit_request(req_type=req.__class__, data=api_data_req_body)
+
+        try:
+            resp = req.call()
+        except Exception as e:
+            self.audit.audit_exception(e)
+            self.audit.audit_request(api_data=api_data_req_body, effort=effort, response=req.response,
+                                     env=self.config.env, config=self.eb_config)
+            logger.debug('API req: %s' % api_data_req_body)
+            logger.debug('API req_effort: %s' % effort)
+            logger.debug('API res: %s' % req.response)
+            raise
+
+        return resp
+
     def txt_le_validation_dns_data(self, domain_token_list):
         """
         Generates DNS data for LetsEncrypt DNS TXT domain validation

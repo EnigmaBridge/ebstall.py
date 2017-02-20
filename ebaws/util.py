@@ -1037,6 +1037,20 @@ def jboss_to_json(output):
     return parser.parse(output)
 
 
+def sha1(input, as_hex=False):
+    """
+    Returns sha1(
+    :param input:
+    :return: sha1(input)
+    """
+    m = hashlib.sha1()
+    m.update(input)
+    if as_hex:
+        return m.hexdigest()
+    else:
+        return m.digest()
+
+
 def collision_generator(src, prefix_len=20, nonce_init=1):
     """
     Simple SHA prefix collision generator.
