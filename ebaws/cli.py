@@ -808,19 +808,39 @@ class Installer(InstallerBase):
             self.tprint('Exception in the installation process, cannot continue.')
             self.install_analysis_send()
 
+        self.send_install_status()
         return self.return_code(1)
 
-    def install_analysis_send(self):
+    def init_get_install_status(self):
         """
-        Prompts user to send audit file for analysis
+        Returns install status as dict
         :return:
         """
-        confirmation = self.ask_proceed_quit('Do you want to submit audit log file for analysis to help '
-                                             'resolve problems? (y/n): ')
-        if confirmation != self.PROCEED_YES:
-            return 0
+        return {
+            'error': 'success (ok)' if self.init_finished_success else self.init_exception,
+            'duration': time.time() - self.init_started_time,
+            'email': self.config.email,
+            'ip': self.cfg_get_raw_ip(),
+            'version': self.version,
+            'time': time.time(),
+            'vpc': self.last_is_vpc
+        }
 
-        self.tprint('Please wait for a while, generating report...')
+    def send_install_status(self):
+        """
+        Submits installation status to the EB
+        :return:
+        """
+        status_data = self.init_get_install_status()
+        for attempt in range(3):
+            try:
+                return self.reg_svc.install_status(status=status_data)
+
+            except Exception as e:
+                logger.debug('Exception in sending install status: %s' % e)
+
+        return False
+
     def init_send_audit_log(self):
         """
         Sends the audit log
