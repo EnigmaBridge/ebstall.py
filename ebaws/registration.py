@@ -607,7 +607,7 @@ class Registration(object):
             'apikey': self.config.apikey
         }
 
-        req = InstallStatusRequest(api_data=api_data_req_body, statusdata=status,
+        req = InstallStatusRequest(api_data=api_data_req_body, status_data=status,
                                    env=self.config.env, config=self.eb_config)
         self.audit.audit_request(req_type=req.__class__, data=api_data_req_body)
 
