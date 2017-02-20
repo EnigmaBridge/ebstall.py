@@ -496,14 +496,20 @@ class SargeLogFilter(logging.Filter):
         if record.levelno != logging.DEBUG:
             return 1
 
-        # Parse messages are too verbose, skip.
-        if record.name == 'sarge.parse':
-            return 0
+        try:
+            # Parse messages are too verbose, skip.
+            if record.name == 'sarge.parse':
+                return 0
 
-        # Disable output processing message - length of one character.
-        msg = record.getMessage()
-        if 'queued chunk of length 1' in msg:
-            return 0
+            # Disable output processing message - length of one character.
+            msg = record.getMessage()
+            if 'queued chunk of length 1' in msg:
+                return 0
+
+            return 1
+
+        except Exception as e:
+            logger.error('Exception in log filtering: %s' % e)
 
         return 1
 
