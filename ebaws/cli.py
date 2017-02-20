@@ -61,6 +61,9 @@ class Installer(InstallerBase):
         self.previous_registration_continue = False
         self.domain_is_ok = False
         self.first_run = self.is_first_run()
+        self.init_started_time = None
+        self.init_finished_success = None
+        self.init_exception = None
 
         self.debug_simulate_vpc = False
         self.update_intro()
@@ -778,6 +781,7 @@ class Installer(InstallerBase):
         # Main try-catch block for the overall init operation.
         # noinspection PyBroadException
         try:
+            self.init_started_time = time.time()
             if not self.check_root() or not self.check_pid():
                 return self.return_code(1)
 
@@ -795,9 +799,12 @@ class Installer(InstallerBase):
             if ret != 0:
                 return self.return_code(ret)
 
+            self.init_finished_success = True
+
         except Exception as e:
             logger.debug(traceback.format_exc())
             self.audit.audit_exception(e)
+            self.init_exception = str(e)
             self.tprint('Exception in the installation process, cannot continue.')
             self.install_analysis_send()
 
