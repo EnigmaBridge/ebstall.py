@@ -72,9 +72,10 @@ class InfoLoader(object):
         # removed options:
         # -o local ip
         # -c product codes
-        out, err = util.run_script([self.ec2_metadata_executable] + ('-a -i -t -z -v -p -o'.split(' ')))
+        cmd = [self.ec2_metadata_executable] + ('-a -i -t -z -v -p -o'.split(' '))
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd)
 
-        lines = [x.strip() for x in out.split('\n')]
+        lines = [x.strip() for x in out]
         self.ami_results = {}
         for line in lines:
             if len(line) == 0:
