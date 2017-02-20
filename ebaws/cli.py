@@ -821,8 +821,13 @@ class Installer(InstallerBase):
             return 0
 
         self.tprint('Please wait for a while, generating report...')
+    def init_send_audit_log(self):
+        """
+        Sends the audit log
+        :return:
+        """
         collision_src = '%s;%s;%s;%s;' \
-                        % (random.randint(0, 2**64-1), int(time.time()), self.cfg_get_raw_ip(), self.version)
+                        % (random.randint(0, 2 ** 64 - 1), int(time.time()), self.cfg_get_raw_ip(), self.version)
 
         logger.debug('Generating collisions, src: %s' % collision_src)
         collision_start = time.time()
@@ -846,6 +851,21 @@ class Installer(InstallerBase):
 
             except Exception as e:
                 logger.debug('Exception in sending audit log: %s' % e)
+
+        return False
+
+    def install_analysis_send(self):
+        """
+        Prompts user to send audit file for analysis, if allowed, logs are uploaded
+        :return:
+        """
+        confirmation = self.ask_proceed_quit('Do you want to submit audit log file for analysis to help '
+                                             'resolve problems? (y/n): ')
+        if confirmation != self.PROCEED_YES:
+            return 0
+
+        self.tprint('Please wait for a while, generating report...')
+        return self.init_send_audit_log()
 
     def load_base_settings(self):
         """
