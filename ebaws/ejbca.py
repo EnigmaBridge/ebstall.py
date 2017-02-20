@@ -497,7 +497,7 @@ class Ejbca(object):
             raise errors.SetupError('Cannot get jboss rewrite rules')
 
         out_json = util.jboss_to_json(out)
-        if out_json is None or 'result' is not in out_json:
+        if out_json is None or 'result' not in out_json:
             raise errors.SetupError('Invalid jboss response on rewrite rules get')
         return out_json['result']
 
@@ -512,7 +512,7 @@ class Ejbca(object):
             raise errors.SetupError('Cannot get jboss rewrite rules')
 
         out_json = util.jboss_to_json(out)
-        if out_json is None or 'result' is not in out_json:
+        if out_json is None or 'result' not in out_json:
             raise errors.SetupError('Invalid jboss response on rewrite rules get')
         return out_json['result']
 
