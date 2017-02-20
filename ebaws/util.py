@@ -35,6 +35,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509.base import load_pem_x509_certificate
 from sarge import run, Capture, Feeder
+from jbossply.jbossparser import JbossParser
 
 import errors
 
@@ -1020,5 +1021,15 @@ def test_port_routable(host='127.0.0.1', port=80, tcp=True, with_server=True, bi
     audit.audit_evt('port-open-echo', port=port, host=host, tcp=tcp, attempts=attempts, timeout=timeout,
                     is_open=succ2)
     return succ2
+
+
+def jboss_to_json(output):
+    """
+    Converts jboss CLI output to JSON
+    :param output:
+    :return:
+    """
+    parser = JbossParser()
+    return parser.parse(output)
 
 

@@ -16,6 +16,7 @@ import osutil
 import re
 import letsencrypt
 import logging
+import errors
 from audit import AuditManager
 from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT
 
@@ -56,6 +57,7 @@ class Ejbca(object):
     # JBoss paths
     JBOSS_CLI = 'bin/jboss-cli.sh'
     JBOSS_KEYSTORE = 'standalone/configuration/keystore/keystore.jks'
+    JBOSS_CONFIG = 'standalone/configuration/standalone.xml'
 
     # MySQL connection
     MYSQL_HOST = 'localhost'
@@ -189,6 +191,13 @@ class Ejbca(object):
             return os.path.abspath(os.environ['JBOSS_HOME'])
         else:
             return os.path.abspath(self.JBOSS_HOME)
+
+    def get_jboss_config(self):
+        """
+        Returns JBoss configuration file - for redirects
+        :return:
+        """
+        return os.path.join(self.get_jboss_home(), self.JBOSS_CONFIG)
 
     def get_install_prop_file(self):
         return os.path.abspath(os.path.join(self.get_ejbca_home(), self.INSTALL_PROPERTIES_FILE))
@@ -476,6 +485,109 @@ class Ejbca(object):
         for cmd in cmds:
             self.jboss_cmd(cmd)
         self.jboss_reload()
+
+    def _jboss_get_rewrite_rules_list(self):
+        """
+        Returns list of rewrite rules defined for default virtual serer.
+        :return:
+        """
+        cmd = '/subsystem=web/virtual-server=default-host:read-children-names(child-type=rewrite)'
+        ret, out, err = self.jboss_cmd(cmd)
+        if ret != 0:
+            raise errors.SetupError('Cannot get jboss rewrite rules')
+
+        out_json = util.jboss_to_json(out)
+        if out_json is None or 'result' is not in out_json:
+            raise errors.SetupError('Invalid jboss response on rewrite rules get')
+        return out_json['result']
+
+    def _jboss_get_rewrite_rules(self):
+        """
+        Returns rewrite rules for the default virtual host with their definitions
+        :return:
+        """
+        cmd = '/subsystem=web/virtual-server=default-host:read-children-resources(child-type=rewrite)'
+        ret, out, err = self.jboss_cmd(cmd)
+        if ret != 0:
+            raise errors.SetupError('Cannot get jboss rewrite rules')
+
+        out_json = util.jboss_to_json(out)
+        if out_json is None or 'result' is not in out_json:
+            raise errors.SetupError('Invalid jboss response on rewrite rules get')
+        return out_json['result']
+
+    def _jboss_remove_rewrite_rule(self, rule):
+        """
+        Removes rewrite rule from the default virtual host
+        :param rule:
+        :return:
+        """
+        cmd = '/subsystem=web/virtual-server=default-host/rewrite=%s:remove' % rule
+        ret, out, err = self.jboss_cmd(cmd)
+        if ret != 0:
+            raise errors.SetupError('Cannot get jboss rewrite rules')
+        return ret
+
+    def _jboss_add_rewrite_rule(self, rule_id, pattern, subs, flags='L,QSA,R'):
+        """
+        Adds a new rewrite rule to the jboss
+        :param rule_id:
+        :param pattern:
+        :param subs:
+        :param flags:
+        :return:
+        """
+        pattern = pattern.replace('"', '\\"')
+        subs = subs.replace('"', '\\"')
+        flags = flags.replace('"', '\\"')
+        cmd = '/subsystem=web/virtual-server=default-host/rewrite=%s:add(pattern="%s", substitution="%s", flags="%s”)' \
+              % (rule_id, pattern, subs, flags)
+        ret, out, err = self.jboss_cmd(cmd)
+        if ret != 0:
+            raise errors.SetupError('Cannot set jboss rewrite rule %s' % rule_id)
+        return ret
+
+    def jboss_remove_all_rewrite_rules(self):
+        """
+        Removes all rewrite rules defined for the defualt virtual host.
+        Needs jboss reload
+        :return:
+        """
+        rules_list = self._jboss_get_rewrite_rules_list()
+        for rule_id in rules_list:
+            self._jboss_remove_rewrite_rule(rule_id)
+
+    def jboss_add_rewrite_ejbca(self):
+        """
+        Adds EJBCA default rewrite rules
+        :return:
+        """
+        self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule01', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+
+    def jboss_add_rewrite_vpn(self):
+        """
+        Adds default rewrites for VPN configuration
+        :return:
+        """
+        self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule01', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+
+    def jboss_configure_rewrite_ejbca(self):
+        """
+        Configures EJBCA rewrite rules
+        :return:
+        """
+        self.jboss_remove_all_rewrite_rules()
+        self.jboss_add_rewrite_ejbca()
+
+    def jboss_configure_rewrite_vpn(self):
+        """
+        Configures VPN rewrite rules
+        :return:
+        """
+        self.jboss_remove_all_rewrite_rules()
+        self.jboss_add_rewrite_vpn()
 
     #
     # Backup / env reset
@@ -1233,6 +1345,12 @@ class Ejbca(object):
 
         self.ant_client_tools()
         self.jboss_fix_privileges()
+
+        if self.do_vpn:
+            self.jboss_configure_rewrite_vpn()
+        else:
+            self.jboss_configure_rewrite_ejbca()
+
         self.jboss_reload()
         return self.ejbca_install_result
 
