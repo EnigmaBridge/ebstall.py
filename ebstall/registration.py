@@ -632,9 +632,12 @@ class Registration(object):
         :return:
         """
         api_data_req_body = {
-            'username': self.config.username,
-            'apikey': self.config.apikey
+            'username': self.config.username if self.config is not None else None,
+            'apikey': self.config.apikey if self.config is not None else None
         }
+
+        if api_data_req_body['apikey'] is None:
+            api_data_req_body = None
 
         effort = {
             'preimage': preimage,
