@@ -1107,7 +1107,7 @@ def determine_public_ip(attempts=3, audit=None):
             if audit is not None:
                 audit.audit_evt('ipify-load')
 
-            res = requests.get(url=url, timeout=10)
+            res = requests.get(url=url, timeout=15)
             res.raise_for_status()
             js = res.json()
 
@@ -1117,7 +1117,7 @@ def determine_public_ip(attempts=3, audit=None):
             return js['ip']
 
         except Exception as e:
-            logger.debug('Exception in obtaining IP address: ' % e)
+            logger.debug('Exception in obtaining IP address: %s' % e)
             if audit is not None:
                 audit.audit_exception(e, process='ipify')
 
