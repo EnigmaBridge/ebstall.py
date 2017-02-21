@@ -597,30 +597,16 @@ class SysConfig(object):
         # TODO: allow override via cmdline / configuration
 
         results = []
-
+        firewalls = []
         start_system = self.get_start_system()
         if start_system == osutil.START_SYSTEMD:
-
             firewalls = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
-            for fw in firewalls:
-                load_state, active_state = self._get_systemd_svc_state(fw)
-                loaded = load_state == 'loaded'
-                if not loaded:
-                    continue
-
-                active = active_state == 'active'
-                results.append((fw, active))
-
-        else:  # initd autodetect
-            path_base = '/etc/init.d/'
+        else:
             firewalls = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
-            for fw in firewalls:
-                init_file = os.path.join(path_base, fw)
-                if not os.path.exists(init_file):
-                    continue
 
-                ret = self.exec_shell('sudo %s status' % init_file, shell=True)
-                results.append((fw, ret == 0))
+        for fw in firewalls:
+            loaded, active = self.svc_status(fw)
+            results.append((fw, active))
 
         # Sort by running
         results.sort(key=lambda x: x[1])
