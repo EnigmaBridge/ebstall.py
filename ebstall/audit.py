@@ -365,17 +365,27 @@ class AuditManager(object):
         self.flush()
         with self.audit_lock:
             if self.disabled:
-                return
-
-            if self.audit_file is None or not os.path.exists(self.audit_file):
                 return []
 
+            if self.audit_file is None or not os.path.exists(self.audit_file):
+                return self.audit_records_buffered
+
+            return_json = []
             try:
                 with open(self.audit_file, 'r') as fa:
-                    return fa.readlines()
+                    lines = fa.readlines()
+                    for line in lines:
+                        try:
+                            return_json.append(json.loads(line))
+                        except ValueError:
+                            return_json.append(line)
+
             except Exception as e:
                 logger.debug(traceback.format_exc())
                 logger.error('Exception in audit log dump %s' % e)
+
+            return_json += self.audit_records_buffered
+            return return_json
 
     def audit_exec(self, cmd, cwd=None, retcode=None, stdout=None, stderr=None, exception=None, exctrace=None, *args, **kwargs):
         """

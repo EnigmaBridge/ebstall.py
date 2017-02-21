@@ -876,9 +876,7 @@ class Installer(InstallerBase):
                 self.audit.audit_evt('collision-generated', nonce=collision_nonce, src=collision_src,
                                      elapsed=time.time() - collision_start)
 
-                audit_lines = self.audit.get_content()
-                audit_json = [json.loads(x) for x in audit_lines]
-
+                audit_json = self.audit.get_content()
                 return self.reg_svc.send_audit_logs(preimage=collision_total, log=audit_json)
 
             except Exception as e:
