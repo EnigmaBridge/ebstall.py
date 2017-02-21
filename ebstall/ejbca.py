@@ -659,7 +659,7 @@ class Ejbca(object):
                 ret = self.sysconfig.exec_shell('sudo yum install -y python python-devel mysql-devel '
                                                 'redhat-rpm-config gcc')
             elif pkger == osutil.PKG_APT:
-                ret = self.sysconfig.exec_shell('sudo apt-get install python-pip python-dev libmysqlclient-dev')
+                ret = self.sysconfig.exec_shell('sudo apt-get install -y python-pip python-dev libmysqlclient-dev')
 
             else:
                 raise EnvironmentError('MySQLdb module not installed, code: %s' % ret)
