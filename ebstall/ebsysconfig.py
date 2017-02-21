@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from past.builtins import basestring
 import os
 
 import ebstall.osutil
@@ -317,14 +318,20 @@ class SysConfig(object):
         :param start_system:
         :return:
         """
-        try:
-            return svcmap[start_system]
-        except:
-            if start_system == osutil.START_SYSTEMD \
-                    and not svcmap.endswith('.service') \
-                    and not svcmap.endswith('.daemon'):
-                svcmap += '.service'
-            return svcmap
+        if isinstance(svcmap, types.DictionaryType):
+            try:
+                return svcmap[start_system]
+            except (KeyError, TypeError):
+                pass
+
+        if not isinstance(svcmap, basestring):
+            raise ValueError('Incorrect service specification')
+
+        if start_system == osutil.START_SYSTEMD \
+                and not svcmap.endswith('.service') \
+                and not svcmap.endswith('.daemon'):
+            svcmap += '.service'
+        return svcmap
 
     #
     # System changes / services
