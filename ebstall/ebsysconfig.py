@@ -390,6 +390,7 @@ class SysConfig(object):
     def switch_svc(self, svcmap, start=None, stop=None, restart=None):
         """
         Changes service state - starts, stops or restarts the service
+        :param svcmap: service name definition. string or service map init system -> service name.
         :param start:
         :param stop:
         :param restart:
