@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class AuditManager(object):
+
+    ROOT_SUBDIR = 'ebstall-audit'
+    CWD_SUBDIR = 'ebstall-audit'
+
     """
     Handles installer actions auditing
     """
@@ -47,6 +51,13 @@ class AuditManager(object):
             self.audit_records_buffered.append(log)
         self._autoflush()
 
+    def _get_root_dir(self):
+        """
+        Returns logging subdir in /root
+        :return:
+        """
+        return os.path.join('/root', self.ROOT_SUBDIR)
+
     def _filecheck(self):
         """
         Checks audit file, creates a new one if needed.
@@ -54,16 +65,18 @@ class AuditManager(object):
         """
         if self.audit_file is None:
             if self.to_root:
-                self.audit_file = os.path.join('/root', 'eb-audit.json')
+                self.audit_file = os.path.join(self._get_root_dir(), 'eb-audit.json')
                 try:
                     logger.debug('Trying audit file %s' % self.audit_file)
+                    util.make_or_verify_dir(self._get_root_dir(), mode=0o700)
                     return self._open_audit_file()
                 except (IOError, OSError):
                     pass
 
-            self.audit_file = os.path.join(os.getcwd(), 'eb-audit.json')
+            self.audit_file = os.path.join(os.getcwd(), self.CWD_SUBDIR, 'eb-audit.json')
             try:
                 logger.debug('Trying audit file %s' % self.audit_file)
+                util.make_or_verify_dir(os.path.join(os.getcwd(), self.CWD_SUBDIR), mode=0o700)
                 return self._open_audit_file()
             except (IOError, OSError):
                 pass
