@@ -557,6 +557,18 @@ class Ejbca(object):
             raise errors.SetupError('Cannot set jboss rewrite rule %s' % rule_id)
         return ret
 
+    def _jboss_enable_default_root(self):
+        """
+        Enables default root for JBoss - required for rewrites
+        /subsystem=web/virtual-server=default-host:write-attribute(name="enable-welcome-root",value=true)
+        :return:
+        """
+        cmd = '/subsystem=web/virtual-server=default-host:write-attribute(name="enable-welcome-root",value=true)'
+        ret, out, err = self.jboss_cmd(cmd)
+        if ret != 0:
+            raise errors.SetupError('Cannot set jboss default host')
+        return ret
+
     def jboss_remove_all_rewrite_rules(self):
         """
         Removes all rewrite rules defined for the defualt virtual host.
@@ -588,6 +600,7 @@ class Ejbca(object):
         Configures EJBCA rewrite rules
         :return:
         """
+        self._jboss_enable_default_root()
         self.jboss_remove_all_rewrite_rules()
         self.jboss_add_rewrite_ejbca()
 
@@ -596,6 +609,7 @@ class Ejbca(object):
         Configures VPN rewrite rules
         :return:
         """
+        self._jboss_enable_default_root()
         self.jboss_remove_all_rewrite_rules()
         self.jboss_add_rewrite_vpn()
 
