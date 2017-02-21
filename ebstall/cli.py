@@ -28,6 +28,7 @@ from letsencrypt import LetsEncrypt
 from ebclient.registration import ENVIRONMENT_PRODUCTION, ENVIRONMENT_DEVELOPMENT, ENVIRONMENT_TEST
 from pkg_resources import get_distribution, DistributionNotFound
 from clibase import InstallerBase
+import dbutil
 import logging
 import coloredlogs
 
@@ -56,6 +57,7 @@ class Installer(InstallerBase):
         self.reg_svc = None
         self.soft_config = None
         self.ejbca = None
+        self.mysql = None
         self.eb_cfg = None
 
         self.previous_registration_continue = False
@@ -240,6 +242,7 @@ class Installer(InstallerBase):
                                     audit=self.audit, sysconfig=self.syscfg)
 
         self.soft_config = SoftHsmV1Config()
+        self.mysql = dbutil.MySQL(sysconfig=self.syscfg, write_dots=True, root_passwd=self.get_db_root_password())
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit)
@@ -434,6 +437,106 @@ class Installer(InstallerBase):
             self.tprint('You can use these newly generated keys for your CA or generate another ones with:')
             for tmpcmd in key_gen_cmds:
                 self.tprint('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
+        return 0
+
+    def init_database(self):
+        """
+        Initializes configured database
+        :return:
+        """
+        db_type = self.get_db_type()
+        self.audit.audit_value(key='db_type', value=db_type)
+
+        if db_type == 'mysql':
+            return self.init_mysql()
+
+        return 0
+
+    def init_mysql_install_start(self):
+        """
+        Installs database, enables after start, starts it.
+        :return: 0 on success
+        """
+        installed = self.mysql.check_installed()
+        if not installed:
+            ret = self.mysql.install()
+            if ret != 0:
+                raise errors.SetupError('Error with mysql/mariadb installation')
+
+        ret = self.mysql.enable()
+        if ret != 0:
+            raise errors.SetupError('Error with setting mysql/mariadb to start after boot')
+
+        running = self.mysql.check_running()
+        if not running:
+            ret = self.mysql.switch(restart=True)
+            if ret != 0:
+                raise errors.SetupError('Error with mysql/mariadb start')
+
+        return 0
+
+    def init_mysql_try_check_root_passwd(self):
+        """
+        Checks root password, returns true password is valid
+        :return: True if password is valid, False otherwise
+        """
+        # MySQL password validity check
+        root_passwd_valid = False
+        try:
+            root_passwd_valid = self.mysql.test_root_passwd()
+        except:
+            pass
+
+        return root_passwd_valid
+
+    def init_mysql(self):
+        """
+        Installs MySQL database in a secure way, enables it after start and stats it up.
+        Root password is reset
+        :return: 0 on success
+        """
+        self.init_mysql_install_start()
+
+        # MySQL password validity check
+        root_passwd_valid = self.init_mysql_try_check_root_passwd()
+
+        # Password invalid, solution -> uninstall, do again.
+        if not root_passwd_valid:
+            self.tprint(self.t.red('\nError') + ': MySQL database has invalid root password configured, cannot connect')
+
+            confirmation = self.ask_proceed_quit('Do you want me to reinstall the database? '
+                                                 'All data will be lost. (y/n/q')
+            if confirmation != self.PROCEED_YES:
+                raise errors.SetupError('Cannot connect to the database')
+
+            self.mysql.uninstall()
+            self.init_mysql_install_start()
+
+            self.config.mysql_root_password = ''
+            self.mysql.root_passwd = ''
+
+            root_passwd_valid = self.init_mysql_try_check_root_passwd()
+            if not root_passwd_valid:
+                self.tprint(self.t.red('\nError') + ': MySQL database has invalid root password configured, '
+                                                    'cannot continue.')
+                raise errors.SetupError('Cannot connect to the database')
+
+        # Change root password to a new one.
+        new_root_password = util.random_password(16)
+        ret = self.mysql.change_root_password(new_password=new_root_password)
+        if ret != 0:
+            raise errors.SetupError('Error with mysql/mariadb root password change')
+
+        # Root password has been updated
+        self.config.mysql_root_password = new_root_password
+        self.mysql.root_passwd = new_root_password
+        Core.write_configuration(self.config)
+
+        # Secure configuration
+        ret = self.mysql.configure()
+        if ret != 0:
+            raise errors.SetupError('Error in configuring mysql/mariadb')
+
         return 0
 
     def init_le_install(self, ejbca=None):
@@ -733,6 +836,11 @@ class Installer(InstallerBase):
         # Dump config & SoftHSM
         conf_file = Core.write_configuration(new_config)
         self.tprint('New configuration was written to: %s\n' % conf_file)
+
+        # Database
+        res = self.init_database()
+        if res != 0:
+            return self.return_code(res)
 
         # SoftHSMv1 reconfigure
         res = self.init_softhsm(new_config=new_config)

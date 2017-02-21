@@ -224,6 +224,11 @@ class VpnInstaller(Installer):
         conf_file = Core.write_configuration(new_config)
         self.tprint('New configuration was written to: %s\n' % conf_file)
 
+        # Database
+        res = self.init_database()
+        if res != 0:
+            return self.return_code(res)
+
         # SoftHSMv1 reconfigure
         res = self.init_softhsm(new_config=new_config)
         if res != 0:
