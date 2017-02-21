@@ -242,7 +242,8 @@ class Installer(InstallerBase):
                                     audit=self.audit, sysconfig=self.syscfg)
 
         self.soft_config = SoftHsmV1Config()
-        self.mysql = dbutil.MySQL(sysconfig=self.syscfg, write_dots=True, root_passwd=self.get_db_root_password())
+        self.mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit,
+                                  write_dots=True, root_passwd=self.get_db_root_password())
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit)
