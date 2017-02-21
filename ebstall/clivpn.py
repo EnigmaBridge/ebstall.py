@@ -79,7 +79,7 @@ class VpnInstaller(Installer):
             raise ValueError('Email is required in VPN case')
 
     def do_init(self, line):
-        self.tprint('Going to install VPN server backed by Enigma Bridge FIPS140-2 encryption service.\n')
+        self.tprint('Going to install Private Space backed by Enigma Bridge FIPS140-2 encryption service.\n')
 
         # EJBCA installation
         init_res = Installer.do_init(self, line)
