@@ -549,6 +549,17 @@ class SysConfig(object):
     # Networking / Firewall
     #
 
+    def is_port_listening(self, port, tcp=True):
+        """
+        Returns a connection if the given port is listening locally, None otherwise
+        :param port:
+        :param tcp:
+        :return:
+        """
+        is_listening = util.is_port_listening(port=port, tcp=tcp)
+        self.audit.audit_evt('port-listening', port=port, tcp=True, is_listening=is_listening)
+        return is_listening
+
     def packet_forwarding(self, enable=True):
         """
         Enable packet forwarding

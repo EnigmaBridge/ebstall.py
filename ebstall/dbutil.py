@@ -133,9 +133,7 @@ class MySQL(object):
         Returns True if the mysql server is running
         :return:
         """
-        is_listening = util.is_port_listening(port=self.PORT, tcp=True)
-        self.audit.audit_evt('port-listening', port=self.PORT, host='127.0.0.1', tcp=True, is_listening=is_listening)
-        return is_listening
+        return self.sysconfig.is_port_listening(port=self.PORT, tcp=True)
 
     def _escape_single_quote(self, inp):
         """
@@ -242,7 +240,8 @@ class MySQL(object):
 
     def change_root_password(self, new_password):
         """
-        Changes root password for the database
+        Changes root password for the database. Throws an exception if the
+        original password is not valid or server is not running.
         :param new_password:
         :return:
         """
