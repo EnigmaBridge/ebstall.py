@@ -672,15 +672,29 @@ class Ejbca(object):
             if ret != 0:
                 raise OSError('Could not install MySQLdb, code: %s' % ret)
 
-    def _execute_sql(self, engine, sql, user='root'):
+    def _execute_sql(self, engine, sql, user='root', ignore_fail=False):
         """
         Executes SQL query on the engine, logs the query
         :param engine:
         :param sql:
+        :param user: user performing the query, just for auditing purposes
+        :param ignore_fail: if true mysql error is caught and logged
         :return:
         """
-        res = engine.execute(sql)
-        self.audit.audit_sql(sql=sql, user=user, result=res)
+        res = None
+        result_code = 0
+        try:
+            res = engine.execute(sql)
+        except Exception as e:
+            result_code = 1
+            logger.debug('Exception in sql: %s, %s' % (sql, e))
+            if ignore_fail:
+                self.audit.audit_exception(e)
+            else:
+                raise
+
+        finally:
+            self.audit.audit_sql(sql=sql, user=user, result=res, res_code=result_code)
 
     def reset_mysql_database(self):
         """
@@ -698,7 +712,7 @@ class Ejbca(object):
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker, scoped_session
             engine = create_engine(con_str, pool_recycle=3600)
-            self._execute_sql(engine, "DROP DATABASE IF EXISTS `%s`" % self.MYSQL_DB)
+            self._execute_sql(engine, "DROP DATABASE IF EXISTS `%s`" % self.MYSQL_DB, ignore_fail=True)
             self._execute_sql(engine, "CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
             self._execute_sql(engine, "GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
                               % (self.MYSQL_DB, self.MYSQL_USER, self.db_pass))
