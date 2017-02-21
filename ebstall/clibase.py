@@ -66,7 +66,7 @@ class InstallerBase(Cmd):
         self.email = None
         self.user_reg_type = None
 
-        self.audit = AuditManager(to_root=True, auto_flush=True)
+        self.audit = AuditManager(to_root=True, auto_flush=True, flush_enabled=False)
         self.syscfg = SysConfig(print_output=True, audit=self.audit)
 
         self.version = self.load_version()

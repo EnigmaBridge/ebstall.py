@@ -795,6 +795,7 @@ class Installer(InstallerBase):
             if not self.check_root() or not self.check_pid():
                 return self.return_code(1)
 
+            self.audit.set_flush_enabled(True)
             self.tprint('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
 
             # EB Settings read. Optional.
@@ -1086,6 +1087,7 @@ class Installer(InstallerBase):
         if not self.check_root() or not self.check_pid():
             return self.return_code(1)
 
+        self.audit.set_flush_enabled(True)
         config = Core.read_configuration()
         if config is None or not config.has_nonempty_config():
             self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
@@ -1178,6 +1180,7 @@ class Installer(InstallerBase):
         if not self.check_root() or not self.check_pid():
             return self.return_code(1)
 
+        self.audit.set_flush_enabled(True)
         config = Core.read_configuration()
         if config is None or not config.has_nonempty_config():
             self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
@@ -1286,6 +1289,7 @@ class Installer(InstallerBase):
         if not self.check_root() or not self.check_pid():
             return self.return_code(1)
 
+        self.audit.set_flush_enabled(True)
         self.tprint('Going to undeploy and remove EJBCA from the system')
         self.tprint('WARNING! This is a destructive process!')
         should_continue = self.ask_proceed(support_non_interactive=True)
