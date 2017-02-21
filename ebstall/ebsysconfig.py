@@ -607,7 +607,6 @@ class SysConfig(object):
         :return:
         """
         pkg = self.get_packager()
-        start_system = self.get_start_system()
 
         firewall_to_install = util.strip(preference)
         if firewall_to_install is None:
@@ -619,7 +618,7 @@ class SysConfig(object):
         if pkg == osutil.PKG_YUM:
             ret = self.exec_shell('sudo yum install -y %s' % firewall_to_install)
         elif pkg == osutil.PKG_APT:
-            ret = self.exec_shell('sudo yum install -y %s' % firewall_to_install)
+            ret = self.exec_shell('sudo apt-get install -y %s' % firewall_to_install)
         else:
             raise OSError('Unknown package manager, cannot install firewall %s' % firewall_to_install)
 
