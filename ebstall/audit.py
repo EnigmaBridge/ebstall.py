@@ -25,7 +25,7 @@ class AuditManager(object):
     Handles installer actions auditing
     """
     def __init__(self, audit_file=None, append=False, to_root=False, disabled=False, auto_flush=False,
-                 *args, **kwargs):
+                 flush_enabled=True, *args, **kwargs):
         self.append = append
         self.audit_file = audit_file
         self.audit_records_buffered = []
@@ -34,6 +34,7 @@ class AuditManager(object):
         self.to_root = to_root
         self.disabled = disabled
         self.auto_flush = auto_flush
+        self.flush_enabled = flush_enabled
 
         self.secrets = set()
         self.secrets_lock = Lock()
@@ -323,6 +324,15 @@ class AuditManager(object):
         with self.secrets_lock:
             self.secrets.clear()
 
+    def set_flush_enabled(self, flush_enabled):
+        """
+        Enables the flush to a file.
+        :param flush_enabled:
+        :return:
+        """
+        self.flush_enabled = flush_enabled
+        self.flush()
+
     def flush(self):
         """
         Flushes audit logs to the JSON append only file.
@@ -331,6 +341,8 @@ class AuditManager(object):
         """
         with self.audit_lock:
             if self.disabled:
+                return
+            if not self.flush_enabled:
                 return
 
             try:
