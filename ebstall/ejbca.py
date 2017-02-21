@@ -108,7 +108,7 @@ class Ejbca(object):
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
                  config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
-                 sysconfig=None, audit=None,
+                 sysconfig=None, audit=None, app=None,
                  *args, **kwargs):
 
         self.install_props = util.defval(install_props, {})
