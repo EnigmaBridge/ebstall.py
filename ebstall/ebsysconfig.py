@@ -617,10 +617,12 @@ class SysConfig(object):
 
         for fw in firewalls:
             loaded, active = self.svc_status(fw)
+            if not loaded:
+                continue
             results.append((fw, active))
 
         # Sort by running
-        results.sort(key=lambda x: x[1])
+        results.sort(key=lambda x: x[1], reverse=True)
         return results
 
     def _get_default_firewall(self):
