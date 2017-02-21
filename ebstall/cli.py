@@ -484,8 +484,9 @@ class Installer(InstallerBase):
         root_passwd_valid = False
         try:
             root_passwd_valid = self.mysql.test_root_passwd()
-        except:
-            pass
+        except Exception as e:
+            self.audit.audit_exception(e)
+            logger.debug('Exception in mysql password test: %s' % e)
 
         return root_passwd_valid
 
