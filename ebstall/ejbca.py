@@ -622,8 +622,8 @@ class Ejbca(object):
         Returns connection string to the MySQL database for root.
         :return:
         """
-        con_string = 'mysql://%s:%s@%s%s/%s' % ('root', self.get_database_root_password(),
-                                                self.MYSQL_HOST, ':%s' % self.MYSQL_PORT, self.MYSQL_DB)
+        con_string = 'mysql://%s:%s@%s%s' % ('root', self.get_database_root_password(),
+                                             self.MYSQL_HOST, ':%s' % self.MYSQL_PORT)
         return con_string
 
     def backup_mysql_database(self):
