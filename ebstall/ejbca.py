@@ -698,10 +698,10 @@ class Ejbca(object):
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker, scoped_session
             engine = create_engine(con_str, pool_recycle=3600)
-            self._execute_sql(engine, "DROP DATABASE `%s`" % self.MYSQL_DB)
+            self._execute_sql(engine, "DROP DATABASE IF EXISTS `%s`" % self.MYSQL_DB)
             self._execute_sql(engine, "CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
             self._execute_sql(engine, "GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
-                           % (self.MYSQL_DB, self.MYSQL_USER, self.db_pass))
+                              % (self.MYSQL_DB, self.MYSQL_USER, self.db_pass))
             self._execute_sql(engine, "FLUSH PRIVILEGES")
 
         except Exception as e:
