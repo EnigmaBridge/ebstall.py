@@ -246,6 +246,9 @@ class MySQL(object):
         :param new_password:
         :return:
         """
+        if not self.check_running():
+            raise errors.EnvError('MySQL server is not running')
+
         if not self.test_root_passwd(new_password):
             raise errors.AccessForbiddenError('Invalid mysql root password')
 
@@ -262,6 +265,9 @@ class MySQL(object):
         Secure configuration - like mysql_secure_installation does
         :return:
         """
+        if not self.check_running():
+            raise errors.EnvError('MySQL server is not running')
+
         self._sql_command("DELETE FROM mysql.user WHERE User='';")
         self._sql_command("DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');")
         self._sql_command("DROP DATABASE test;")
