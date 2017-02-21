@@ -638,6 +638,7 @@ class Ejbca(object):
         fh, backup_file = util.safe_create_with_backup(db_fpath, mode='w', chmod=0o600)
         fh.close()
 
+        self.audit.add_secrets(self.get_database_root_password())
         cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
               % (self.MYSQL_DB, 'root', self.get_database_root_password(), db_fpath)
 
