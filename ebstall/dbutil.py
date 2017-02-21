@@ -10,6 +10,7 @@ import util
 import random
 import errors
 import logging
+import shutil
 
 """
 Basic database utils.
@@ -250,6 +251,23 @@ class MySQL(object):
             raise OSError('Unrecognized packager')
 
         return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
+
+    def remove_data(self):
+        """
+        Destructive operation, removes mysql server data.
+        Has to be called only after mysql is stopped & uninstalled.
+        :return:
+        """
+        mysql_dirs = ['/var/lib/mysql', '/var/lib/mysql-files']
+        if self._is_maria():
+            mysql_dirs += ['/var/lib/mariadb']
+
+        for cur_dir in mysql_dirs:
+            if not os.path.exists(cur_dir):
+                continue
+
+            backup_dir = util.safe_new_dir(cur_dir)
+            shutil.move(cur_dir, backup_dir)
 
     def install(self, force=True):
         """
