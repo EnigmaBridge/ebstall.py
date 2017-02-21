@@ -108,6 +108,8 @@ class MySQL(object):
     MySQL management, installation & stuff
     """
 
+    PORT = 3306
+
     def __init__(self, audit=None, sysconfig=None, write_dots=False, root_passwd=None, *args, **kwargs):
         self.audit = audit if audit is not None else AuditManager(disabled=True)
         self.sysconfig = sysconfig
@@ -125,6 +127,15 @@ class MySQL(object):
         cmd = 'mysql --no-defaults --help >/dev/null 2>/dev/null'
         ret, out, stderr = self.sysconfig.cli_cmd_sync(cmd=cmd)
         return ret == 0
+
+    def check_running(self):
+        """
+        Returns True if the mysql server is running
+        :return:
+        """
+        is_listening = util.is_port_listening(port=self.PORT, tcp=True)
+        self.audit.audit_evt('port-listening', port=self.PORT, host='127.0.0.1', tcp=True, is_listening=is_listening)
+        return is_listening
 
     def _escape_single_quote(self, inp):
         """
