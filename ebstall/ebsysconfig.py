@@ -422,6 +422,55 @@ class SysConfig(object):
 
         return self.exec_shell(cmd_exec)
 
+    def svc_status(self, svcmap):
+        """
+        Returns True if the service is running.
+        Using init.d or systemctl status
+        :param svcmap: service name definition. string or service map init system -> service name.
+        :return: (found, running)
+        """
+        start_system = self.get_start_system()
+        svc = self._get_svc_desc(svcmap, start_system)
+
+        if start_system == osutil.START_INITD:
+            initd_path = os.path.join('/etc/init.d/', svc)
+            if not os.path.exists(initd_path):
+                return False, False
+
+            cmd_exec = 'sudo %s status' % initd_path
+            ret = self.exec_shell(cmd_exec, shell=True)
+            return True, ret == 0
+
+        elif start_system == osutil.START_SYSTEMD:
+            load_state, active_state = self._get_systemd_svc_state(svc)
+            loaded = load_state == 'loaded'
+            if not loaded:
+                return False, False
+
+            active = active_state == 'active'
+            return True, active
+
+        else:
+            raise OSError('Cannot enable service in this OS')
+
+    def svc_is_installed(self, svcmap):
+        """
+        Returns true if the service is installed in the start system
+        :param svcmap:
+        :return:
+        """
+        loaded, active = self.svc_status(svcmap=svcmap)
+        return loaded == True
+
+    def svc_is_running(self, svcmap):
+        """
+        Returns true if the service is running, false otherwise
+        :param svcmap:
+        :return:
+        """
+        loaded, active = self.svc_status(svcmap=svcmap)
+        return (loaded and active) == True
+
     def install_onboot_check(self):
         """
         Installs a service invocation after boot to reclaim domain again
