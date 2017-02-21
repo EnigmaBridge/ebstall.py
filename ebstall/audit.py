@@ -707,7 +707,17 @@ class AuditManager(object):
         self._log(log)
 
     def audit_sql(self, sql=None, user=None, res_code=None, result=None, sensitive=False, **kwargs):
-        log = self._newlog('value')
+        """
+        Logging SQL statements.
+        :param sql:
+        :param user:
+        :param res_code:
+        :param result:
+        :param sensitive:
+        :param kwargs:
+        :return:
+        """
+        log = self._newlog('sql')
         if sql is not None:
             log['sql'] = self._sec_fix(self._valueize(sql))
         if user is not None:
