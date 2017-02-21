@@ -284,6 +284,7 @@ class MySQL(object):
         if not self.test_root_passwd():
             raise errors.AccessForbiddenError('Invalid mysql root password')
 
+        self.audit.add_secrets(new_password)
         sql = "UPDATE mysql.user SET Password=PASSWORD('%s') WHERE User='root'; FLUSH PRIVILEGES;" \
               % self._escape_single_quote(new_password)
 
