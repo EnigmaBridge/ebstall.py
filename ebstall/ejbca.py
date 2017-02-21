@@ -325,7 +325,7 @@ class Ejbca(object):
         """
         Updates EJBCA property file with backup
         :param file:
-        :param content:
+        :param properties:
         :return:
         """
         prop_hdr = '#\n'
@@ -1116,7 +1116,7 @@ class Ejbca(object):
         :return: crl cron file string
         """
         crl = '# Check each half an hour if regeneration is needed\n'
-        crl += '*/30 * * * * %s %s vpn crl' % (self.JBOSS_USER, self.get_ejbca_sh())
+        crl += '*/30 * * * * %s %s vpn crl\n' % (self.JBOSS_USER, self.get_ejbca_sh())
         return crl
 
     def vpn_install_cron(self):
