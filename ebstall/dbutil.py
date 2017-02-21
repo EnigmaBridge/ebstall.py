@@ -222,19 +222,47 @@ class MySQL(object):
                 osutil.START_INITD: 'mysqld'
             }
 
+    def _get_pkg_name(self):
+        """
+        Returns package name for installer
+        :return:
+        """
+        return 'mariadb-server' if self._is_maria() else 'mysql-server'
+
+    def uninstall(self):
+        """
+        Removes database from the system. Used when root password is lost.
+        :return:
+        """
+        package_name = self._get_pkg_name()
+
+        cmd_exec = None
+        if self.sysconfig.get_packager() == osutil.PKG_APT:
+            cmd_exec = 'sudo apt-get remove -y %s' % package_name
+        elif self.sysconfig.get_packager() == osutil.PKG_YUM:
+            cmd_exec = 'sudo yum remove -y %s' % package_name
+        else:
+            raise OSError('Unrecognized packager')
+
+        return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
+
     def install(self, force=True):
         """
         Installs itself
         :return: installer return code
         """
-        package_name = 'mariadb-server' if self._is_maria() else 'mysql-server'
+        package_name = self._get_pkg_name()
         installed = False if force else self.check_installed()
         if installed:
             logger.debug('Mysql server already installed %s' % package_name)
 
-        cmd_exec = 'sudo yum install -y %s' % package_name
+        cmd_exec = None
         if self.sysconfig.get_packager() == osutil.PKG_APT:
             cmd_exec = 'sudo apt-get install -y %s' % package_name
+        elif self.sysconfig.get_packager() == osutil.PKG_YUM:
+            cmd_exec = 'sudo yum install -y %s' % package_name
+        else:
+            raise OSError('Unrecognized packager')
 
         return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
 
