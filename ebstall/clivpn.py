@@ -220,7 +220,7 @@ class VpnInstaller(Installer):
         if res != 0:
             return self.return_code(res)
 
-        # Dump config & SoftHSM
+        # Dump config
         conf_file = Core.write_configuration(new_config)
         self.tprint('New configuration was written to: %s\n' % conf_file)
 
