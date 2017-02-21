@@ -463,6 +463,8 @@ class Installer(InstallerBase):
             ret = self.mysql.install()
             if ret != 0:
                 raise errors.SetupError('Error with mysql/mariadb installation')
+        else:
+            logger.debug('MySQL server already installed')
 
         ret = self.mysql.enable()
         if ret != 0:
@@ -470,9 +472,11 @@ class Installer(InstallerBase):
 
         running = self.mysql.check_running()
         if not running:
-            ret = self.mysql.switch(restart=True)
+            ret = self.mysql.switch(start=True)
             if ret != 0:
                 raise errors.SetupError('Error with mysql/mariadb start')
+        else:
+            logger.debug('MySQL server running')
 
         return 0
 
@@ -511,7 +515,11 @@ class Installer(InstallerBase):
             if confirmation != self.PROCEED_YES:
                 raise errors.SetupError('Cannot connect to the database')
 
+            # Turn it off, uninstall (double is intended, mysql55-server is removed in the second one)
+            self.mysql.switch(stop=True)
             self.mysql.uninstall()
+            self.mysql.uninstall()
+            self.mysql.remove_data()
             self.init_mysql_install_start()
 
             self.config.mysql_root_password = ''
