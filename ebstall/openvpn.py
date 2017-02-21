@@ -96,7 +96,7 @@ class OpenVpn(object):
     PORT_NUM = 1194
     PORT_TCP = False
 
-    def __init__(self, sysconfig=None, write_dots=False, *args, **kwargs):
+    def __init__(self, sysconfig=None, audit=None, write_dots=False, *args, **kwargs):
         self.sysconfig = sysconfig
         self.write_dost = write_dots
 

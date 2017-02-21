@@ -24,7 +24,7 @@ class DnsMasq(object):
     """
     SETTINGS_FILE = '/etc/dnsmasq.conf'
 
-    def __init__(self, sysconfig=None, write_dots=False, *args, **kwargs):
+    def __init__(self, sysconfig=None, write_dots=False, audit=None, *args, **kwargs):
         self.sysconfig = sysconfig
         self.write_dots = write_dots
 

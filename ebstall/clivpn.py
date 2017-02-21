@@ -153,8 +153,8 @@ class VpnInstaller(Installer):
         """
         self.init_services()
         self.ejbca.do_vpn = True
-        self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, write_dots=True)
-        self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, write_dots=True)
+        self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
 
         # Get registration options and choose one - network call.
         self.reg_svc.load_auth_types()
