@@ -378,7 +378,7 @@ class InstallerBase(Cmd):
                 continue
 
             else:
-                question = 'Is this challenge correct? \'%s\' (Y/n/q):' % var
+                question = 'Is this challenge correct? \'%s\' (Y/n/q): ' % var
             confirmation = self.ask_proceed_quit(question)
             if confirmation == self.PROCEED_QUIT:
                 return self.return_code(1)
