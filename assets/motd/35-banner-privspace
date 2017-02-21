@@ -1,0 +1,9 @@
+#!/bin/sh
+version=$(rpm -q --qf '%{version}' system-release)
+cat << EOF
+
+   ---=== EnigmaBridge Private Space AMI ===---
+
+CLI: /usr/sbin/ebstall-privspace
+
+EOF

@@ -1,0 +1,9 @@
+#!/bin/sh
+version=$(rpm -q --qf '%{version}' system-release)
+cat << EOF
+
+    ---=== EnigmaBridge EJBCA AMI ===---
+
+CLI: /usr/sbin/ebstall-pki
+
+EOF
