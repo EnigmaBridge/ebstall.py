@@ -962,6 +962,12 @@ class Installer(InstallerBase):
         :return:
         """
         status_data = self.init_get_install_status()
+
+        # Install status won't fly if registration did not finish
+        if self.config is None or self.config.email is None or self.config.apikey is None:
+            logger.debug('Not sending install status, registration is not finished')
+            return False
+
         for attempt in range(3):
             try:
                 return self.reg_svc.install_status(status=status_data)
