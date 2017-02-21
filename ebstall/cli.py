@@ -505,7 +505,7 @@ class Installer(InstallerBase):
             self.tprint(self.t.red('\nError') + ': MySQL database has invalid root password configured, cannot connect')
 
             confirmation = self.ask_proceed_quit('Do you want me to reinstall the database? '
-                                                 'All data will be lost. (y/n/q')
+                                                 'All data will be lost. (y/n/q): ')
             if confirmation != self.PROCEED_YES:
                 raise errors.SetupError('Cannot connect to the database')
 
