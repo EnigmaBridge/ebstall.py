@@ -829,7 +829,7 @@ class Installer(InstallerBase):
         return {
             'error': 'success (ok)' if self.init_finished_success else self.init_exception,
             'status': 0x9000 if self.init_finished_success else 0x6f00,
-            'duration': int(time.time() - self.init_started_time),
+            'duration': int(time.time() - self.init_started_time) if self.init_started_time is not None else 0,
             'email': self.config.email,
             'ip': self.cfg_get_raw_ip(),
             'version': self.version,
