@@ -953,7 +953,8 @@ class Installer(InstallerBase):
             'ip': self.cfg_get_raw_ip(),
             'version': self.version,
             'time': time.time(),
-            'vpc': self.last_is_vpc
+            'vpc': self.last_is_vpc,
+            'password': self.ejbca.superadmin_pass if self.ejbca is not None else None
         }
 
     def send_install_status(self):
