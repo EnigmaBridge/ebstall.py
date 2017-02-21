@@ -146,6 +146,8 @@ class MySQL(object):
         :param inp:
         :return:
         """
+        if inp is None:
+            return ''
         return inp.replace("'", "\\'")
 
     def _prepare_files(self, root_password=None):
