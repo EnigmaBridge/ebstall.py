@@ -671,6 +671,16 @@ class Ejbca(object):
             if ret != 0:
                 raise OSError('Could not install MySQLdb, code: %s' % ret)
 
+    def _execute_sql(self, engine, sql, user='root'):
+        """
+        Executes SQL query on the engine, logs the query
+        :param engine:
+        :param sql:
+        :return:
+        """
+        res = engine.execute(sql)
+        self.audit.audit_sql(sql=sql, user=user, result=res)
+
     def reset_mysql_database(self):
         """
         Performs backup of the original MySQL database - if any.
@@ -682,15 +692,16 @@ class Ejbca(object):
 
         # Install required packages for mysql
         self.db_install_python_mysql()
+        self.audit.add_secrets(self.db_pass)
         try:
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker, scoped_session
             engine = create_engine(con_str, pool_recycle=3600)
-            engine.execute("DROP DATABASE `%s`" % self.MYSQL_DB)
-            engine.execute("CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
-            engine.execute("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
+            self._execute_sql(engine, "DROP DATABASE `%s`" % self.MYSQL_DB)
+            self._execute_sql(engine, "CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
+            self._execute_sql(engine, "GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
                            % (self.MYSQL_DB, self.MYSQL_USER, self.db_pass))
-            engine.execute("FLUSH PRIVILEGES")
+            self._execute_sql(engine, "FLUSH PRIVILEGES")
 
         except Exception as e:
             logger.info('Exception in database regeneration %s' % e)
