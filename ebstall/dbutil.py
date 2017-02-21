@@ -122,11 +122,15 @@ class MySQL(object):
     def check_installed(self):
         """
         Checks if the MySQL is installed on the system
-        :return:
+        :return: True if mysql server is installed
         """
         cmd = 'mysql --no-defaults --help >/dev/null 2>/dev/null'
         ret, out, stderr = self.sysconfig.cli_cmd_sync(cmd=cmd)
-        return ret == 0
+        if ret != 0:
+            return False
+
+        found, running = self.sysconfig.svc_status(self.get_svc_map())
+        return found
 
     def check_running(self):
         """
