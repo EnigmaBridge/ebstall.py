@@ -159,7 +159,7 @@ class MySQL(object):
             root_password = self.root_passwd
 
         self.audit.add_secrets(root_password)
-        with util.safe_open(self.secure_config, 'rw', chmod=0o600) as fh:
+        with util.safe_open(self.secure_config, 'w', chmod=0o600) as fh:
             fh.write('# mysql_secure_installation config file\n')
             fh.write('[mysql]\n')
             fh.write('user=root\n')
@@ -171,11 +171,11 @@ class MySQL(object):
         Uses configuration & root password already given.
         :param sql:
         :param root_password: optional root password - another from the one set in the self
-        :return:
+        :return: res, out, err
         """
         self._prepare_files(root_password=root_password)
         self.secure_query = os.path.join('/tmp', 'ebstall-sql.query.%s' % random.randint(0, 65535))
-        with util.safe_open(self.secure_config, 'w', chmod=0o600) as fh:
+        with util.safe_open(self.secure_query, 'w', chmod=0o600) as fh:
             fh.write(sql)
 
         cmd = 'mysql --defaults-file="%s" < "%s"' % (self.secure_config, self.secure_query)
@@ -183,6 +183,7 @@ class MySQL(object):
         self.audit.audit_sql(sql=sql, user='root', res_code=res, result=out, sensitive=True)
 
         util.safely_remove(self.secure_query)
+        util.safely_remove(self.secure_config)
         return res, out, err
 
     def test_root_passwd(self, root_password=None):
@@ -190,7 +191,7 @@ class MySQL(object):
         Tries to test root password, returns True if valid.
         _prepare_files() has to be already called.
         :param root_password: optional root password - another from the one set in the self
-        :return: returns
+        :return: returns True if password is OK
         """
         res, out, err = self._sql_command('select 1;', root_password=root_password)
         return res == 0
@@ -280,15 +281,19 @@ class MySQL(object):
         if not self.check_running():
             raise errors.EnvError('MySQL server is not running')
 
-        if not self.test_root_passwd(new_password):
+        if not self.test_root_passwd():
             raise errors.AccessForbiddenError('Invalid mysql root password')
 
-        sql = "UPDATE mysql.user SET Password=PASSWORD('%s') WHERE User='root';" \
+        sql = "UPDATE mysql.user SET Password=PASSWORD('%s') WHERE User='root'; FLUSH PRIVILEGES;" \
               % self._escape_single_quote(new_password)
 
         ret, out, err = self._sql_command(sql)
         if ret == 0:
             self.root_passwd = new_password
+
+        if not self.test_root_passwd():
+            raise errors.AccessForbiddenError('Invalid mysql root password')
+
         return ret
 
     def configure(self):
@@ -304,6 +309,7 @@ class MySQL(object):
         self._sql_command("DROP DATABASE test;")
         self._sql_command("DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';")
         self._sql_command("FLUSH PRIVILEGES;")
+        return 0
 
     def enable(self):
         """
