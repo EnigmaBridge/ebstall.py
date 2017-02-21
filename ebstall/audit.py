@@ -91,7 +91,7 @@ class AuditManager(object):
 
             self.audit_file = os.path.join('/tmp', 'eb-audit-%d.json' % int(time.time()))
 
-        if self.audit_ctr < 5:
+        if self.audit_ctr < 1:
             logger.debug('Audit file %s' % self.audit_file)
 
         return self._open_audit_file()
