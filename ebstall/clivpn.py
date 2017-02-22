@@ -152,9 +152,10 @@ class VpnInstaller(Installer):
         :return:
         """
         self.init_services()
-        self.ejbca.do_vpn = True
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.ejbca.do_vpn = True
+        self.ejbca.openvpn = self.ovpn
 
         # Get registration options and choose one - network call.
         self.reg_svc.load_auth_types()

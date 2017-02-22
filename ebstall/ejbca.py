@@ -108,7 +108,7 @@ class Ejbca(object):
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
                  config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
-                 sysconfig=None, audit=None, app=None,
+                 sysconfig=None, audit=None, app=None, openvpn=None,
                  *args, **kwargs):
 
         self.install_props = util.defval(install_props, {})
@@ -142,6 +142,7 @@ class Ejbca(object):
         self.audit = audit
         if self.audit is None:
             self.audit = AuditManager(disabled=True)
+        self.openvpn = openvpn
 
         # Remove secrets from audit logging
         self.audit.add_secrets([self.http_pass, self.superadmin_pass, self.db_pass, self.master_p12_pass])
@@ -347,6 +348,11 @@ class Ejbca(object):
         """
         self._setup_database_properties()
         self.web_props['vpn.ejbca.home'] = self.get_ejbca_home()
+
+        if self.do_vpn and self.openvpn is not None:
+            self.web_props['vpn.vpn.subnet.address'] = self.openvpn.get_ip_net()
+            self.web_props['vpn.vpn.subnet.size'] = self.openvpn.get_ip_net_size()
+            self.web_props['vpn.vpn.server'] = self.openvpn.get_ip_vpn_server()
 
         file_web = self.get_web_prop_file()
         file_ins = self.get_install_prop_file()
