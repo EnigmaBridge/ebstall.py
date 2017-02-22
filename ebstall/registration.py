@@ -70,6 +70,9 @@ class InfoLoader(object):
     def _load_ipfy(self, attempts=3):
         return util.determine_public_ip(attempts=attempts, audit=self.audit)
 
+    def _load_ip_eb(self, attempts=3):
+        return util.determine_public_ip_eb(attempts=attempts, audit=self.audit)
+
     def load(self):
         self.env_check()
 
@@ -111,7 +114,9 @@ class InfoLoader(object):
                 self.ami_public_hostname = c_val
 
         # load public IP
-        self.public_ip = self._load_ipfy()
+        self.public_ip = self._load_ip_eb()
+        if self.public_ip is None:
+            self.public_ip = self._load_ipfy()
 
 
 class EBRegAuth(object):

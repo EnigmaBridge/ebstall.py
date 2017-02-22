@@ -1124,3 +1124,47 @@ def determine_public_ip(attempts=3, audit=None):
     return None
 
 
+def determine_public_ip_eb(attempts=3, audit=None, host='hut6.enigmabridge.com'):
+    """
+    Tries to determine public IP address by querying EB interface.
+    :return: IP address or None if detection was not successful.
+    """
+    url = 'https://%s:8445/api/v1/apikey' % host
+    headers = {'X-Auth-Token': 'public'}
+
+    for attempt in range(attempts):
+        try:
+            body = {
+                'nonce': random_password(8),
+                'version': 1,
+                'function': 'clientip'
+            }
+
+            if audit is not None:
+                audit.audit_evt('eb-ip-load')
+
+            res = requests.post(url=url, json=body, headers=headers, timeout=15)
+            res.raise_for_status()
+            js = res.json()
+
+            if audit is not None:
+                audit.audit_evt('eb-ip-loaded', response=js)
+
+            resp = js['response']
+            ipv4 = resp['ipv4']
+            ipv6 = resp['ipv6']
+            if ipv4 is not None:
+                return ipv4
+            if ipv6 is not None:
+                return ipv6
+
+            raise ValueError('No IP returned')
+
+        except Exception as e:
+            logger.debug('Exception in obtaining IP address: %s' % e)
+            if audit is not None:
+                audit.audit_exception(e, process='eb-ip')
+
+    return None
+
+
