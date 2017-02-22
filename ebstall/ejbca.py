@@ -1131,6 +1131,28 @@ class Ejbca(object):
               % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(client_password))
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
+    def vpn_create_p12_otp(self, user='superadmin', p12_path=None):
+        """
+        Generates p12 OTP, returns the OTP code
+        :param user:
+        :param p12_path:
+        :return:
+        """
+        if p12_path is None:
+            p12_path = os.path.join(self.get_ejbca_home(), 'p12', 'superadmin.p12')
+
+        cmd = "vpn p12 --id '%s' --p12 '%s'" % (user, p12_path)
+        ret, out, err = self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)
+        if ret != 0:
+            raise errors.SetupError('Could not create P12 OTP download link')
+
+        for line in [x.strip() for x in out]:
+            if line.startswith('OTP_DOWNLOAD_TOKEN='):
+                token = line.split('=', 1)[2]
+                return token
+
+        raise errors.SetupError('Could not extract OTP token from the EJBCA CLI response')
+
     def vpn_get_crl_cron_file(self):
         """
         Returns contents of the cron.d file for generating a CRL
