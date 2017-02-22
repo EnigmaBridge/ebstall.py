@@ -355,6 +355,9 @@ class VpnInstaller(Installer):
         Throws an exception if something goes wrong.
         :return:
         """
+        self.dnsmasq.hostname = self.ejbca.hostname
+        self.dnsmasq.vpn_server_ip = self.ovpn.get_ip_vpn_server()
+
         ret = self.dnsmasq.install()
         if ret != 0:
             raise errors.SetupError('Error with dnsmasq installation')

@@ -27,6 +27,8 @@ class DnsMasq(object):
     def __init__(self, sysconfig=None, write_dots=False, audit=None, *args, **kwargs):
         self.sysconfig = sysconfig
         self.write_dots = write_dots
+        self.vpn_server_ip = '10.8.0.1'
+        self.hostname = 'private-space'
 
     #
     # server.conf reading & modification
@@ -59,9 +61,11 @@ class DnsMasq(object):
         """
 
         tpl = self.load_static_config()
-        tpl = tpl.replace('{{ dnsmasq_openvpn_ip }}', '10.8.0.1')
+        tpl = tpl.replace('{{ dnsmasq_openvpn_ip }}', self.vpn_server_ip)
         tpl += '\nserver=8.8.8.8'
         tpl += '\nserver=8.8.4.4'
+        tpl += '\n\naddress=/%s/%s' % (self.hostname, self.vpn_server_ip)
+        tpl += '\n'
 
         cpath = self.get_config_file_path()
         fh, backup = util.safe_create_with_backup(cpath, 'w', 0o644)
