@@ -600,6 +600,7 @@ class Ejbca(object):
         """
         self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
         self._jboss_add_rewrite_rule('rule02', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule03', '^/p12/?$', '/ejbca/vpn/p12.jsf', 'L,QSA,R')
 
     def jboss_configure_rewrite_ejbca(self):
         """
