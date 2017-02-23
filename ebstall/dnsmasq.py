@@ -64,7 +64,15 @@ class DnsMasq(object):
         tpl = tpl.replace('{{ dnsmasq_openvpn_ip }}', self.vpn_server_ip)
         tpl += '\nserver=8.8.8.8'
         tpl += '\nserver=8.8.4.4'
-        tpl += '\n\naddress=/%s/%s' % (self.hostname, self.vpn_server_ip)
+        tpl += '\n'
+
+        # Important in-vpn aliases
+        tpl += '\naddress=/%s/%s' % (self.hostname, self.vpn_server_ip)
+        tpl += '\naddress=/private-space/%s' % self.vpn_server_ip
+        tpl += '\naddress=/private-dimension/%s' % self.vpn_server_ip
+        tpl += '\naddress=/vpn/%s' % self.vpn_server_ip
+        tpl += '\naddress=/pki/%s' % self.vpn_server_ip
+        tpl += '\naddress=/enigma/%s' % self.vpn_server_ip
         tpl += '\n'
 
         cpath = self.get_config_file_path()
