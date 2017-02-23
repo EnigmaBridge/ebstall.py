@@ -386,7 +386,6 @@ class VpnInstaller(Installer):
         ret = self.nginx.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting nginx daemon')
-        print(self.nginx.load_html_root())
 
     def init_create_vpn_eb_keys(self):
         """
