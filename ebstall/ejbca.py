@@ -598,9 +598,11 @@ class Ejbca(object):
         Adds default rewrites for VPN configuration
         :return:
         """
-        self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule02', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule03', '^/p12/?$', '/ejbca/vpn/p12.jsf', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/vpn/index.jsf', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule02', '^/admin$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule03', '^/key/?$', '/ejbca/vpn/config.jsf', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule04', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+        self._jboss_add_rewrite_rule('rule05', '^/p12/?$', '/ejbca/vpn/p12.jsf', 'L,QSA,R')
 
     def jboss_configure_rewrite_ejbca(self):
         """
