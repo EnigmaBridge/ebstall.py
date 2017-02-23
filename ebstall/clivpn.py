@@ -268,6 +268,8 @@ class VpnInstaller(Installer):
 
         # Generate VPN client for the admin. openvpn link will be emailed
         self.ejbca.vpn_create_user(self.config.email, 'default')
+        token = self.ejbca.vpn_create_p12_otp()
+        self.config.p12_otp_superadmin = token
 
         # Install to the OS - cron job & on boot service
         res = self.init_install_os_hooks()

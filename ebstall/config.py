@@ -367,6 +367,15 @@ class Config(object):
     def client_id(self, val):
         self.set_config('client_id', val)
 
+    # p12 otp token
+    @property
+    def p12_otp_superadmin(self):
+        return self.get_config('p12_otp_superadmin', default=None)
+
+    @p12_otp_superadmin.setter
+    def p12_otp_superadmin(self, val):
+        self.set_config('p12_otp_superadmin', val)
+
 
 class EBSettings(object):
     """
