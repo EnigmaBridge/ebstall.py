@@ -69,7 +69,10 @@ class DnsMasq(object):
         # Important in-vpn aliases
         tpl += '\naddress=/%s/%s' % (self.hostname, self.vpn_server_ip)
         tpl += '\naddress=/private-space/%s' % self.vpn_server_ip
+        tpl += '\naddress=/private-space/%s' % self.vpn_server_ip
         tpl += '\naddress=/private-dimension/%s' % self.vpn_server_ip
+        tpl += '\naddress=/private-dimension/%s' % self.vpn_server_ip
+        tpl += '\naddress=/private/%s' % self.vpn_server_ip
         tpl += '\naddress=/vpn/%s' % self.vpn_server_ip
         tpl += '\naddress=/pki/%s' % self.vpn_server_ip
         tpl += '\naddress=/enigma/%s' % self.vpn_server_ip
