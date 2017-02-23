@@ -1,21 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from cmd2 import Cmd
-import argparse
-import sys
-import os
-import math
-import types
-import traceback
-import pid
 import time
 import util
 import errors
-import textwrap
 import openvpn
 import dnsmasq
-from blessed import Terminal
+import nginx
 from consts import *
 from core import Core
 from config import Config, EBSettings
@@ -50,6 +41,7 @@ class VpnInstaller(Installer):
         Installer.__init__(self, *args, **kwargs)
         self.ovpn = None
         self.dnsmasq = None
+        self.nginx = None
 
         self.vpn_keys = None, None, None
         self.vpn_crl = None
@@ -154,6 +146,7 @@ class VpnInstaller(Installer):
         self.init_services()
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
 
@@ -257,6 +250,7 @@ class VpnInstaller(Installer):
 
         # dnsmasq server - install, configure, enable, start
         self.init_dnsmasq()
+        self.init_nginx()
 
         # LetsEncrypt enrollment
         res = self.init_le_install()
@@ -371,6 +365,28 @@ class VpnInstaller(Installer):
         ret = self.dnsmasq.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting dnsmasq daemon')
+
+    def init_nginx(self):
+        """
+        Initializes Nginx
+        Throws an exception if something goes wrong.
+        :return:
+        """
+        #self.nginx.hostname = self.ejbca.hostname
+        ret = self.nginx.install()
+        if ret != 0:
+            raise errors.SetupError('Error with nginx installation')
+
+        self.nginx.configure_server()
+
+        ret = self.nginx.enable()
+        if ret != 0:
+            raise errors.SetupError('Error with setting nginx to start after boot')
+
+        ret = self.nginx.switch(restart=True)
+        if ret != 0:
+            raise errors.SetupError('Error in starting nginx daemon')
+        print(self.nginx.load_html_root())
 
     def init_create_vpn_eb_keys(self):
         """

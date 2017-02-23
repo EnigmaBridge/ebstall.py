@@ -27,7 +27,8 @@ install_requires = [
     'certbot-external-auth>=0.0.5',
     'SQLAlchemy',
     'shellescape',
-    'jbossply'
+    'jbossply',
+    'nginxparser_eb'
 ]
 
 # env markers in extras_require cause problems with older pip: #517
