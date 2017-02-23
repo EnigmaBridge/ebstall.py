@@ -1150,7 +1150,7 @@ class Ejbca(object):
 
         for line in [x.strip() for x in out]:
             if line.startswith('OTP_DOWNLOAD_TOKEN='):
-                token = line.split('=', 1)[2]
+                token = line.split('=', 1)[1]
                 return token
 
         raise errors.SetupError('Could not extract OTP token from the EJBCA CLI response')
