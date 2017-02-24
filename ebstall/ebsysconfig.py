@@ -165,7 +165,7 @@ class SysConfig(object):
         Return true if there is at least 2GB RAM available (RAM+SWAP)
         :return:
         """
-        return self.get_total_usable_mem() >= 1024*1024*1024*1.6
+        return self.get_total_usable_mem() >= 1024*1024*1024*1.9
 
     def get_swap_size_needed(self):
         """
@@ -173,7 +173,7 @@ class SysConfig(object):
         Minimally we add 1GB of swap.
         :return:
         """
-        base = 1024*1024*1024
+        base = int(1024*1024*1024*1.5)
 
         # If virt mem is < 1GB, add the difference
         virt_mem = self.get_virt_mem()
