@@ -4,6 +4,7 @@
 from __future__ import print_function
 import os
 import logging
+import errors
 import collections
 import re
 import util
@@ -24,6 +25,7 @@ class Nginx(object):
     Nginx server
     """
     SETTINGS_FILE = '/etc/nginx/nginx.conf'
+    DEFAULT_PRIVATE_SPACE_GIT = 'https://github.com/EnigmaBridge/privatespace.git'
 
     def __init__(self, sysconfig=None, write_dots=False, audit=None, *args, **kwargs):
         self.sysconfig = sysconfig
@@ -93,6 +95,33 @@ class Nginx(object):
 
         return None
 
+    def get_git_repo(self):
+        """
+        Returns a git repo with private space intro page
+        :return:
+        """
+        return self.DEFAULT_PRIVATE_SPACE_GIT
+
+    def templatize_file(self, file_path, ignore_not_found=False):
+        """
+        Fils in the template placeholders in the file.
+        :param file_path:
+        :param ignore_not_found:
+        :return:
+        """
+        if not os.path.exists(file_path):
+            if ignore_not_found:
+                return
+            raise errors.SetupError('Could not find file to templatize: %s' % file_path)
+
+        data = None
+        with open(file_path, 'r') as fh:
+            data = fh.read()
+            data = data.replace('{{ private_space_intro_link }}', 'https://%s:8442' % self.hostname)
+
+        with open(file_path, 'w') as fh:
+            fh.write(data)
+
     #
     # Configuration
     #
@@ -102,6 +131,27 @@ class Nginx(object):
         Perform base server configuration.
         :return: True if file was changed
         """
+
+        root = self.load_html_root()
+        if root is None:
+            raise errors.SetupError('Could not determine default root of the Nginx server')
+
+        if os.path.exists(root):
+            util.dir_backup(root, backup_dir='/tmp')
+            shutil.rmtree(root)
+
+        util.make_or_verify_dir(root)
+
+        # Clone git repo here
+        cmd = 'git clone "%s" "%s"' % (self.get_git_repo(), root)
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd)
+        if ret != 0:
+            raise errors.SetupError('Git clone of the private space repo failed')
+
+        # Update index.html
+        self.templatize_file(os.path.join(root, 'index.html'))
+        self.templatize_file(os.path.join(root, '404.html'), ignore_not_found=True)
+        self.templatize_file(os.path.join(root, '50x.html'), ignore_not_found=True)
 
         return False
 

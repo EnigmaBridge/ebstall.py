@@ -374,7 +374,7 @@ class VpnInstaller(Installer):
         Throws an exception if something goes wrong.
         :return:
         """
-        #self.nginx.hostname = self.ejbca.hostname
+        self.nginx.hostname = self.ejbca.hostname
         ret = self.nginx.install()
         if ret != 0:
             raise errors.SetupError('Error with nginx installation')
