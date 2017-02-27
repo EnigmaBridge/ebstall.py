@@ -21,6 +21,9 @@ echo -n '' > /home/ec2-user/.bash_history
 /bin/rm -rf /home/ec2-user/ebaws.py
 /bin/rm -rf /home/ec2-user/ebstall
 /bin/rm -rf /home/ec2-user/certbot-external-auth
+/bin/rm -rf /home/ec2-user/jbossply
+/bin/rm -rf /home/ec2-user/nginxparser
+/bin/rm -rf /home/ec2-user/client.py
 
 # root
 /bin/rm /root/.jboss-cli-history
@@ -107,6 +110,8 @@ find /opt/ejbca_ce_6_3_1_1/conf/ -type f -name 'install_0*.properties' -exec shr
 /bin/rm /tmp/keytool_*.log
 /bin/rm /tmp/openssl.log
 /bin/rm /tmp/openssl*.log
+/bin/rm /tmp/ebstall-sql.cnf.*
+/bin/rm /tmp/ebstall-sql.query.*
 /bin/rm -rf /tmp/hsperfdata*
 /bin/rm /tmp/yum_save_tx*
 /bin/rm /opt/ejbca_ce_6_3_1_1/p12/*
@@ -114,6 +119,18 @@ find /opt/jboss-eap-6.4.0/standalone/log/ -type f -exec shred -u {} \;
 find /opt/jboss-eap-6.4.0/standalone/configuration/standalone_xml_history/ -type f -exec shred -u {} \;
 /bin/rm -rf /opt/jboss-eap-6.4.0/standalone/configuration/standalone_xml_history/*
 /bin/rm -rf /opt/jboss-eap-6.4.0/standalone/tmp/work/jboss.web/default-host/*
+
+# Uninstall
+yum remove -y mysql-server
+yum remove -y mysql-server
+yum remove -y nginx
+yum remove -y dnsmasq
+/bin/rm -rf /var/lib/mysql*
+/bin/rm -rf /usr/share/nginx
+/bin/rm -rf /etc/my.cnf
+/bin/rm -rf /etc/dnsmasq.cnf
+/bin/rm -rf /etc/dnsmasq*
+/bin/rm -rf /etc/nginx*
 
 #
 # Identity
