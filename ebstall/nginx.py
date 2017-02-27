@@ -118,6 +118,8 @@ class Nginx(object):
         with open(file_path, 'r') as fh:
             data = fh.read()
             data = data.replace('{{ private_space_intro_link }}', 'https://%s:8442' % self.hostname)
+            data = data.replace('{{ private_space_name_full }}', self.hostname)
+            data = data.replace('{{ private_space_name_short }}', util.get_leftmost_domain(self.hostname))
 
         with open(file_path, 'w') as fh:
             fh.write(data)
