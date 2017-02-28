@@ -897,6 +897,13 @@ class Installer(InstallerBase):
         self.cli_sleep(5)
         return self.return_code(0)
 
+    def init_install_intro_text(self):
+        """
+        Shows installation intro text when installation starts.
+        :return:
+        """
+        self.tprint('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
+
     def do_init(self, line):
         """
         Initializes the EB client machine, new identity is assigned.
@@ -914,7 +921,7 @@ class Installer(InstallerBase):
                 return self.return_code(1)
 
             self.audit.set_flush_enabled(True)
-            self.tprint('Going to install PKI system and enrol it to the Enigma Bridge FIPS140-2 encryption service.\n')
+            self.init_install_intro_text()
 
             # EB Settings read. Optional.
             self.load_base_settings()

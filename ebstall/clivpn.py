@@ -70,12 +70,12 @@ class VpnInstaller(Installer):
         else:
             raise ValueError('Email is required in VPN case')
 
-    def do_init(self, line):
+    def init_install_intro_text(self):
+        """
+        Shows installation intro text when installation starts.
+        :return:
+        """
         self.tprint('Going to install Private Space backed by Enigma Bridge FIPS140-2 encryption service.\n')
-
-        # EJBCA installation
-        init_res = Installer.do_init(self, line)
-        return init_res
 
     def get_args_intro(self, parser):
         """
