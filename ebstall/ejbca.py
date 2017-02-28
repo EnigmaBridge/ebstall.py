@@ -720,6 +720,10 @@ class Ejbca(object):
         try:
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker, scoped_session
+            from warnings import filterwarnings
+            import MySQLdb as MySQLDatabase
+            filterwarnings('ignore', category=MySQLDatabase.Warning)
+
             engine = create_engine(con_str, pool_recycle=3600)
             self._execute_sql(engine, "DROP DATABASE IF EXISTS `%s`" % self.MYSQL_DB, ignore_fail=True)
             self._execute_sql(engine, "CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
