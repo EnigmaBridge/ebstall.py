@@ -1425,7 +1425,9 @@ class Installer(InstallerBase):
             if not should_continue:
                 return self.return_code(1)
 
-            ejbca = Ejbca(print_output=True, staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit)
+            config = Core.read_configuration()
+            ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=config,
+                          sysconfig=self.syscfg, audit=self.audit)
 
             self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
             ejbca.undeploy()

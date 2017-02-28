@@ -157,14 +157,14 @@ class Ejbca(object):
         Returns DB type to use in the installation
         :return: None for default (H2) or database type string, e.g., mysql
         """
-        return self.config.ejbca_db_type
+        return self.config.ejbca_db_type if self.config is not None else None
 
     def get_database_root_password(self):
         """
         Returns database root password for database setup. Used for external DBs (e.g, mysql)
         :return:
         """
-        return self.config.mysql_root_password
+        return self.config.mysql_root_password if self.config is not None else None
 
     def get_ejbca_home(self):
         """
