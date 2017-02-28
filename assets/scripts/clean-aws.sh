@@ -2,12 +2,14 @@
 
 # Undeploy current EJBCA version from the JBoss
 ebstall-privspace --non-interactive --yes --force undeploy_ejbca
+/bin/rm -rf /opt/jboss-eap-6.4.0/standalone/deployments/ejbca*
 
 # Uninstall services
 yum remove -y mysql-server dnsmasq openvpn nginx
 yum remove -y mysql-server
 
 # Stop the JBoss server
+sleep 5
 /etc/init.d/jboss-eap-6.4.0 stop
 
 # And disable the JBoss after the start

@@ -141,7 +141,7 @@ sudo mkdir -p /mnt/ebs
 sudo mount /dev/sdb1 /mnt/ebs
 
 # Remove file swap entry if you have it
-sudo vim /mnt/ebs/etc/fstab
+sudo sed -i "/\bswap\b/d" /mnt/ebs/etc/fstab
 
 # chroot to the image FS, delete all unnecessary data.
 chroot /mnt/ebs/
