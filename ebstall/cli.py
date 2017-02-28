@@ -1304,14 +1304,14 @@ class Installer(InstallerBase):
             return self.return_code(1)
 
         self.audit.set_flush_enabled(True)
-        config = Core.read_configuration()
-        if config is None or not config.has_nonempty_config():
-            self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
-            self.tprint(' Cannot continue. Have you run init already?\n')
-            return self.return_code(2)
-
-        eb_cfg = Core.get_default_eb_config()
         try:
+            config = Core.read_configuration()
+            if config is None or not config.has_nonempty_config():
+                self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
+                self.tprint(' Cannot continue. Have you run init already?\n')
+                return self.return_code(2)
+
+            eb_cfg = Core.get_default_eb_config()
             reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug,
                                    audit=self.audit, sysconfig=self.syscfg)
             domains = config.domains
