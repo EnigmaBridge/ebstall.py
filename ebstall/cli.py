@@ -1412,26 +1412,33 @@ class Installer(InstallerBase):
         if not self.check_root() or not self.check_pid():
             return self.return_code(1)
 
-        self.audit.set_flush_enabled(True)
-        self.tprint('Going to undeploy and remove EJBCA from the system')
-        self.tprint('WARNING! This is a destructive process!')
-        should_continue = self.ask_proceed(support_non_interactive=True)
-        if not should_continue:
-            return self.return_code(1)
+        try:
+            self.audit.set_flush_enabled(True)
+            self.tprint('Going to undeploy and remove EJBCA from the system')
+            self.tprint('WARNING! This is a destructive process!')
+            should_continue = self.ask_proceed(support_non_interactive=True)
+            if not should_continue:
+                return self.return_code(1)
 
-        self.tprint('WARNING! This is the last chance.')
-        should_continue = self.ask_proceed(support_non_interactive=True)
-        if not should_continue:
-            return self.return_code(1)
+            self.tprint('WARNING! This is the last chance.')
+            should_continue = self.ask_proceed(support_non_interactive=True)
+            if not should_continue:
+                return self.return_code(1)
 
-        ejbca = Ejbca(print_output=True, staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit)
+            ejbca = Ejbca(print_output=True, staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit)
 
-        self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
-        ejbca.undeploy()
-        ejbca.jboss_restart()
+            self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
+            ejbca.undeploy()
+            ejbca.jboss_restart()
 
-        self.tprint('\nDone.')
-        return self.return_code(0)
+            self.tprint('\nDone.')
+            return self.return_code(0)
+
+        except Exception as ex:
+            logger.debug(traceback.format_exc())
+            self.audit.audit_exception(ex)
+            self.tprint('Exception in the undeploy process.')
+            raise
 
     def do_test443(self, line):
         """Tests LetsEncrypt 443 port"""
