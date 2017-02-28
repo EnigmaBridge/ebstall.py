@@ -3,6 +3,10 @@
 # Undeploy current EJBCA version from the JBoss
 ebstall-privspace --non-interactive --yes --force undeploy_ejbca
 
+# Uninstall services
+yum remove -y mysql-server dnsmasq openvpn nginx
+yum remove -y mysql-server
+
 # Stop the JBoss server
 /etc/init.d/jboss-eap-6.4.0 stop
 
@@ -60,6 +64,7 @@ echo -n '' > /var/log/audit/audit.log
 /bin/rm /var/log/spooler-*
 /bin/rm /var/log/ebaws-onboot.log
 /bin/rm -rf /var/log/letsencrypt
+/bin/rm -rf /var/log/mysqld*
 
 sudo passwd -l root
 shred -u ~/.*history
@@ -78,6 +83,7 @@ find /root/ejbcadb.old -type f -exec shred -u {} \;
 /bin/rm /etc/softhsm.conf
 /bin/rm /etc/cron.d/ebaws-renew
 /bin/rm /etc/init.d/ebaws-onboot
+/bin/rm /etc/init.d/ejbca-vpn
 
 find /opt/ejbca_ce_*/conf/ -type f -name 'web_0*.properties' -exec shred -u {} \;
 find /opt/ejbca_ce_*/conf/ -type f -name 'install_0*.properties' -exec shred -u {} \;
@@ -98,6 +104,7 @@ echo '' > /opt/ejbca_ce_*/velocity.log
 /bin/rm -rf /etc/enigma/*
 /bin/rm -rf /etc/enigma.old
 /bin/rm -rf /etc/softhsm.old
+/bin/rm -rf /etc/openvpn
 /bin/rm -rf /root/ejbca*
 /bin/rm -rf /root/ejbca.passwords*
 /bin/rm -rf /root/ejbcadb.old
