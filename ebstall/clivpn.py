@@ -84,6 +84,22 @@ class VpnInstaller(Installer):
         """
         parser.description = 'EnigmaBridge Private Space installer'
 
+    def update_intro(self):
+        """
+        Updates intro text for CLI header - adds version to it.
+        :return:
+        """
+        self.intro = '-'*self.get_term_width() + \
+                     ('\n    Enigma Bridge Installer command line interface (v%s) \n' % self.version) + \
+                     '\n    usage - shows simple command list' + \
+                     '\n    init  - initializes the Private Space\n'
+
+        if self.first_run:
+            self.intro += '            run this when running for the first time\n'
+
+        self.intro += '\n    More info: https://enigmabridge.com/amazonpki \n' + \
+                      '-'*self.get_term_width()
+
     def do_test_vpn_ports(self, line):
         """Tests if VPN server ports are accessible"""
         public_ip = self.cfg_get_raw_ip()
