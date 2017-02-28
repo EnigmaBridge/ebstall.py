@@ -119,6 +119,7 @@ aws ec2 register-image --image-location enigma-ami/ejbca/ejbcav1/image.manifest.
 #
 VOLRES=`aws ec2 create-volume --size 8 --region $AMI_REGION --availability-zone ${AMI_REGION}a --volume-type gp2`
 echo $VOLRES
+sleep 5
 
 # The command will produce a row like: "VolumeId": "vol-38fcf689", export the value to the env var.
 export VOLUME_ID=`echo $VOLRES | python -c "import sys, json; print json.load(sys.stdin)['VolumeId']"`
@@ -126,6 +127,7 @@ echo $VOLUME_ID
 
 # Attach the volume to the AMI
 aws ec2 attach-volume --volume-id $VOLUME_ID --instance-id $INSTANCE_ID --device /dev/sdb --region $AMI_REGION
+sleep 5
 
 # DD-bundle to the new volume
 #   We can skip ec2-download-bundle, ec2-unbundle as we have the unbundled image ready
@@ -175,14 +177,17 @@ zerofree -v /dev/sdb1
 
 # Detach EBS
 aws ec2 detach-volume --volume-id $VOLUME_ID --region $AMI_REGION
+sleep 5
 
 # Create snapshot for the AMI
 SNAPRES=`aws ec2 create-snapshot --region $AMI_REGION --description "EnigmaBridge-PrivateSpace" --volume-id $VOLUME_ID`
 echo $SNAPRES
+sleep 5
 
 # The command will produce a row like: "SnapshotId": "snap-ef019d24", export the value to the env var.
 export SNAPSHOT_ID=`echo $SNAPRES | python -c "import sys, json; print json.load(sys.stdin)['SnapshotId']"`
 echo $SNAPSHOT_ID
+sleep 5
 
 # Verify snapshot - wait until the progress is 100%
 aws ec2 describe-snapshots --region $AMI_REGION --snapshot-id $SNAPSHOT_ID
