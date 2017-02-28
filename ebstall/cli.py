@@ -1591,14 +1591,14 @@ class Installer(InstallerBase):
         if not syscfg.is_enough_ram():
             total_mem = syscfg.get_total_usable_mem()
             self.tprint('\nTotal memory in the system is low: %d MB, installation requires at least 2GB'
-                        % int(math.ceil(total_mem/1024/1024)))
+                        % int(math.ceil(total_mem/1024.0/1024.0)))
 
             self.tprint('New swap file will be installed in /var')
             self.tprint('It will take approximately 2 minutes')
             code, swap_name, swap_size = syscfg.create_swap()
             if code == 0:
                 self.tprint('\nNew swap file was created %s %d MB and activated'
-                            % (swap_name, int(math.ceil(total_mem/1024/1024))))
+                            % (swap_name, int(math.ceil(swap_size/1024.0/1024.0))))
             else:
                 self.tprint('\nSwap file could not be created. Please, inspect the problem and try again')
                 return self.return_code(1)
