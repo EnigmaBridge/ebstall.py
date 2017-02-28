@@ -90,8 +90,8 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ebstall-pki = ebstall.cli:main',
-            'ebstall-privspace = ebstall.clivpn:main',
+            'ebstall-pki-cli = ebstall.cli:main',
+            'ebstall-privspace-cli = ebstall.clivpn:main',
         ],
     }
 )
