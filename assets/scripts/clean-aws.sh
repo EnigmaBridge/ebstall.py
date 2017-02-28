@@ -79,11 +79,17 @@ find /root/ejbcadb.old -type f -exec shred -u {} \;
 /bin/rm /etc/cron.d/ebaws-renew
 /bin/rm /etc/init.d/ebaws-onboot
 
-find /opt/ejbca_ce_6_3_1_1/conf/ -type f -name 'web_0*.properties' -exec shred -u {} \;
-find /opt/ejbca_ce_6_3_1_1/conf/ -type f -name 'install_0*.properties' -exec shred -u {} \;
+find /opt/ejbca_ce_*/conf/ -type f -name 'web_0*.properties' -exec shred -u {} \;
+find /opt/ejbca_ce_*/conf/ -type f -name 'install_0*.properties' -exec shred -u {} \;
+find /opt/ejbca_ce_*/conf/ -type f -name 'mail_0*.properties' -exec shred -u {} \;
+find /opt/ejbca_ce_*/conf/ -type f -name 'database_0*.properties' -exec shred -u {} \;
+/bin/rm /opt/ejbca_ce_*/conf/web.properties
+/bin/rm /opt/ejbca_ce_*/conf/install.properties
+/bin/rm /opt/ejbca_ce_*/conf/mail.properties
+/bin/rm /opt/ejbca_ce_*/conf/database.properties
+/bin/rm /opt/ejbca_ce_*/p12/*
+/bin/rm /opt/ejbca_ce_*/vpn/*
 
-/bin/rm /opt/ejbca_ce_6_3_1_1/conf/web.properties
-/bin/rm /opt/ejbca_ce_6_3_1_1/conf/install.properties
 /bin/rm -rf /var/softhsm
 /bin/rm -rf /var/lib/softhsm
 /bin/rm -rf /var/lib/softhsm.*
@@ -116,7 +122,7 @@ find /opt/ejbca_ce_6_3_1_1/conf/ -type f -name 'install_0*.properties' -exec shr
 /bin/rm -rf /tmp/hsperfdata*
 /bin/rm /tmp/yum_save_tx*
 /bin/rm -rf /tmp/tmux-*
-/bin/rm /opt/ejbca_ce_6_3_1_1/p12/*
+
 find /opt/jboss-eap-6.4.0/standalone/log/ -type f -exec shred -u {} \;
 find /opt/jboss-eap-6.4.0/standalone/configuration/standalone_xml_history/ -type f -exec shred -u {} \;
 /bin/rm -rf /opt/jboss-eap-6.4.0/standalone/configuration/standalone_xml_history/*
