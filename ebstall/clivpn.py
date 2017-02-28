@@ -108,6 +108,62 @@ class VpnInstaller(Installer):
                                           service='OpenVPN'))
         return failed_ports
 
+    def init_print_intro(self):
+        """
+        Prints introduction text before the installation.
+        :return:
+        """
+        self.tprint('')
+        self.cli_separator()
+        self.tprint('\nThe installation is about to start.')
+        self.tprint('During the installation we collect the following ec2 metadata for enrolment to '
+                    'Enigma Bridge CloudHSM: ')
+        self.tprint('  - ami-id')
+        self.tprint('  - instance-id (anonymized, HMAC)')
+        self.tprint('  - instance-type')
+        self.tprint('  - placement (AWS region)')
+        self.tprint('  - local-ipv4')
+        self.tprint('  - public-ipv4')
+        self.tprint('  - public-hostname')
+        self.tprint('')
+        self.tprint(self.wrap_term(single_string=True, max_width=80,
+                                   text='We will send the data above with your e-mail address (if entered) '
+                                        'to our EnigmaBridge registration server during this initialization. '
+                                        'We will use it to:'))
+        self.tprint('  - generate a dynamic DNS name (e.g., cambridge1.umph.io);')
+        self.tprint('  - create a client account at the Enigma Bridge CloudHSM service.')
+        self.tprint('')
+        self.tprint(self.wrap_term(single_string=True, max_width=80,
+                                   text='The Enigma Bridge account allows you access to secure hardware, which is used '
+                                        'to generate new RSA keys and use them securely to sign certificates, CRLs, '
+                                        'and OCSP responses.'))
+        self.tprint('')
+        text = 'The static DNS name allows you securely access the PKI web interface as ' \
+               'it will have a valid browser-trusted HTTPS certificate as soon as this ' \
+               'initialization is completed. No more manual over-ride of untrusted ' \
+               'certificates and security exceptions in your browser. ' \
+               'We need to communicate with a public certification authority LetsEncrypt. ' \
+               'LetsEncrypt will verify a certificate request is genuine either by connecting ' \
+               'to port 443 on this instance or by a DNS challenge on the domain ' \
+               'if 443 is blocked.'
+
+        self.tprint(self.wrap_term(single_string=True, max_width=80, text=text))
+        self.tprint('')
+        self.tprint(self.wrap_term(single_string=True, max_width=80,
+                             text='More details and our privacy policy can be found at: '
+                                  'https://enigmabridge.com/amazonpki'))
+        self.tprint('')
+        self.tprint('Please make sure the following ports are reachable: ')
+        self.tprint('  tcp: 443, 8442, 8443, udp: 1194')
+
+        self.tprint('')
+        text = 'In order to continue with the installation we need your consent with the network ' \
+               'communication the instance will be doing during the installation as outlined in' \
+               'the description above'
+        self.tprint(self.wrap_term(single_string=True, max_width=80,text=text))
+
+        self.tprint('')
+
     def init_show_p12_info(self, new_p12, new_config):
         """
         Informs user where to get P12 file to log into EJBCA admin panel.
