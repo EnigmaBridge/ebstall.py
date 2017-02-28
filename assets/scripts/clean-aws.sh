@@ -112,6 +112,7 @@ find /opt/ejbca_ce_6_3_1_1/conf/ -type f -name 'install_0*.properties' -exec shr
 /bin/rm /tmp/openssl*.log
 /bin/rm /tmp/ebstall-sql.cnf.*
 /bin/rm /tmp/ebstall-sql.query.*
+/bin/rm -rf /tmp/html_0*
 /bin/rm -rf /tmp/hsperfdata*
 /bin/rm /tmp/yum_save_tx*
 /bin/rm /opt/ejbca_ce_6_3_1_1/p12/*
