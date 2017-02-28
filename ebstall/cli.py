@@ -371,6 +371,8 @@ class Installer(InstallerBase):
         Initializes SoftHSM component
         :return: result
         """
+        self.tprint('\n')
+
         soft_config_backup_location = self.soft_config.backup_current_config_file()
         if soft_config_backup_location is not None:
             self.tprint('EnigmaBridge PKCS#11 token configuration has been backed up to: %s'
