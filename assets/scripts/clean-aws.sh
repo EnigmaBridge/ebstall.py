@@ -89,6 +89,7 @@ find /opt/ejbca_ce_*/conf/ -type f -name 'database_0*.properties' -exec shred -u
 /bin/rm /opt/ejbca_ce_*/conf/database.properties
 /bin/rm /opt/ejbca_ce_*/p12/*
 /bin/rm /opt/ejbca_ce_*/vpn/*
+echo '' > /opt/ejbca_ce_*/velocity.log
 
 /bin/rm -rf /var/softhsm
 /bin/rm -rf /var/lib/softhsm
