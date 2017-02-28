@@ -176,23 +176,35 @@ class VpnInstaller(Installer):
             new_config = self.config
 
         self.tprint('')
-        self.tprint(self.t.underline('Please setup your computer for secure connection your Private Space '
-                                     'administration:'))
+        self.tprint(self.t.underline('Please setup your computer to manage users of your Private Space'))
         time.sleep(0.5)
 
         public_hostname = self.ejbca.hostname if self.domain_is_ok else self.cfg_get_raw_hostname()
-        self.tprint('\nDownload p12 file: %s' % new_p12)
+        self.tprint('\nDownload your administration key: %s' % new_p12)
         self.tprint('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
-        self.tprint_sensitive('  Key import password is: %s' % self.ejbca.superadmin_pass)
-        self.tprint('\nThe following page can guide you through p12 import: https://enigmabridge.com/support/aws13076')
-        self.tprint('Once you import the p12 file to your computer browser/keychain you can connect to the PKI '
-                    'admin interface:')
+        self.tprint_sensitive('  Password protecting the key is: %s' % self.ejbca.superadmin_pass)
+        self.tprint('\nPlease use the following page for a detailed guide how to import the key file '
+                    '(aka, P12 file): https://enigmabridge.com/support/aws13076')
+        self.tprint('\nOnce you download the key file AND import it to your computer browser/keychain you can '
+                    'connect to the PKI/VPN admin interface:')
 
         if self.domain_is_ok:
             for domain in new_config.domains:
                 self.tprint('  https://%s:%d' % (domain, self.ejbca.PORT_PUBLIC))
         else:
             self.tprint('  https://%s:%d' % (self.cfg_get_raw_hostname(), self.ejbca.PORT_PUBLIC))
+
+        self.tprint('')
+        txt = self.t.green('IMPORTANT') +\
+              ': We recommend using the "Private Space" to download your administrator key and an ' \
+              'email with instructions will be delivered instantly (please check your spam/junk folder if' \
+              ' you can\'t find it). Using instructions above increases flexibility for management ' \
+              'but it also assumes expert knowledge and ability to foresee impact of your actions.'
+
+        self.tprint(self.wrap_term(single_string=True, max_width=80, text=txt))
+
+        self.tprint('\n\nPlease contact us at support@enigmabridge.com or '
+                    'https://enigmabridge.freshdesk.com if you need assistance.')
 
     def init_main_try(self):
         """
