@@ -133,7 +133,7 @@ class OpenVpn(object):
         Returns the mask of the network used by OpenVPN
         :return:
         """
-        util.net_size_to_mask(self.get_ip_net_size())
+        return util.net_size_to_mask(self.get_ip_net_size())
 
     def get_port(self):
         """
@@ -335,8 +335,9 @@ class OpenVpn(object):
         Perform base server configuration.
         :return: True if file was changed
         """
-        self.set_config_value('port', '1194')
-        self.set_config_value('proto', 'udp')
+        port, tcp = self.get_port()
+        self.set_config_value('port', '%s' % port)
+        self.set_config_value('proto', 'udp' if not tcp else 'tcp')
         self.set_config_value('cipher', 'AES-256-CBC')
         self.set_config_value('dh', 'dh2048.pem')
         self.set_config_value('ca', 'ca.crt')
