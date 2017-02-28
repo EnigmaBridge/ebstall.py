@@ -115,6 +115,7 @@ find /opt/ejbca_ce_6_3_1_1/conf/ -type f -name 'install_0*.properties' -exec shr
 /bin/rm -rf /tmp/html_0*
 /bin/rm -rf /tmp/hsperfdata*
 /bin/rm /tmp/yum_save_tx*
+/bin/rm -rf /tmp/tmux-*
 /bin/rm /opt/ejbca_ce_6_3_1_1/p12/*
 find /opt/jboss-eap-6.4.0/standalone/log/ -type f -exec shred -u {} \;
 find /opt/jboss-eap-6.4.0/standalone/configuration/standalone_xml_history/ -type f -exec shred -u {} \;
@@ -127,6 +128,8 @@ yum remove -y mysql-server
 yum remove -y nginx
 yum remove -y dnsmasq
 /bin/rm -rf /var/lib/mysql*
+/bin/rm -rf /var/lib/letsencrypt
+/bin/rm -rf /var/lib/nginx
 /bin/rm -rf /usr/share/nginx
 /bin/rm -rf /etc/my.cnf
 /bin/rm -rf /etc/dnsmasq.cnf
