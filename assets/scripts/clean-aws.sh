@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Undeploy current EJBCA version from the JBoss
-ebaws --non-interactive --yes --force undeploy_ejbca
+ebstall-privspace --non-interactive --yes --force undeploy_ejbca
 
 # Stop the JBoss server
 /etc/init.d/jboss-eap-6.4.0 stop
