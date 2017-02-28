@@ -143,12 +143,15 @@ sudo mount /dev/sdb1 /mnt/ebs
 # Remove file swap entry if you have it
 sudo sed -i "/\bswap\b/d" /mnt/ebs/etc/fstab
 
+# .. run the clean script clean-aws.sh
+# uninstall services, stop servers
+
 # chroot to the image FS, delete all unnecessary data.
 chroot /mnt/ebs/
 
-# .. run clean script, CTRL+D
+# .. run the clean script clean-aws.sh
 # ..
-# then additional cleaning
+# then additional cleaning - still in chroot.
 shred -u /etc/ssh/*_key /etc/ssh/*_key.pub
 find /etc/ssh/ -name '*key*' -exec shred -u -z {} \;
 find /root/.*history /mnt/ebs/home/*/.*history -exec shred -u -z {} \;
@@ -174,7 +177,7 @@ zerofree -v /dev/sdb1
 aws ec2 detach-volume --volume-id $VOLUME_ID --region $AMI_REGION
 
 # Create snapshot for the AMI
-SNAPRES=`aws ec2 create-snapshot --region $AMI_REGION --description "EnigmaBridge-EJBCA" --volume-id $VOLUME_ID`
+SNAPRES=`aws ec2 create-snapshot --region $AMI_REGION --description "EnigmaBridge-PrivateSpace" --volume-id $VOLUME_ID`
 echo $SNAPRES
 
 # The command will produce a row like: "SnapshotId": "snap-ef019d24", export the value to the env var.
@@ -183,6 +186,19 @@ echo $SNAPSHOT_ID
 
 # Verify snapshot - wait until the progress is 100%
 aws ec2 describe-snapshots --region $AMI_REGION --snapshot-id $SNAPSHOT_ID
+
+while :
+do
+    sleep 2
+    export SNAPSHOT_REPORT=`aws ec2 describe-snapshots --region $AMI_REGION --snapshot-id $SNAPSHOT_ID`
+    export SNAPSTATE=`echo $SNAPSHOT_REPORT | python -c "import sys, json; print json.load(sys.stdin)['Snapshots'][0]['State']"`
+    if [[ "${SNAPSTATE}" != "pending" ]]; then
+        break
+    fi
+done
+
+# Ring the bells so we know we are finished with the snapshot
+tput bel
 
 # Get Current AMI data - architecture, kernel id (if applicable), ramdisk id (if applicable)
 # [OPTIONAL]
