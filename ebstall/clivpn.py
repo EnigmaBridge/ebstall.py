@@ -329,7 +329,7 @@ class VpnInstaller(Installer):
         self.init_ejbca_vpn()
 
         # VPN server - install, configure, enable, start
-        self.tprint('Installing & configuring VPN server')
+        self.tprint('\n\nInstalling & configuring VPN server')
         self.init_vpn()
 
         # dnsmasq server - install, configure, enable, start
