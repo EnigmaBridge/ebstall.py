@@ -120,7 +120,25 @@ class InfoLoader(object):
 
 
 class EBRegAuth(object):
+    """
+    EnigmaBridge authentication method
+    https://api.enigmabridge.com/api/?json#client-endpoint-restful-api
+
+    Used when creating a new EnigmaBridge user. User may need to authenticate to the server
+    he has access to creating a new EB users or to prove he is not a bot.
+    One such auth method is email verification.
+    """
+
     def __init__(self, method=None, init_needed=False, init_data=None, *args, **kwargs):
+        """
+        Initializes new Auth method for EB API.
+        :param method: auth method name
+        :param bool init_needed: if true new user creation requires some kind of authentication from the user (manual
+         intervention)
+        :param init_data: initialization data used for new authentication.
+        :param args:
+        :param kwargs:
+        """
         self.method = method
         self.init_needed = init_needed
         self.init_data = init_data
@@ -261,6 +279,7 @@ class Registration(object):
     def load_auth_types(self):
         """
         Requests all available authentication methods allowed for given user type
+        https://api.enigmabridge.com/api/?json#get-client-authentication
         :return:
         """
 
