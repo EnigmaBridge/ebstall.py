@@ -1695,10 +1695,10 @@ class Installer(InstallerBase):
         envars = ['EJBCA_HOME', 'JBOSS_HOME']
         for var in envars:
             if var not in os.environ:
-                cmd = ' '.join(sys.argv)
-                self.tprint(self.t.red('Error')+ ': Environment variable missing: %s' % var)
-                self.tprint('Please, start the installer with: sudo -E -H %s' % cmd)
+                self.tprint(self.t.red('Error') + ': Environment variable missing: %s' % var)
+                self.tprint('Please, start the installer with: sudo -E -H')
                 return False
+        return True
 
     def init_argparse(self):
         """
