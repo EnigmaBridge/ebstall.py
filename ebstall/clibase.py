@@ -435,9 +435,17 @@ class InstallerBase(Cmd):
         self.audit.audit_evt('check-root', uid=uid, euid=euid)
 
         if uid != 0 and euid != 0:
-            self.tprint('Error: This action requires root privileges')
-            self.tprint('Please, start the client with: sudo -E -H ebstall')
+            cmd = ' '.join(sys.argv)
+            self.tprint(self.t.red('Error') + ': This action requires root privileges')
+            self.tprint('Please, start the installer with: sudo -E -H %s' % cmd)
             return False
+        return self.check_env()
+
+    def check_env(self):
+        """
+        Checks environment variables setup.
+        :return:
+        """
         return True
 
     def check_pid(self, retry=True):

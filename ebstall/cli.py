@@ -1686,6 +1686,20 @@ class Installer(InstallerBase):
         """
         parser.description = 'EnigmaBridge AWS client'
 
+    def check_env(self):
+        """
+        Checks if the ENV vars are set properly - look for EJBCA_HOME, JBOSS_HOME.
+        :return:
+        """
+        # TODO: for zero-install EJBCA & JBoss will be installed, dont check it here...
+        envars = ['EJBCA_HOME', 'JBOSS_HOME']
+        for var in envars:
+            if var not in os.environ:
+                cmd = ' '.join(sys.argv)
+                self.tprint(self.t.red('Error')+ ': Environment variable missing: %s' % var)
+                self.tprint('Please, start the installer with: sudo -E -H %s' % cmd)
+                return False
+
     def init_argparse(self):
         """
         Initializes argument parser object
