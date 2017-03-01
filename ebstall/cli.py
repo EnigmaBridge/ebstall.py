@@ -1024,7 +1024,8 @@ class Installer(InstallerBase):
         :return:
         """
         confirmation = self.ask_proceed_quit('Do you want to submit audit log file for analysis to help '
-                                             'resolve problems? (y/n): ')
+                                             'resolve problems? (y/n): ', support_non_interactive=True,
+                                             non_interactive_return=self.PROCEED_YES, quit_enabled=False)
         if confirmation != self.PROCEED_YES:
             return 0
 
