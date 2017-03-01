@@ -305,7 +305,7 @@ class Installer(InstallerBase):
         Handles also continued installation - interrupted previously to wait for auth challenge.
         :return: result
         """
-        if self.previous_registration_continue:
+        if self.previous_registration_continue and not self.noninteractive:
             tmp = 'Your validation challenge is in the ticket assigned to you in the ' \
                   'system https://enigmabridge.freshdesk.com for account %s.' % self.email
             self.tprint(self.wrap_term(single_string=True, max_width=self.get_term_width(), text=tmp))
