@@ -384,6 +384,7 @@ class VpnInstaller(Installer):
         if ret != 0:
             raise errors.SetupError('Cannot create new identity profiles in EJBCA for VPN')
 
+        time.sleep(2)
         ret = self.ejbca.vpn_create_server_certs()
         if ret != 0:
             raise errors.SetupError('Cannot create new certificate for VPN server')
