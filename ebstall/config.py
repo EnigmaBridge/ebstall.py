@@ -429,6 +429,15 @@ class EBSettings(object):
     def user_reg_type(self, val):
         self.set_config('user_reg_type', val)
 
+    # user_reg_token
+    @property
+    def user_reg_token(self):
+        return self.get_config('user_reg_token', default=None)
+
+    @user_reg_token.setter
+    def user_reg_token(self, val):
+        self.set_config('user_reg_token', val)
+
     # EB API token ?
     @property
     def api_token(self):

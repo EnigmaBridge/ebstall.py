@@ -270,7 +270,11 @@ class Registration(object):
         if self.user_reg_type is None:
             self.user_reg_type = 'test'
 
-        if self.eb_settings is not None and self.eb_settings.api_token is not None:
+        if self.reg_token is None:
+            if self.eb_settings is not None and self.eb_settings.user_reg_token is not None:
+                self.reg_token = self.eb_settings.user_reg_token
+
+        if self.reg_token is None and self.eb_settings is not None and self.eb_settings.api_token is not None:
             self.reg_token = self.eb_settings.api_token
 
         if self.reg_token is None:

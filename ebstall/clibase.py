@@ -65,6 +65,7 @@ class InstallerBase(Cmd):
         self.eb_settings = None
         self.email = None
         self.user_reg_type = None
+        self.user_reg_token = None
 
         self.audit = AuditManager(to_root=True, auto_flush=True, flush_enabled=False)
         self.syscfg = SysConfig(print_output=True, audit=self.audit)

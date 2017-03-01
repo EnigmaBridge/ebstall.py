@@ -1031,23 +1031,50 @@ class Installer(InstallerBase):
         self.tprint('Please wait for a while, generating report...')
         return self.init_send_audit_log()
 
+    def get_usr_reg_type(self):
+        """
+        Returns EB user registration type.
+        Priority: ENV[EB_USER_REG_TYPE], args, /opt/enigma, None
+        :return:
+        """
+        if 'EB_USER_REG_TYPE' in os.environ:
+            return os.environ['EB_USER_REG_TYPE']
+        if self.args is not None and self.args.reg_type is not None:
+            return self.args.reg_type
+        if self.eb_settings is not None and self.eb_settings.user_reg_type is not None:
+            return self.eb_settings.user_reg_type
+        return None
+
+    def get_usr_reg_token(self):
+        """
+        Returns EB user registration token.
+        Priority: ENV[EB_USER_REG_TOKEN], args, /opt/enigma, None
+        :return:
+        """
+        if 'EB_USER_REG_TOKEN' in os.environ:
+            return os.environ['EB_USER_REG_TOKEN']
+        if self.args is not None and self.args.reg_token is not None:
+            return self.args.reg_token
+        if self.eb_settings is not None and self.eb_settings.user_reg_token is not None:
+            return self.eb_settings.user_reg_token
+        return None
+
     def load_base_settings(self):
         """
         Loads EB settings - defining the image / host VM.
         :return:
         """
         self.eb_settings, eb_aws_settings_path = Core.read_settings()
-        if self.args.reg_type is not None:
-            self.user_reg_type = self.args.reg_type
-
-        if self.eb_settings is not None and self.user_reg_type is None:
-            self.user_reg_type = self.eb_settings.user_reg_type
+        self.user_reg_type = self.get_usr_reg_type()
+        self.user_reg_token = self.get_usr_reg_token()
 
         if self.eb_settings is None:
             self.eb_settings = EBSettings()
 
         if self.user_reg_type is not None:
             self.eb_settings.user_reg_type = self.user_reg_type
+        if self.user_reg_token is not None:
+            self.eb_settings.user_reg_token = self.user_reg_token
 
     def init_print_intro(self):
         """
