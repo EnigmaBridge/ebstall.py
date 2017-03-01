@@ -187,7 +187,7 @@ class Installer(InstallerBase):
         if config_exists and self.config.two_stage_registration_waiting:
             self.tprint('\nThere is a previous unfinished registration for email: %s' % self.config.email)
             should_continue = self.ask_proceed(question='Do you want to continue with this registration? (y/n): ',
-                                               support_non_interactive=True)
+                                               support_non_interactive=True, non_interactive_return=self.PROCEED_NO)
             self.previous_registration_continue = should_continue
 
         if config_exists and not self.previous_registration_continue:
