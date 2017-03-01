@@ -54,21 +54,25 @@ class VpnInstaller(Installer):
         parser = Installer.init_argparse(self)
         return parser
 
+    def is_email_required(self):
+        """
+        Returns true if the given scenario requires user email
+        :return:
+        """
+        return True
+
     def ask_for_email_reason(self, is_required=None):
         """
         Reason why we need email - required in VPN case.
         :param is_required:
         :return:
         """
-        if is_required:
-            self.tprint('We need your email address for:\n'
-                        '   a) identity verification for EnigmaBridge account \n'
-                        '   b) LetsEncrypt certificate registration\n'
-                        '   c) PKI setup - VPN configuration')
-            self.tprint('We will send you a verification email.')
-            self.tprint('Without a valid e-mail address you won\'t be able to continue with the installation\n')
-        else:
-            raise ValueError('Email is required in VPN case')
+        self.tprint('We need your email address for:\n'
+                    '   a) identity verification for EnigmaBridge account \n'
+                    '   b) LetsEncrypt certificate registration\n'
+                    '   c) PKI setup - VPN configuration')
+        self.tprint('We will send you a verification email.')
+        self.tprint('Without a valid e-mail address you won\'t be able to continue with the installation\n')
 
     def init_install_intro_text(self):
         """

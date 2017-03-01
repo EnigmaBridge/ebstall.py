@@ -272,6 +272,13 @@ class InstallerBase(Cmd):
         :return:
         """
 
+    def is_email_required(self):
+        """
+        Returns true if the given scenario requires user email
+        :return:
+        """
+        return False
+
     def ask_for_email(self, is_required=None):
         """
         Asks for Email
@@ -287,6 +294,7 @@ class InstallerBase(Cmd):
             is_required = True
         if is_required is None:
             is_required = False
+        is_required |= self.is_email_required()
 
         # Take email from the command line
         if self.args.email is not None:
