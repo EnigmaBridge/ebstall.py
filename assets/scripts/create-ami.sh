@@ -54,6 +54,7 @@ export AMI_ID=`ec2-metadata -a | cut -d ' ' -f 2`
 #   the same drive.
 #
 mkdir -p /mnt/build
+/bin/rm /mnt/build/image 2>/dev/null
 ec2-bundle-vol -k /tmp/cert/private-key.pem -c /tmp/cert/certificate.pem -u $AWS_ACC -r x86_64 \
   -e /tmp/cert,/mnt/build,/var/swap_0000.bin \
   -d /mnt/build --partition gpt --size 8192 --no-filter
