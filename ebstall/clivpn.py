@@ -118,6 +118,12 @@ class VpnInstaller(Installer):
 
         self.tprint('Port %s, echo server, reachable: %s' % (port, res_value))
 
+    # def do_debug_ovpn_config(self, line):
+    #     """VPN configuration"""
+    #     self.init_services()
+    #     self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+    #     self.ovpn.configure_server()
+
     def init_test_ports_pre_install_res(self, host=None, *args, **kwargs):
         failed_ports = Installer.init_test_ports_pre_install_res(self, host, *args, **kwargs)
 
