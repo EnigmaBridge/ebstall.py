@@ -129,5 +129,5 @@ if [ "$NO_SELF_UPGRADE" != 1 -a "$UPDATE_ALLOWED" == 1 ]; then
 fi
 
 # Invoke the python client directly
-/usr/local/bin/ebstall-pki-cli "$@"
+`which ebstall-pki-cli` "$@"
 
