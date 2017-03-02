@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 from __future__ import unicode_literals
+from past.builtins import basestring
 
 import binascii
 import errno
@@ -770,6 +771,23 @@ def strip(x):
         return [y.strip() if y is not None else y for y in x]
     else:
         return x.strip()
+
+
+def is_empty(x):
+    """
+    Returns true if object is empty or none
+    :param x:
+    :return:
+    """
+    if x is None:
+        return True
+    if isinstance(x, types.ListType) \
+            or isinstance(x, types.DictType) \
+            or isinstance(x, types.TupleType) \
+            or isinstance(x, set) \
+            or isinstance(x, basestring):
+        return len(x) == 0
+    raise ValueError('Unknown type for %s' % x)
 
 
 def startswith(x, testz):
