@@ -134,7 +134,7 @@ SCRIPT=ebstall-privspace-cli
 if [ -f "/usr/local/bin/${SCRIPT}" ]; then
     /usr/local/bin/${SCRIPT} "$@"
 else
-    `which ${SCRIPT} "$@"`
+    `which ${SCRIPT}` "$@"
 fi
 
 
