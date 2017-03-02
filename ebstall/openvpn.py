@@ -213,9 +213,11 @@ class OpenVpn(object):
         # default position - end of the config file
         last_cmd_idx = len(self.server_config_data)-1
         file_changed = False
+        single_directive = False  # no parameter given
 
         if values is None:
-            values = []
+            single_directive = True
+            values = [None]
 
         if not isinstance(values, types.ListType):
             values = [values]
@@ -235,7 +237,7 @@ class OpenVpn(object):
             last_cmd_idx = idx
             is_desired_value = cfg.params in values
             is_desired_value |= remove and len(values) == 0
-            is_desired_value |= not remove and util.is_empty(values) and util.is_empty(cfg.params)
+            is_desired_value |= not remove and (util.is_empty(values) or single_directive) and util.is_empty(cfg.params)
             value_idx = values.index(cfg.params) if not remove and cfg.params in values else None
 
             if is_desired_value:
@@ -243,7 +245,11 @@ class OpenVpn(object):
                     # Command is already set to the same value. File not modified.
                     # Cannot quit yet, has to comment out other values
                     if value_idx is not None:
-                        values_set[value_idx] = True
+                        if not values_set[value_idx]:
+                            values_set[value_idx] = True
+                        else:
+                            cfg.ltype = CONFIG_LINE_CMD_COMMENT
+                            file_changed = True
                     pass
 
                 elif cfg.ltype == CONFIG_LINE_CMD:
@@ -260,10 +266,16 @@ class OpenVpn(object):
                     # CONFIG_LINE_CMD_COMMENT and not remove.
                     # Just change the type to active value - switch from comment to command
                     # Cannot quit yet, has to comment out other values
-                    cfg.ltype = CONFIG_LINE_CMD
-                    file_changed = True
+                    do_change = True
                     if value_idx is not None:
-                        values_set[value_idx] = True
+                        if not values_set[value_idx]:
+                            values_set[value_idx] = True
+                        else:
+                            do_change = False
+
+                    if do_change:
+                        cfg.ltype = CONFIG_LINE_CMD
+                        file_changed = True
 
             elif cfg.ltype == CONFIG_LINE_CMD and not remove:
                 # Same command, but different value - comment this out
