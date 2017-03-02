@@ -68,7 +68,7 @@ class ConfigLine(object):
             return cl
 
         cmd_cmt_match = re.match(r'^\s*;.*', line)
-        cmd_match = re.match(r'^\s*(;)?\s*([a-zA-Z0-9\-_]+)(\s+.+)?(\s*(#|;).+)?$', line)
+        cmd_match = re.match(r'^\s*(;)?\s*([a-zA-Z0-9\-_]+)(\s+.+?)?(\s*(#|;).+)??$', line)
 
         if cmd_match is None and cmd_cmt_match is None:
             logger.debug('VPN unrecognized config line: %s' % line)
