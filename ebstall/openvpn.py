@@ -191,7 +191,7 @@ class OpenVpn(object):
         resource_path = '/'.join(('consts', 'ovpn-server.conf'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
-    def set_config_value(self, cmd, values, remove=False, under_directive=None):
+    def set_config_value(self, cmd, values=None, remove=False, under_directive=None):
         """
         Sets command to the specified value in the configuration file.
         Loads file from the disk if server_config_data is None (file was not yet loaded).
@@ -213,11 +213,12 @@ class OpenVpn(object):
         # default position - end of the config file
         last_cmd_idx = len(self.server_config_data)-1
         file_changed = False
+
+        if values is None:
+            values = []
+
         if not isinstance(values, types.ListType):
-            if values is None:
-                values = []
-            else:
-                values = [values]
+            values = [values]
 
         values_set = [False] * len(values)
         for idx, cfg in enumerate(self.server_config_data):
