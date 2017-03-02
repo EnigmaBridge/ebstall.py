@@ -271,7 +271,7 @@ class OpenVpn(object):
                 file_changed = True
 
         if remove:
-            self.server_config_modified = file_changed
+            self.server_config_modified |= file_changed
             return file_changed
 
         # Add those commands not set in the cycle above
@@ -286,7 +286,7 @@ class OpenVpn(object):
             ctr += 1
             file_changed = True
 
-        self.server_config_modified = file_changed
+        self.server_config_modified |= file_changed
         return file_changed
 
     def update_config_file(self, force=False):
