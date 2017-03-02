@@ -345,6 +345,7 @@ class OpenVpn(object):
         self.set_config_value('ca', 'ca.crt')
         self.set_config_value('cert', 'server.crt')
         self.set_config_value('key', 'server.key')
+        self.set_config_value('client-to-client', None)
 
         self.set_config_value('user', 'nobody')
         self.set_config_value('group', 'nobody')
