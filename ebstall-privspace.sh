@@ -131,13 +131,10 @@ fi
 # Invoke the python client directly
 SCRIPT=ebstall-privspace-cli
 
-SCRIPT_PATH=`which ${SCRIPT} 2>/dev/null`
-if [[ "$? " == 0 ]; then
-    $SCRIPT_PATH "$@"
-elif [ -f "/usr/local/bin/${SCRIPT}" ]; then
+if [ -f "/usr/local/bin/${SCRIPT}" ]; then
     /usr/local/bin/${SCRIPT} "$@"
 else
-    echoRed "Error: Script ${SCRIPT} not found."
+    `which ${SCRIPT} "$@"`
 fi
 
 
