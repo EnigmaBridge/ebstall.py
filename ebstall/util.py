@@ -175,7 +175,7 @@ def chown(path, user, group=None, follow_symlinks=False):
     os.chown(path, uid, gid)
 
 
-def file_backup(path, chmod=0o644, backup_dir=None):
+def file_backup(path, chmod=0o644, backup_dir=None, backup_suffix=None):
     """
     Backup the given file by copying it to a new file
     Copy is preferred to move. Move can keep processes working with the opened file after move operation.
@@ -183,6 +183,7 @@ def file_backup(path, chmod=0o644, backup_dir=None):
     :param path:
     :param chmod:
     :param backup_dir:
+    :param backup_suffix: if defined, suffix is appended to the backup file (e.g., .backup)
     :return:
     """
     backup_path = None
@@ -191,6 +192,8 @@ def file_backup(path, chmod=0o644, backup_dir=None):
         if backup_dir is not None:
             opath, otail = os.path.split(path)
             backup_path = os.path.join(backup_dir, otail)
+        if backup_suffix is not None:
+            backup_path += backup_suffix
 
         if chmod is None:
             chmod = os.stat(path).st_mode & 0o777
@@ -227,31 +230,33 @@ def dir_backup(path, chmod=0o644, backup_dir=None):
     return backup_path
 
 
-def delete_file_backup(path, chmod=0o644, backup_dir=None):
+def delete_file_backup(path, chmod=0o644, backup_dir=None, backup_suffix=None):
     """
     Backup the current file by moving it to a new file
     :param path:
     :param chmod:
     :param backup_dir:
+    :param backup_suffix: if defined, suffix is appended to the backup file (e.g., .backup)
     :return:
     """
     backup_path = None
     if os.path.exists(path):
-        backup_path = file_backup(path, chmod=chmod, backup_dir=backup_dir)
+        backup_path = file_backup(path, chmod=chmod, backup_dir=backup_dir, backup_suffix=backup_suffix)
         os.remove(path)
     return backup_path
 
 
-def safe_create_with_backup(path, mode='w', chmod=0o644, backup_dir=None):
+def safe_create_with_backup(path, mode='w', chmod=0o644, backup_dir=None, backup_suffix=None):
     """
     Safely creates a new file, backs up the old one if existed
     :param path:
     :param mode:
     :param chmod:
     :param backup_dir:
+    :param backup_suffix: if defined, suffix is appended to the backup file (e.g., .backup)
     :return: file handle, backup path
     """
-    backup_path = delete_file_backup(path, chmod, backup_dir=backup_dir)
+    backup_path = delete_file_backup(path, chmod, backup_dir=backup_dir, backup_suffix=backup_suffix)
     return safe_open(path, mode, chmod), backup_path
 
 
