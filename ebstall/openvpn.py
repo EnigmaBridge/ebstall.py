@@ -36,6 +36,13 @@ class ConfigLine(object):
         self.params = params
         self.comment = comment
 
+    def __repr__(self):
+        return 'ConfigLine(idx=%r, ltype=%r, cmd=%r, params=%r, comment=%r)' \
+               % (self.idx, self.ltype, self.cmd, self.params, self.comment)
+
+    def __str__(self):
+        return self.raw
+
     @property
     def raw(self):
         """
