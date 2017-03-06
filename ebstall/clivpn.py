@@ -503,6 +503,15 @@ class VpnInstaller(Installer):
             return 1
         return 0
 
+    def init_install_os_hooks(self):
+        """
+        Install OS hooks - cronjob for cert checking, on boot service for dynamic DNS
+        :return: result
+        """
+        install_type = 'vpn'
+        self.syscfg.install_onboot_check(install_type=install_type)
+        self.syscfg.install_cron_renew(install_type=install_type)
+        return 0
 
 def main():
     app = VpnInstaller()
