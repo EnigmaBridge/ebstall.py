@@ -351,7 +351,7 @@ class OpenVpn(object):
         """
         port, tcp = self.get_port()
         self.set_config_value('port', '%s' % port)
-        self.set_config_value('proto', 'udp' if not tcp else 'tcp')
+        self.set_config_value('proto', 'udp' if not tcp else 'tcp-server')
         self.set_config_value('cipher', 'AES-256-CBC')
         self.set_config_value('dh', 'dh2048.pem')
         self.set_config_value('ca', 'ca.crt')
