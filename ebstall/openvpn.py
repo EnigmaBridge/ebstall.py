@@ -128,7 +128,7 @@ class OpenVpnConfig(object):
 
         Supports also multicommands - one command with more values.
 
-        Modifies self.server_config_data, self.server_config_modified
+        Modifies self.config_data, self.config_modified
         :param cmd:
         :param values: single value or array of values for multi-commands (e.g., push).
                        None & remove -> remove all commands. Otherwise just commands with the given values are removed.
@@ -381,6 +381,7 @@ class OpenVpn(object):
         self.server_config.set_config_value('client-to-client', None)
         self.server_config.set_config_value('persist-tun', None, remove=True)
         self.server_config.set_config_value('keepalive', '10 60')
+        self.server_config.set_config_value('topology', 'subnet')
 
         self.server_config.set_config_value('user', 'nobody')
         self.server_config.set_config_value('group', 'nobody')
