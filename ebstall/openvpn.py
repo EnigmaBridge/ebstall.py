@@ -104,6 +104,13 @@ class OpenVpnConfig(object):
         self.config_data = None
         self.config_modified = False
 
+    def load(self):
+        """
+        Loads the config file
+        :return:
+        """
+        self.config_data = self.load_config_file_lines()
+
     def load_config_file_lines(self):
         """
         Loads config file to a string
@@ -113,7 +120,7 @@ class OpenVpnConfig(object):
         lines = []
 
         cpath = self.config_path
-        if not os.path.exists(cpath):
+        if cpath is None or not os.path.exists(cpath):
             bare = self.static_config
             lines = [x.strip() for x in bare.split('\n')]
 
