@@ -236,7 +236,7 @@ class OpenVpn(object):
             # Only commands of interest here
             last_cmd_idx = idx
             is_desired_value = cfg.params in values
-            is_desired_value |= remove and len(values) == 0
+            is_desired_value |= remove and (util.is_empty(values) or single_directive)
             is_desired_value |= not remove and (util.is_empty(values) or single_directive) and util.is_empty(cfg.params)
             value_idx = values.index(cfg.params) if not remove and cfg.params in values else None
 
