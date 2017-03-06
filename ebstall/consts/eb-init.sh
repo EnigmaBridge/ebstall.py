@@ -9,7 +9,7 @@
 # chkconfig: - 80 20
 ### END INIT INFO
 
-SCRIPT="/usr/local/bin/ebstall-cli -n onboot"
+SCRIPT="{{ wrapper_path }} -n onboot --no-self-upgrade"
 RUNAS=root
 
 PIDFILE=/var/run/enigmabridge-onboot.pid

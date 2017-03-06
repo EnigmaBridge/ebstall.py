@@ -229,6 +229,22 @@ class SysConfig(object):
             sys.stderr.write(msg)
 
     #
+    # Wrapper scripts
+    #
+    def get_wrapper_script(self, install_type=None):
+        """
+        Returns a wrapper script full path for the given install type
+        :param type:
+        :return:
+        """
+        if install_type is None or install_type in ['pki', 'ejbca']:
+            return '/usr/sbin/ebstall-pki'
+        elif install_type in ['vpn', 'privspace']:
+            return '/usr/sbin/ebstall-privspace'
+        else:
+            raise ValueError('Unknown installation type: %s' % install_type)
+
+    #
     # Cron
     #
 
@@ -274,13 +290,14 @@ class SysConfig(object):
         cron_path = self.get_cron_file('ebstall-renew')
         self.delete_cron_file(cron_path)
 
-    def install_cron_renew(self):
+    def install_cron_renew(self, install_type=None):
         """
         Installs cronjob for certificate renewal
         :return:
         """
+        wrapper_path = self.get_wrapper_script(install_type=install_type)
         data = '# Daily certificate renewal for the PKI key management system (EJBCA LetsEncrypt)\n'
-        data += '*/5 * * * * root /usr/local/bin/ebstall-cli -n --pid-lock 3 renew >/dev/null 2>/dev/null \n'
+        data += '*/5 * * * * root %s --no-self-upgrade -n --pid-lock 3 renew >/dev/null 2>/dev/null \n' % wrapper_path
 
         return self.install_crond_file('ebstall-renew', data)
 
@@ -471,30 +488,33 @@ class SysConfig(object):
         loaded, active = self.svc_status(svcmap=svcmap)
         return (loaded and active) == True
 
-    def install_onboot_check(self):
+    def install_onboot_check(self, install_type=None):
         """
         Installs a service invocation after boot to reclaim domain again
         :return:
         """
         if self.os.start_system == osutil.START_SYSTEMD:
-            return self.install_onboot_check_systemd()
+            return self.install_onboot_check_systemd(install_type=install_type)
 
         # Fallback to default initd start system
-        return self.install_onboot_check_initd()
+        return self.install_onboot_check_initd(install_type=install_type)
 
-    def install_onboot_check_systemd(self):
+    def install_onboot_check_systemd(self, install_type=None):
         """
         Installs onboot check in systemd (centos/rhell 7+)
         :return:
         """
         # Write simple init script
+        wrapper_path = self.get_wrapper_script(install_type=install_type)
         initd_path = '/etc/systemd/system/enigmabridge-onboot.service'
         if os.path.exists(initd_path):
             os.remove(initd_path)
             self.audit.audit_delete(initd_path)
 
         with util.safe_open(initd_path, mode='w', chmod=0o664) as handle:
-            handle.write(self.get_onboot_init_script())
+            data = self.get_onboot_init_systemd_script()
+            data = data.replace('{{ wrapper_path }}', wrapper_path)
+            handle.write(data)
             handle.write('\n')
         self.audit.audit_file_write(initd_path)
 
@@ -511,19 +531,22 @@ class SysConfig(object):
 
         return 0
 
-    def install_onboot_check_initd(self):
+    def install_onboot_check_initd(self, install_type=None):
         """
         Installs onboot check in initd system
         :return:
         """
         # Write simple init script
+        wrapper_path = self.get_wrapper_script(install_type=install_type)
         initd_path = '/etc/init.d/enigmabridge-onboot'
         if os.path.exists(initd_path):
             os.remove(initd_path)
             self.audit.audit_delete(initd_path)
 
         with util.safe_open(initd_path, mode='w', chmod=0o755) as handle:
-            handle.write(self.get_onboot_init_script())
+            data = self.get_onboot_init_script()
+            data = data.replace('{{ wrapper_path }}', wrapper_path)
+            handle.write(data)
             handle.write('\n')
         self.audit.audit_file_write(initd_path)
 
@@ -536,11 +559,21 @@ class SysConfig(object):
         return 0
 
     def get_onboot_init_script(self):
+        """
+        Returns a static asset - init script
+        Contains template variable {{ wrapper_path }}
+        :return:
+        """
         resource_package = __name__
         resource_path = '/'.join(('consts', 'eb-init.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
     def get_onboot_init_systemd_script(self):
+        """
+        Returns a static asset - systemd start script
+        Contains template variable {{ wrapper_path }}
+        :return:
+        """
         resource_package = __name__
         resource_path = '/'.join(('consts', 'eb-systemd.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
