@@ -359,6 +359,7 @@ class OpenVpn(object):
         self.set_config_value('key', 'server.key')
         self.set_config_value('client-to-client', None)
         self.set_config_value('persist-tun', None, remove=True)
+        self.set_config_value('keepalive', '10 60')
 
         self.set_config_value('user', 'nobody')
         self.set_config_value('group', 'nobody')
