@@ -256,7 +256,7 @@ class OpenVpnConfig(object):
         if not force and not self.config_modified:
             return False
 
-        fh, backup = util.safe_create_with_backup(self.config_path, 'w', 0o644)
+        fh, backup = util.safe_create_with_backup(self.config_path, mode='w', chmod=0o644, backup_suffix='.backup')
         with fh:
             for cl in self.config_data:
                 fh.write(cl.raw + '\n')
