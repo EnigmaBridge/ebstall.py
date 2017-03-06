@@ -86,77 +86,16 @@ class ConfigLine(object):
         return cl
 
 
-class OpenVpn(object):
+class OpenVpnConfig(object):
     """
-    OpenVPN server configuration & management
+    Parses OpenVPN configuration, allows to modify the configuration and save changes back to the file.
     """
 
-    SETTINGS_DIR = '/etc/openvpn'
-    SETTINGS_FILE = 'server.conf'
-    PORT_NUM = 1194
-    PORT_TCP = False
-
-    def __init__(self, sysconfig=None, audit=None, write_dots=False, *args, **kwargs):
-        self.sysconfig = sysconfig
-        self.write_dost = write_dots
-
-        # Result of load_config_file_lines
-        self.server_config_data = None
-        self.server_config_modified = False
-
-    #
-    # Settings
-    #
-    def get_ip_net(self):
-        """
-        Network address for the VPN server
-        :return:
-        """
-        return '10.8.0.0'
-
-    def get_ip_vpn_server(self):
-        """
-        Returns IP address of the VPN server for clients on the VPN
-        :return:
-        """
-        return '10.8.0.1'
-
-    def get_ip_net_size(self):
-        """
-        returns network size of the network allocated for OpenVPN
-        :return:
-        """
-        return 24
-
-    def get_ip_mask(self):
-        """
-        Returns the mask of the network used by OpenVPN
-        :return:
-        """
-        return util.net_size_to_mask(self.get_ip_net_size())
-
-    def get_port(self):
-        """
-        Returns port to use for OpenVPN
-        :return: (port, tcp)
-        """
-        return self.PORT_NUM, self.PORT_TCP
-
-    #
-    # server.conf reading & modification
-    #
-    def get_config_dir(self):
-        return self.SETTINGS_DIR
-
-    def get_config_dir_subfile(self, filename):
-        return os.path.join(self.get_config_dir(), filename)
-
-    def get_config_file_path(self):
-        """
-        Returns config file path
-        :return: server config file path
-        """
-        return os.path.join(self.SETTINGS_DIR, self.SETTINGS_FILE)
+    def __init__(self, config_path=None, static_config=None, *args, **kwargs):
+        self.config_path = config_path
+        self.static_config = static_config
+        self.config_data = None
+        self.config_modified = False
 
     def load_config_file_lines(self):
         """
@@ -166,9 +105,9 @@ class OpenVpn(object):
         config = []
         lines = []
 
-        cpath = self.get_config_file_path()
+        cpath = self.config_path
         if not os.path.exists(cpath):
-            bare = self.load_static_config()
+            bare = self.static_config
             lines = [x.strip() for x in bare.split('\n')]
 
         else:
@@ -181,15 +120,6 @@ class OpenVpn(object):
             config.append(ln)
 
         return config
-
-    def load_static_config(self):
-        """
-        Loads static config from the package
-        :return:
-        """
-        resource_package = __name__
-        resource_path = '/'.join(('consts', 'ovpn-server.conf'))
-        return pkg_resources.resource_string(resource_package, resource_path)
 
     def set_config_value(self, cmd, values=None, remove=False, under_directive=None):
         """
@@ -207,11 +137,11 @@ class OpenVpn(object):
         :return: True if file was modified
         """
         # If file is not loaded - load
-        if self.server_config_data is None:
-            self.server_config_data = self.load_config_file_lines()
+        if self.config_data is None:
+            self.config_data = self.load_config_file_lines()
 
         # default position - end of the config file
-        last_cmd_idx = len(self.server_config_data)-1
+        last_cmd_idx = len(self.config_data) - 1
         file_changed = False
         single_directive = False  # no parameter given
 
@@ -223,7 +153,7 @@ class OpenVpn(object):
             values = [values]
 
         values_set = [False] * len(values)
-        for idx, cfg in enumerate(self.server_config_data):
+        for idx, cfg in enumerate(self.config_data):
             if cfg.ltype not in [CONFIG_LINE_CMD, CONFIG_LINE_CMD_COMMENT]:
                 continue
 
@@ -284,7 +214,7 @@ class OpenVpn(object):
                 file_changed = True
 
         if remove:
-            self.server_config_modified |= file_changed
+            self.config_modified |= file_changed
             return file_changed
 
         # Add those commands not set in the cycle above
@@ -294,12 +224,12 @@ class OpenVpn(object):
                 continue
 
             cl = ConfigLine(idx=None, raw=None, ltype=CONFIG_LINE_CMD, cmd=cmd, params=cval)
-            self.server_config_data.insert(last_cmd_idx+1+ctr, cl)
+            self.config_data.insert(last_cmd_idx + 1 + ctr, cl)
 
             ctr += 1
             file_changed = True
 
-        self.server_config_modified |= file_changed
+        self.config_modified |= file_changed
         return file_changed
 
     def update_config_file(self, force=False):
@@ -309,17 +239,106 @@ class OpenVpn(object):
 
         :return: True if file was modified
         """
-        if not force and not self.server_config_modified:
+        if not force and not self.config_modified:
             return False
 
-        cpath = self.get_config_file_path()
-        fh, backup = util.safe_create_with_backup(cpath, 'w', 0o644)
+        fh, backup = util.safe_create_with_backup(self.config_path, 'w', 0o644)
         with fh:
-            for cl in self.server_config_data:
+            for cl in self.config_data:
                 fh.write(cl.raw + '\n')
 
-        self.server_config_modified = False  # reset after flush
+        self.config_modified = False  # reset after flush
         return True
+
+
+class OpenVpn(object):
+    """
+    OpenVPN server configuration & management
+    """
+
+    SETTINGS_DIR = '/etc/openvpn'
+    SETTINGS_FILE = 'server.conf'
+    PORT_NUM = 1194
+    PORT_TCP = False
+
+    def __init__(self, sysconfig=None, audit=None, write_dots=False, *args, **kwargs):
+        self.sysconfig = sysconfig
+        self.write_dost = write_dots
+
+        # Result of load_config_file_lines
+        self.server_config = None
+
+    #
+    # Settings
+    #
+    def get_ip_net(self):
+        """
+        Network address for the VPN server
+        :return:
+        """
+        return '10.8.0.0'
+
+    def get_ip_vpn_server(self):
+        """
+        Returns IP address of the VPN server for clients on the VPN
+        :return:
+        """
+        return '10.8.0.1'
+
+    def get_ip_net_size(self):
+        """
+        returns network size of the network allocated for OpenVPN
+        :return:
+        """
+        return 24
+
+    def get_ip_mask(self):
+        """
+        Returns the mask of the network used by OpenVPN
+        :return:
+        """
+        return util.net_size_to_mask(self.get_ip_net_size())
+
+    def get_port(self):
+        """
+        Returns port to use for OpenVPN
+        :return: (port, tcp)
+        """
+        return self.PORT_NUM, self.PORT_TCP
+
+    #
+    # server.conf reading & modification
+    #
+    def get_config_dir(self):
+        return self.SETTINGS_DIR
+
+    def get_config_dir_subfile(self, filename):
+        return os.path.join(self.get_config_dir(), filename)
+
+    def get_config_file_path(self):
+        """
+        Returns config file path
+        :return: server config file path
+        """
+        return os.path.join(self.SETTINGS_DIR, self.SETTINGS_FILE)
+
+    def load_static_config(self):
+        """
+        Loads static config from the package
+        :return:
+        """
+        resource_package = __name__
+        resource_path = '/'.join(('consts', 'ovpn-server.conf'))
+        return pkg_resources.resource_string(resource_package, resource_path)
+
+    def init_server_config(self):
+        """
+        Initializes server configuration parser
+        :return:
+        """
+        if self.server_config is None:
+            self.server_config = OpenVpnConfig(config_path=self.get_config_file_path(),
+                                               static_config=self.load_static_config())
 
     #
     # Configuration
@@ -341,8 +360,9 @@ class OpenVpn(object):
         :param crl_path:
         :return: True if file was changed
         """
-        self.set_config_value('crl-verify', crl_path, remove=crl_path is None, under_directive='key')
-        return self.update_config_file()
+        self.init_server_config()
+        self.server_config.set_config_value('crl-verify', crl_path, remove=crl_path is None, under_directive='key')
+        return self.server_config.update_config_file()
 
     def configure_server(self):
         """
@@ -350,28 +370,29 @@ class OpenVpn(object):
         :return: True if file was changed
         """
         port, tcp = self.get_port()
-        self.set_config_value('port', '%s' % port)
-        self.set_config_value('proto', 'udp' if not tcp else 'tcp-server')
-        self.set_config_value('cipher', 'AES-256-CBC')
-        self.set_config_value('dh', 'dh2048.pem')
-        self.set_config_value('ca', 'ca.crt')
-        self.set_config_value('cert', 'server.crt')
-        self.set_config_value('key', 'server.key')
-        self.set_config_value('client-to-client', None)
-        self.set_config_value('persist-tun', None, remove=True)
-        self.set_config_value('keepalive', '10 60')
+        self.init_server_config()
+        self.server_config.set_config_value('port', '%s' % port)
+        self.server_config.set_config_value('proto', 'udp' if not tcp else 'tcp-server')
+        self.server_config.set_config_value('cipher', 'AES-256-CBC')
+        self.server_config.set_config_value('dh', 'dh2048.pem')
+        self.server_config.set_config_value('ca', 'ca.crt')
+        self.server_config.set_config_value('cert', 'server.crt')
+        self.server_config.set_config_value('key', 'server.key')
+        self.server_config.set_config_value('client-to-client', None)
+        self.server_config.set_config_value('persist-tun', None, remove=True)
+        self.server_config.set_config_value('keepalive', '10 60')
 
-        self.set_config_value('user', 'nobody')
-        self.set_config_value('group', 'nobody')
-        self.set_config_value('server', '%s %s' % (self.get_ip_net(), self.get_ip_mask()))
+        self.server_config.set_config_value('user', 'nobody')
+        self.server_config.set_config_value('group', 'nobody')
+        self.server_config.set_config_value('server', '%s %s' % (self.get_ip_net(), self.get_ip_mask()))
 
         # '"dhcp-option DNS 8.8.4.4"',
         # '"dhcp-option DNS 8.8.8.8"',
         push_values = ['"dhcp-option DNS %s"' % self.get_ip_vpn_server(),
                        '"redirect-gateway def1 bypass-dhcp"']
-        self.set_config_value('push', push_values)
+        self.server_config.set_config_value('push', push_values)
 
-        return self.update_config_file()
+        return self.server_config.update_config_file()
 
     def store_server_cert(self, ca, cert, key):
         """
