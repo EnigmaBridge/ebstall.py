@@ -1391,7 +1391,7 @@ class Ejbca(object):
         :param basedir:
         :return:
         """
-        cmd = 'sudo tar -xzvf %s' % archive_path
+        cmd = 'sudo tar -xzf %s' % archive_path
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
         if ret != 0:
             raise errors.SetupError('Could not extract update archive')
