@@ -25,3 +25,5 @@ EC2META_FILES = ['/opt/aws/bin/ec2-metadata']
 SETTINGS_FILE = 'eb-settings.json'
 SETTINGS_FOLDERS = ['/etc/enigma', '/usr/local/etc/enigma', '/opt/enigmabridge/etc/']
 
+PROVISIONING_SERVERS = ['privatespace-deploy.enigmabridge.com']
+

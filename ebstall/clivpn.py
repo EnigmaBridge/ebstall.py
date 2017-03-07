@@ -125,6 +125,13 @@ class VpnInstaller(Installer):
     #     self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
     #     self.ovpn.configure_server()
 
+    def do_update_ejbca_install(self, line):
+        """Updates EJBCA distribution from the provisioning server"""
+        self.load_base_settings()
+        self.init_load_settings()
+        self.init_services()
+        self.ejbca.update_installation()
+
     def init_test_ports_pre_install_res(self, host=None, *args, **kwargs):
         failed_ports = Installer.init_test_ports_pre_install_res(self, host, *args, **kwargs)
 

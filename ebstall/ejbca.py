@@ -18,7 +18,8 @@ import letsencrypt
 import logging
 import errors
 from audit import AuditManager
-from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT
+from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT, PROVISIONING_SERVERS
+import requests
 
 
 __author__ = 'dusanklinec'
@@ -35,6 +36,7 @@ class Ejbca(object):
     PORT_PUBLIC = 8442
 
     # Default home dirs
+    EJBCA_VERSION = 'ejbca_ce_6_3_1_1'
     EJBCA_HOME = '/opt/ejbca_ce_6_3_1_1'
     JBOSS_HOME = '/opt/jboss-eap-6.4.0'
     JBOSS_USER = 'jboss'
@@ -180,6 +182,16 @@ class Ejbca(object):
                 return config_home
 
         return os.path.abspath(self.EJBCA_HOME)
+
+    def get_ejbca_version(self):
+        """
+        Returns EJBCA version
+        :return:
+        """
+        if 'EJBCA_VERSION' in os.environ and len(os.environ['EJBCA_VERSION']) > 0:
+            return os.path.abspath(os.environ['EJBCA_VERSION'])
+
+        return self.EJBCA_VERSION
 
     def get_ejbca_sh(self):
         """
@@ -1356,6 +1368,114 @@ class Ejbca(object):
         return 0
 
     #
+    # Updating via provisioning server
+    #
+
+    def download_file(self, url, filename):
+        """
+        Downloads binary file, saves to the file
+        :param url:
+        :param filename:
+        :return:
+        """
+        r = requests.get(url, stream=True, timeout=15)
+        with open(filename, 'wb') as f:
+            shutil.copyfileobj(r.raw, f)
+
+        return filename
+
+    def update_ejbca_from_file(self, archive_path, basedir):
+        """
+        Updates current EJBCA installation using the downloaded archive file.
+        :param archive_path:
+        :param basedir:
+        :return:
+        """
+        cmd = 'sudo tar -xzvf %s' % archive_path
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
+        if ret != 0:
+            raise errors.SetupError('Could not extract update archive')
+
+        folders = [f for f in os.listdir(basedir) if not os.path.isfile(os.path.join(basedir, f)) \
+                   and f != '.' and f != '..']
+
+        if len(folders) != 1:
+            raise errors.SetupError('Invalid folder structure after update extraction')
+
+        archive_dir = os.path.join(basedir, folders[0])
+        if not os.path.exists(archive_dir):
+            raise errors.SetupError('Directory with ejbca not found in the update archive: %s' % archive_dir)
+        if not os.path.exists(os.path.join(archive_dir, 'build.xml')):
+            raise errors.SetupError('Invalid update archive, build.xml not found in %s' % archive_dir)
+
+        archive_slash = archive_dir if archive_dir.endswith('/') else archive_dir + '/'
+        dest_slash = self.get_ejbca_home()
+        dest_slash = dest_slash if dest_slash.endswith('/') else dest_slash + '/'
+
+        cmd = 'sudo rsync -av --delete "%s" "%s"' % (archive_slash, dest_slash)
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
+        if ret != 0:
+            raise errors.SetupError('EJBCA sync failed')
+
+        self.jboss_fix_privileges()
+
+    def update_installation(self, attempts=3):
+        """
+        Downloads a new revision of the EJBCA from the provisioning server, if possible
+        :return:
+        """
+        try:
+            logger.debug('Going to download specs from the provisioning servers')
+            for provserver in PROVISIONING_SERVERS:
+                url = 'https://%s/ejbca/index.json' % provserver
+                tmpdir = util.safe_new_dir('/tmp/ejbca-update')
+
+                for attempt in range(attempts):
+                    try:
+                        self.audit.audit_evt('prov-ejbca', url=url)
+                        res = requests.get(url=url, timeout=15)
+                        res.raise_for_status()
+                        js = res.json()
+
+                        self.audit.audit_evt('prov-ejbca', url=url, response=js)
+                        revs = js['versions']['6.3.1.1']['revisions']
+
+                        top_rev = None
+                        for rev in revs:
+                            if top_rev is None or top_rev['rev'] < rev['rev']:
+                                top_rev = rev
+
+                        archive_url = top_rev['url']
+                        logger.debug('Revision: %s, url: %s' % (top_rev['rev'], archive_url))
+
+                        # Download archive.
+                        archive_path = os.path.join(tmpdir, 'ejbca_6_3_1_1.tgz')
+                        self.download_file(archive_url, archive_path)
+                        logger.debug('File downloaded, updating...')
+
+                        # Update
+                        self.update_ejbca_from_file(archive_path, tmpdir)
+                        return 0
+
+                    except errors.SetupError as e:
+                        logger.debug('SetupException in updating EJBCA from the provisioning server: %s' % e)
+                        self.audit.audit_exception(e, process='prov-ejbca')
+
+                    except Exception as e:
+                        logger.debug('Exception in updating EJBCA from the provisioning server: %s' % e)
+                        self.audit.audit_exception(e, process='prov-ejbca')
+
+                    finally:
+                        if os.path.exists(tmpdir):
+                            shutil.rmtree(tmpdir)
+
+                return 0
+
+        except Exception as e:
+            logger.debug('Exception when updating EJBCA')
+            self.audit.audit_exception(e)
+
+    #
     # Actions
     #
 
@@ -1411,6 +1531,10 @@ class Ejbca(object):
         self.jboss_backup_database()
         self.jboss_fix_privileges()
         self.jboss_reload()
+
+        # Updating from the provisioning server
+        print("\n - Updating to the latest revision")
+        self.update_installation()
 
         # 3. deploy, 5 attempts
         for i in range(0, 5):

@@ -128,6 +128,7 @@ echo '' > /opt/ejbca_ce_*/velocity.log
 /bin/rm /tmp/openssl*.log
 /bin/rm /tmp/ebstall-sql.cnf.*
 /bin/rm /tmp/ebstall-sql.query.*
+/bin/rm /tmp/ejbca-update*
 /bin/rm -rf /tmp/html_0*
 /bin/rm -rf /tmp/hsperfdata*
 /bin/rm /tmp/yum_save_tx*
