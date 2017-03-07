@@ -438,6 +438,7 @@ class VpnInstaller(Installer):
         # Configure VPN client configuration file to match the server config
         self.ovpn.client_config_path = self.vpn_client_config
         self.ovpn.configure_client()
+        self.ejbca.jboss_fix_privileges()
 
         # OS configuration
         ret = self.ovpn.setup_os()
