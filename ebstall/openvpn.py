@@ -98,11 +98,12 @@ class OpenVpnConfig(object):
     Parses OpenVPN configuration, allows to modify the configuration and save changes back to the file.
     """
 
-    def __init__(self, config_path=None, static_config=None, *args, **kwargs):
+    def __init__(self, config_path=None, static_config=None, audit=None, *args, **kwargs):
         self.config_path = config_path
         self.static_config = static_config
         self.config_data = None
         self.config_modified = False
+        self.audit = None
 
     def load(self):
         """
@@ -128,6 +129,7 @@ class OpenVpnConfig(object):
             with open(cpath, 'r') as fh:
                 for line in fh:
                     lines.append(line.strip())
+            self.audit.audit_file_read(cpath)
 
         for idx, line in enumerate(lines):
             ln = ConfigLine.build(line=line, idx=idx)
@@ -270,6 +272,7 @@ class OpenVpnConfig(object):
         with fh:
             for cl in self.config_data:
                 fh.write(cl.raw + '\n')
+            self.audit.audit_file_write(self.config_path)
 
         self.config_modified = False  # reset after flush
         return True
@@ -285,9 +288,10 @@ class OpenVpn(object):
     PORT_NUM = 1194
     PORT_TCP = False
 
-    def __init__(self, sysconfig=None, audit=None, write_dots=False, *args, **kwargs):
+    def __init__(self, sysconfig=None, audit=None, write_dots=False, client_config_path=None, *args, **kwargs):
         self.sysconfig = sysconfig
         self.write_dost = write_dots
+        self.audit = audit
 
         # Result of load_config_file_lines
         self.server_config = None
@@ -362,7 +366,8 @@ class OpenVpn(object):
         """
         if self.server_config is None:
             self.server_config = OpenVpnConfig(config_path=self.get_config_file_path(),
-                                               static_config=self.load_static_config())
+                                               static_config=self.load_static_config(),
+                                               audit=self.audit)
 
     #
     # Configuration
