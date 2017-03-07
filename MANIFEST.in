@@ -6,6 +6,7 @@ include ovpn-server.conf
 include eb-init.sh
 include eb-systemd.conf
 include dnsmasq.conf
+include ebstall.sh
 include ebstall-pki.sh
 include ebstall-privspace.sh
 
