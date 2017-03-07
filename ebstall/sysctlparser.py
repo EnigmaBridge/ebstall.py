@@ -226,6 +226,16 @@ class SysctlConfig(object):
         self.config_modified |= file_changed
         return file_changed
 
+    def dump(self):
+        """
+        Dumps config to the string
+        :return:
+        """
+        data = []
+        for cl in self.config_data:
+            data.append(cl.raw)
+        return '\n'.join(data)
+
     def update_config_file(self, force=False):
         """
         Updates server configuration file.
