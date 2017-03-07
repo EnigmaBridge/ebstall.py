@@ -125,7 +125,7 @@ class OpenVpnConfig(object):
         self.static_config = static_config
         self.config_data = None
         self.config_modified = False
-        self.audit = None
+        self.audit = audit
 
     def load(self):
         """
