@@ -25,6 +25,19 @@ push gamma
 push delta
 push zetta"""
 
+test6 = """remote [(${vpn_hostname})] 1194
+resolv-retry infinite"""
+
+test7 = """remote [(${vpn_hostname})] 1194
+resolv-retry infinite
+<ca>
+line1
+line2
+line3
+</ca>
+persist-tun"""
+
+
 class OpenVpnParserTest(unittest.TestCase):
     """Simple test from the readme"""
 
@@ -71,6 +84,12 @@ class OpenVpnParserTest(unittest.TestCase):
         self.assertEqual(data[4].comment, '# This file should be kept secret')
 
         self.assertEqual(data[5].ltype, 1)
+
+        test1x = parser.dump()
+        parser2 = OpenVpnConfig(static_config=test1x)
+        parser2.load()
+        data2 = parser.config_data
+        self.assertEqual(data2, data, 'Parser did not return the same data')
 
     def test1_remove_single(self):
         parser = OpenVpnConfig(static_config=test1)
@@ -174,6 +193,35 @@ class OpenVpnParserTest(unittest.TestCase):
             if cur.ltype == 3 and cur.params in vals:
                 vals_present[vals.index(cur.params)] = True
         self.assertEqual(vals_present, [False] * len(vals))
+
+    def test6(self):
+        parser = OpenVpnConfig(static_config=test6)
+        parser.load()
+        data = parser.config_data
+        print(data)
+        self.assertEqual(len(data), 2, 'Number of parsed lines does not match')
+
+        self.assertEqual(data[0].ltype, 3)
+        self.assertEqual(data[0].cmd, 'remote')
+
+        self.assertEqual(data[1].ltype, 3)
+        self.assertEqual(parser.dump(), test6, 'Parser did not return the same data')
+
+    def test7(self):
+        parser = OpenVpnConfig(static_config=test7)
+        parser.load()
+
+        data = parser.config_data
+        print(data)
+
+        self.assertEqual(parser.dump().strip(), test7.strip(), 'Parser did not return the same data')
+
+        testx = parser.dump()
+        parser2 = OpenVpnConfig(static_config=testx)
+        parser2.load()
+        data2 = parser.config_data
+        self.assertEqual(data2, data, 'Parser did not return the same data')
+
 
 if __name__ == "__main__":
     unittest.main()  # pragma: no cover

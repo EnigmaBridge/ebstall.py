@@ -4,6 +4,7 @@
 from __future__ import print_function
 import os
 import logging
+import errors
 import collections
 import re
 import util
@@ -28,17 +29,18 @@ class ConfigLine(object):
     """
     # One open vpn config line
     """
-    def __init__(self, idx=None, raw=None, ltype=None, cmd=None, params=None, comment=None, *args, **kwargs):
+    def __init__(self, idx=None, raw=None, ltype=None, cmd=None, params=None, comment=None, paired=False, *args, **kwargs):
         self.idx = idx
         self._raw = raw
         self.ltype = ltype
         self.cmd = cmd
         self.params = params
         self.comment = comment
+        self.paired = paired
 
     def __repr__(self):
-        return 'ConfigLine(idx=%r, ltype=%r, cmd=%r, params=%r, comment=%r)' \
-               % (self.idx, self.ltype, self.cmd, self.params, self.comment)
+        return 'ConfigLine(idx=%r, ltype=%r, cmd=%r, params=%r, comment=%r, raw=%r, paired=%r)' \
+               % (self.idx, self.ltype, self.cmd, self.params, self.comment, self._raw, self.paired)
 
     def __str__(self):
         return self.raw
@@ -51,6 +53,12 @@ class ConfigLine(object):
         """
         if self.ltype in [CONFIG_LINE_COMMENT, CONFIG_LINE_BLANK]:
             return util.defval(self._raw, '')
+
+        if self.paired:
+            res = ['<%s>' % self.cmd, self.params, '</%s>' % self.cmd]
+            if self.ltype == CONFIG_LINE_CMD_COMMENT:
+                return ';' + (''.join(res)).strip()
+            return ('\n'.join(res)).strip()
 
         res = '' if self.ltype == CONFIG_LINE_CMD else ';'
         res += '%s %s %s' % (util.defval(self.cmd, ''), util.defval(self.params, ''), util.defval(self.comment, ''))
@@ -76,6 +84,20 @@ class ConfigLine(object):
 
         cmd_cmt_match = re.match(r'^\s*;.*', line)
         cmd_match = re.match(r'^\s*(;)?\s*([a-zA-Z0-9\-_]+)(\s+.+?)?(\s*(#|;).+)??$', line)
+        cmd_pair = re.match(r'^\s*(;)?\s*<([a-zA-Z0-9\-_]+)>(\s+.+?)?</([a-zA-Z0-9\-_]+)>$', line, re.MULTILINE | re.DOTALL)
+
+        if cmd_pair:
+            cl.ltype = CONFIG_LINE_CMD if cmd_pair.group(1) is None else CONFIG_LINE_CMD_COMMENT
+            open_tag = cmd_pair.group(2)
+            data_tag = cmd_pair.group(3)
+            close_tag = cmd_pair.group(4)
+
+            if open_tag != close_tag:
+                raise ValueError('Open tag does not equal close tag')
+            cl.cmd = open_tag
+            cl.params = data_tag.strip()
+            cl.paired = True
+            return cl
 
         if cmd_match is None and cmd_cmt_match is None:
             logger.debug('VPN unrecognized config line: %s' % line)
@@ -131,9 +153,46 @@ class OpenVpnConfig(object):
                     lines.append(line.strip())
             self.audit.audit_file_read(cpath)
 
+        paired_tag = None
+        paired_buff = []
         for idx, line in enumerate(lines):
+            cline = line.strip()
+
+            if paired_tag is not None:
+                end_tag = '</%s>' % paired_tag
+                paired_buff.append(line)
+
+                if end_tag in cline and not cline.endswith(end_tag):
+                    raise ValueError('Parse error, closing tag is on the same line, but not the last element')
+                elif end_tag in cline:
+                    ln = ConfigLine.build(line='\n'.join(paired_buff), idx=idx)
+                    config.append(ln)
+                    paired_tag = None
+                continue
+
+            pair_match = re.match(r'^\s*(;)?\s*<([a-zA-Z0-9\-_]+)>(\s+.+?)?$', cline)
+            if pair_match is not None:
+                paired_buff = [line]
+                paired_tag = pair_match.group(2)
+                end_tag = '</%s>' % paired_tag
+                tail = pair_match.group(3)
+
+                if tail is not None and end_tag in tail and not tail.endswith(end_tag):
+                    raise ValueError('Parse error, closing tag is on the same line, but not the last element')
+                if tail is not None and end_tag in tail:
+                    ln = ConfigLine.build(line=line, idx=idx)
+                    config.append(ln)
+                    paired_tag = None
+                    continue
+
+            if paired_tag is not None:
+                continue
+
             ln = ConfigLine.build(line=line, idx=idx)
             config.append(ln)
+
+        if paired_tag is not None:
+            raise ValueError('Parsing error, unclosed paired tag %s' % paired_tag)
 
         return config
 
