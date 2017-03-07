@@ -1535,6 +1535,8 @@ class Ejbca(object):
         # Updating from the provisioning server
         print("\n - Updating to the latest revision")
         self.update_installation()
+        self.update_properties()
+        self.jboss_fix_privileges()
 
         # 3. deploy, 5 attempts
         for i in range(0, 5):
