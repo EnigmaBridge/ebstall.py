@@ -153,11 +153,14 @@ class OpenVpnConfig(object):
                     lines.append(line.strip())
             self.audit.audit_file_read(cpath)
 
+        # Parsing config file line by line, with support for paired config tags, e.g., <ca>ABF...</ca>
+        # Paired tags can be multiline, in that case we consider it as one string, with \n characters.
         paired_tag = None
         paired_buff = []
         for idx, line in enumerate(lines):
             cline = line.strip()
 
+            # Opened paired tag. Either find a closing tag or add line to the buffer and continue with reading.
             if paired_tag is not None:
                 end_tag = '</%s>' % paired_tag
                 paired_buff.append(line)
@@ -170,8 +173,12 @@ class OpenVpnConfig(object):
                     paired_tag = None
                 continue
 
+            # Check for opening tag
             pair_match = re.match(r'^\s*(;)?\s*<([a-zA-Z0-9\-_]+)>(\s+.+?)?$', cline)
             if pair_match is not None:
+                if paired_tag is not None:
+                    raise ValueError('Parse error, unclosed previously opened tag: %s' % paired_tag)
+
                 paired_buff = [line]
                 paired_tag = pair_match.group(2)
                 end_tag = '</%s>' % paired_tag
@@ -188,6 +195,7 @@ class OpenVpnConfig(object):
             if paired_tag is not None:
                 continue
 
+            # Normal one-line directive
             ln = ConfigLine.build(line=line, idx=idx)
             config.append(ln)
 
