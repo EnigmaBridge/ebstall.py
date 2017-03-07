@@ -198,7 +198,6 @@ class OpenVpnParserTest(unittest.TestCase):
         parser = OpenVpnConfig(static_config=test6)
         parser.load()
         data = parser.config_data
-        print(data)
         self.assertEqual(len(data), 2, 'Number of parsed lines does not match')
 
         self.assertEqual(data[0].ltype, 3)
@@ -210,9 +209,7 @@ class OpenVpnParserTest(unittest.TestCase):
     def test7(self):
         parser = OpenVpnConfig(static_config=test7)
         parser.load()
-
         data = parser.config_data
-        print(data)
 
         self.assertEqual(parser.dump().strip(), test7.strip(), 'Parser did not return the same data')
 
