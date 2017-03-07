@@ -1,0 +1,14 @@
+{
+  "versions":{
+    "latest": "6.3.1.1",
+    "all": ["6.3.1.1"],
+    "6.3.1.1": {
+      "revisions": [
+        {
+          "rev": 1,
+          "url": "https://privatespace-deploy.enigmabridge.com/ejbca/ejbca_6_3_1_1_r1.tgz"
+        }
+      ]
+    }
+  }
+}
