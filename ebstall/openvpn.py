@@ -362,6 +362,8 @@ class OpenVpn(object):
 
         # Result of load_config_file_lines
         self.server_config = None
+        self.client_config = None
+        self.client_config_path = client_config_path
 
     #
     # Settings
@@ -436,6 +438,22 @@ class OpenVpn(object):
                                                static_config=self.load_static_config(),
                                                audit=self.audit)
 
+    def init_client_config(self):
+        """
+        Client configuration parser
+        :return:
+        """
+        if self.client_config_path is None:
+            logger.debug('Client configuration path not provided')
+            return
+
+        if not os.path.exists(self.client_config_path):
+            raise errors.SetupError('Could not find client VPN configuration file: %s' % self.client_config_path)
+
+        if self.client_config is None:
+            self.client_config = OpenVpnConfig(config_path=self.client_config_path, audit=self.audit)
+
+
     #
     # Configuration
     #
@@ -491,6 +509,23 @@ class OpenVpn(object):
         self.server_config.set_config_value('push', push_values)
 
         return self.server_config.update_config_file()
+
+    def configure_client(self):
+        """
+        Configures client VPN file
+        :return:
+        """
+        self.init_client_config()
+        if self.client_config is None:
+            logger.debug('Could not configure client - no config object')
+            return
+
+        port, tcp = self.get_port()
+        self.client_config.set_config_value('proto', 'udp' if not tcp else 'tcp')
+        self.client_config.set_config_value('cipher', 'AES-256-CBC')
+        self.client_config.set_config_value('persist-tun', None, remove=True)
+        self.client_config.set_config_value('keepalive', '10 20')
+        return self.client_config.update_config_file()
 
     def store_server_cert(self, ca, cert, key):
         """
