@@ -1770,8 +1770,10 @@ class Installer(InstallerBase):
         args_src = sys.argv
         parser = self.init_argparse()
 
-        self.args = parser.parse_args(args=args_src[1:])
+        self.args, unknown = parser.parse_known_args(args=args_src[1:])
         self.noninteractive = self.args.noninteractive
+        for x in unknown:
+            logger.debug('Unknown argument: %s' % x)
 
         if self.args.env_dev is not None and self.args.env_test is not None:
             self.tprint(self.t.red('Error: env-dev and env-test are mutually exclusive'))

@@ -513,6 +513,7 @@ class VpnInstaller(Installer):
         self.syscfg.install_cron_renew(install_type=install_type)
         return 0
 
+
 def main():
     app = VpnInstaller()
     app.app_main()
