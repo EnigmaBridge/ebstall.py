@@ -73,9 +73,12 @@ class DnsMasq(object):
         tpl += '\naddress=/private-dimension/%s' % self.vpn_server_ip
         tpl += '\naddress=/private.dimension/%s' % self.vpn_server_ip
         tpl += '\naddress=/private/%s' % self.vpn_server_ip
+        tpl += '\naddress=/space/%s' % self.vpn_server_ip
         tpl += '\naddress=/vpn/%s' % self.vpn_server_ip
         tpl += '\naddress=/pki/%s' % self.vpn_server_ip
         tpl += '\naddress=/enigma/%s' % self.vpn_server_ip
+        tpl += '\naddress=/ejbca/%s' % self.vpn_server_ip
+        tpl += '\naddress=/admin/%s' % self.vpn_server_ip
         tpl += '\n'
 
         cpath = self.get_config_file_path()
