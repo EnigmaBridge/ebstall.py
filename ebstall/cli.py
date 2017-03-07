@@ -352,7 +352,7 @@ class Installer(InstallerBase):
             else:
                 self.tprint(self.t.red('Error in the registration'))
             self.tprint('Please, try again. If problem persists, '
-                        'please contact our support at https://enigmabridge.freshdesk.com')
+                        'please contact our support at https://enigmabridge.freshdesk.com/helpdesk/tickets/new')
             return self.return_code(14), None
 
         return 0, new_config
@@ -770,7 +770,7 @@ class Installer(InstallerBase):
         self.tprint('Make sure both ports are open and available: %d, %d' % (self.ejbca.PORT, self.ejbca.PORT_PUBLIC))
         self.tprint('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
                     'AWS Security Groups')
-        self.tprint('Please get in touch with our support via https://enigmabridge/freshdesk.com')
+        self.tprint('Please get in touch with our support via https://enigmabridge.freshdesk.com/helpdesk/tickets/new')
 
     def init_print_ejbca_unreachable_public_error(self):
         """
@@ -781,7 +781,7 @@ class Installer(InstallerBase):
                     % (self.ejbca.PORT_PUBLIC, self.cfg_get_raw_ip()))
         self.tprint('If you cannot connect to the PKI kye management interface, consider reconfiguring the '
                     'AWS Security Groups')
-        self.tprint('Please get in touch with our support via https://enigmabridge/freshdesk.com')
+        self.tprint('Please get in touch with our support via https://enigmabridge.freshdesk.com/helpdesk/tickets/new')
 
     def init_main_try(self):
         """
@@ -1225,7 +1225,7 @@ class Installer(InstallerBase):
 
         tmp = 'In order to complete your registration as an Enigma Bridge client, you need to enter a ' \
               'challenge. We have created this token in our support system at ' \
-              'https://enigmabridge.freshdesk.com'
+              'https://enigmabridge.freshdesk.com/helpdesk/tickets'
         self.tprint(self.wrap_term(single_string=True, max_width=self.get_term_width(), text=tmp))
 
         self.tprint('\nPlease follow these steps to access the token:')

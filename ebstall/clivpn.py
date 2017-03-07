@@ -231,7 +231,7 @@ class VpnInstaller(Installer):
         self.tprint(self.wrap_term(single_string=True, max_width=80, text=txt))
 
         self.tprint('\n\nPlease contact us at support@enigmabridge.com or '
-                    'https://enigmabridge.freshdesk.com if you need assistance.')
+                    'https://enigmabridge.freshdesk.com/helpdesk/tickets/new if you need assistance.')
 
     def init_main_try(self):
         """
