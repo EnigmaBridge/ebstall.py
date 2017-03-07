@@ -45,6 +45,7 @@ class VpnInstaller(Installer):
 
         self.vpn_keys = None, None, None
         self.vpn_crl = None
+        self.vpn_client_config = None
 
     def init_argparse(self):
         """
@@ -401,6 +402,7 @@ class VpnInstaller(Installer):
 
         self.vpn_keys = self.ejbca.vpn_get_server_cert_paths()
         self.vpn_crl = self.ejbca.vpn_get_crl_path()
+        self.vpn_client_config = self.ejbca.vpn_get_vpn_client_config_path()
         self.ejbca.vpn_install_cron()
 
     def init_vpn(self):
@@ -425,6 +427,10 @@ class VpnInstaller(Installer):
             raise errors.SetupError('Cannot install VPN certificate+key to the VPN server')
 
         self.ovpn.configure_crl(crl_path=self.vpn_crl)
+
+        # Configure VPN client configuration file to match the server config
+        self.ovpn.client_config_path = self.vpn_client_config
+        self.ovpn.configure_client()
 
         # OS configuration
         ret = self.ovpn.setup_os()

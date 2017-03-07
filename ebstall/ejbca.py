@@ -1188,6 +1188,14 @@ class Ejbca(object):
         """
         return os.path.join(self.get_ejbca_home(), 'vpn', '%s.crl' % self.hostname)
 
+    def vpn_get_vpn_client_config_path(self):
+        """
+        Returns path for the client VPN configuration file template.
+        Template is used when sending/providing for download a new configuration files to clients.
+        :return: string vpm client path path
+        """
+        return os.path.join(self.get_ejbca_home(), 'vpn_templates/vpnconfig.ovpn')
+
     def vpn_get_server_cert_paths(self):
         """
         Returns VPN server paths
