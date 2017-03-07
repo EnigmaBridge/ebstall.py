@@ -486,7 +486,7 @@ class OpenVpn(object):
         port, tcp = self.get_port()
         self.init_server_config()
         self.server_config.set_config_value('port', '%s' % port)
-        self.server_config.set_config_value('proto', 'udp' if not tcp else 'tcp-server')
+        self.server_config.set_config_value('proto', 'udp' if not tcp else 'tcp')
         self.server_config.set_config_value('cipher', 'AES-256-CBC')
         self.server_config.set_config_value('dh', 'dh2048.pem')
         self.server_config.set_config_value('ca', 'ca.crt')
@@ -502,8 +502,7 @@ class OpenVpn(object):
         self.server_config.set_config_value('group', 'nobody')
         self.server_config.set_config_value('server', '%s %s' % (self.get_ip_net(), self.get_ip_mask()))
 
-        # '"dhcp-option DNS 8.8.4.4"',
-        # '"dhcp-option DNS 8.8.8.8"',
+        # Use internal DNS to prevent DNS leaks
         push_values = ['"dhcp-option DNS %s"' % self.get_ip_vpn_server(),
                        '"redirect-gateway def1 bypass-dhcp"']
         self.server_config.set_config_value('push', push_values)
