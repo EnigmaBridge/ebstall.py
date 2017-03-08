@@ -22,6 +22,7 @@ from core import Core
 from config import Config, EBSettings
 from registration import Registration, InfoLoader
 from softhsm import SoftHsmV1Config
+from jboss import Jboss
 from ejbca import Ejbca
 from ebsysconfig import SysConfig
 from letsencrypt import LetsEncrypt
@@ -56,6 +57,7 @@ class Installer(InstallerBase):
         # Init state
         self.reg_svc = None
         self.soft_config = None
+        self.jboss = None
         self.ejbca = None
         self.mysql = None
         self.eb_cfg = None
@@ -244,9 +246,11 @@ class Installer(InstallerBase):
         self.soft_config = SoftHsmV1Config()
         self.mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit,
                                   write_dots=True, root_passwd=self.get_db_root_password())
+        self.jboss = Jboss(config=self.config, eb_config=self.eb_settings,
+                           sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
-                           sysconfig=self.syscfg, audit=self.audit)
+                           sysconfig=self.syscfg, audit=self.audit, jboss=self.jboss)
         return 0
 
     def init_prompt_user(self):
@@ -388,7 +392,7 @@ class Installer(InstallerBase):
         if backup_dir is not None:
             self.tprint('EnigmaBridge PKCS#11 previous token database moved to: %s' % backup_dir)
 
-        out, err = self.soft_config.init_token(user=self.ejbca.JBOSS_USER)
+        out, err = self.soft_config.init_token(user=self.jboss.get_user())
         self.tprint('EnigmaBridge PKCS#11 token initialization: %s' % out)
         return 0
 
@@ -589,6 +593,29 @@ class Installer(InstallerBase):
         self.tprint('  This may take 15 minutes or less. Please, do not interrupt the installation')
         self.tprint('  and wait until the process completes.\n')
 
+    def init_jboss(self):
+        """
+        Initializes JBoss
+        :return:
+        """
+        ret = self.jboss.install()
+        if ret != 0:
+            raise errors.SetupError('Cannot install JBoss package')
+
+        self.jboss.configure_server()
+        self.jboss.fix_privileges()
+
+        # OS configuration
+        ret = self.jboss.setup_os()
+        if ret != 0:
+            raise errors.SetupError('Cannot configure OS for the JBoss server')
+
+        # Starting VPN server
+        ret = self.jboss.enable()
+        if ret != 0:
+            raise errors.SetupError('Cannot set JBoss server to start after boot')
+        return 0
+
     def init_install_ejbca(self, new_config=None):
         """
         Installs EJBCA
@@ -598,6 +625,8 @@ class Installer(InstallerBase):
             new_config = self.config
 
         self.init_install_ejbca_intro()
+        self.init_jboss()
+
         self.ejbca.set_config(new_config)
         self.ejbca.set_domains(new_config.domains)
         self.ejbca.reg_svc = self.reg_svc
@@ -1248,6 +1277,7 @@ class Installer(InstallerBase):
             return self.return_code(1)
 
         self.audit.set_flush_enabled(True)
+        self.load_base_settings()
         config = Core.read_configuration()
         if config is None or not config.has_nonempty_config():
             self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
@@ -1295,8 +1325,9 @@ class Installer(InstallerBase):
                 return self.return_code(3)
 
         # EJBCA
-        ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config,
-                      staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit)
+        jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
+        ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config, eb_config=self.eb_settings,
+                      staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit, jboss=jboss)
         ejbca.set_domains(config.ejbca_domains)
         ejbca.reg_svc = reg_svc
 
@@ -1450,6 +1481,7 @@ class Installer(InstallerBase):
             return self.return_code(1)
 
         try:
+            self.load_base_settings()
             self.audit.set_flush_enabled(True)
             self.tprint('Going to undeploy and remove EJBCA from the system')
             self.tprint('WARNING! This is a destructive process!')
@@ -1463,8 +1495,9 @@ class Installer(InstallerBase):
                 return self.return_code(1)
 
             config = Core.read_configuration()
-            ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=config,
-                          sysconfig=self.syscfg, audit=self.audit)
+            jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
+            ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=config, eb_config=self.eb_settings,
+                          sysconfig=self.syscfg, audit=self.audit, jboss=jboss)
 
             self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
             ejbca.undeploy()

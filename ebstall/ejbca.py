@@ -3,14 +3,11 @@
 
 import os
 import util
-from sarge import run, Capture, Feeder
-from ebclient.eb_utils import EBUtils
 from softhsm import SoftHsmV1Config
 from datetime import datetime
 import time
 import sys
 import types
-import subprocess
 import shutil
 import osutil
 import re
@@ -18,7 +15,7 @@ import letsencrypt
 import logging
 import errors
 from audit import AuditManager
-from consts import LE_VERIFY_DNS, LE_VERIFY_TLSSNI, LE_VERIFY_DEFAULT, PROVISIONING_SERVERS
+from consts import LE_VERIFY_DNS, PROVISIONING_SERVERS
 import requests
 
 
@@ -26,6 +23,7 @@ __author__ = 'dusanklinec'
 logger = logging.getLogger(__name__)
 
 
+# noinspection PyMethodMayBeStatic
 class Ejbca(object):
     """
     EJBCA configuration & builder
@@ -38,8 +36,6 @@ class Ejbca(object):
     # Default home dirs
     EJBCA_VERSION = 'ejbca_ce_6_3_1_1'
     EJBCA_HOME = '/opt/ejbca_ce_6_3_1_1'
-    JBOSS_HOME = '/opt/jboss-eap-6.4.0'
-    JBOSS_USER = 'jboss'
     USER_HOME = '/home/ec2-user'
     SSH_USER = 'ec2-user'
 
@@ -55,11 +51,6 @@ class Ejbca(object):
     PASSWORDS_FILE = '/root/ejbca.passwords'
     PASSWORDS_BACKUP_DIR = '/root/ejbca.passwords.old'
     DB_BACKUPS = '/root/ejbcadb.old'
-
-    # JBoss paths
-    JBOSS_CLI = 'bin/jboss-cli.sh'
-    JBOSS_KEYSTORE = 'standalone/configuration/keystore/keystore.jks'
-    JBOSS_CONFIG = 'standalone/configuration/standalone.xml'
 
     # MySQL connection
     MYSQL_HOST = 'localhost'
@@ -110,7 +101,7 @@ class Ejbca(object):
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
                  config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
-                 sysconfig=None, audit=None, app=None, openvpn=None,
+                 sysconfig=None, audit=None, app=None, openvpn=None, jboss=None,
                  *args, **kwargs):
 
         self.install_props = util.defval(install_props, {})
@@ -144,6 +135,7 @@ class Ejbca(object):
         self.audit = audit
         if self.audit is None:
             self.audit = AuditManager(disabled=True)
+        self.jboss = jboss
         self.openvpn = openvpn
 
         # Remove secrets from audit logging
@@ -200,28 +192,6 @@ class Ejbca(object):
         """
         return os.path.join(self.get_ejbca_home(), 'bin', 'ejbca.sh')
 
-    def get_jboss_home(self):
-        """
-        Returns JBoss home directory, first try to look at env var, then return default val
-        :return:
-        """
-        if 'JBOSS_HOME' in os.environ and len(os.environ['JBOSS_HOME']) > 0:
-            return os.path.abspath(os.environ['JBOSS_HOME'])
-
-        if self.eb_config is not None:
-            config_home = self.eb_config.jboss_home
-            if config_home is not None:
-                return config_home
-
-            return os.path.abspath(self.JBOSS_HOME)
-
-    def get_jboss_config(self):
-        """
-        Returns JBoss configuration file - for redirects
-        :return:
-        """
-        return os.path.join(self.get_jboss_home(), self.JBOSS_CONFIG)
-
     def get_install_prop_file(self):
         return os.path.abspath(os.path.join(self.get_ejbca_home(), self.INSTALL_PROPERTIES_FILE))
 
@@ -275,12 +245,12 @@ class Ejbca(object):
         """
         Sets the domains EJBCA is reachable on
         :param domains:
+        :param primary:
+        :param set_hostname:
         :return:
         """
-        domains_empty = False
         if domains is None or len(domains) == 0:
             domains = ['localhost']
-            domains_empty = True
 
         if not isinstance(domains, types.ListType):
             domains = [domains]
@@ -334,10 +304,10 @@ class Ejbca(object):
 
         return self.web_props
 
-    def _update_property_file(self, file, properties):
+    def _update_property_file(self, filepath, properties):
         """
         Updates EJBCA property file with backup
-        :param file:
+        :param filepath:
         :param properties:
         :return:
         """
@@ -347,7 +317,7 @@ class Ejbca(object):
 
         file_hnd = None
         try:
-            file_hnd, file_backup = util.safe_create_with_backup(file, 'w', 0o644)
+            file_hnd, file_backup = util.safe_create_with_backup(filepath, 'w', 0o644)
             file_hnd.write(prop_hdr + self.properties_to_string(properties) + "\n\n")
         finally:
             if file_hnd is not None:
@@ -386,7 +356,7 @@ class Ejbca(object):
     def cli_cmd(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, ant_answer=True, cwd=None):
         """
         Runs command line task
-        Used for ant and jboss-cli.sh
+        Used for ant
         :return:
         """
         default_cwd = self.get_ejbca_home()
@@ -402,7 +372,7 @@ class Ejbca(object):
     #
 
     def ant_cmd(self, cmd, log_obj=None, write_dots=False, on_out=None, on_err=None):
-        ret, out, err = self.cli_cmd('sudo -E -H -u %s ant %s' % (self.JBOSS_USER, cmd),
+        ret, out, err = self.cli_cmd('sudo -E -H -u %s ant %s' % (self.jboss.get_user(), cmd),
                                      log_obj=log_obj, write_dots=write_dots,
                                      on_out=on_out, on_err=on_err, ant_answer=True)
         if ret != 0:
@@ -419,6 +389,7 @@ class Ejbca(object):
     def ant_deployear(self):
         return self.ant_cmd('deployear', log_obj='/tmp/ant-deployear.log', write_dots=self.print_output)
 
+    # noinspection PyUnusedLocal
     def ant_answer(self, out, feeder, p=None, *args, **kwargs):
         out = out.strip()
         if out.startswith('Please enter'):            # default - use default value, no starving
@@ -426,6 +397,7 @@ class Ejbca(object):
         elif out.startswith('[input] Please enter'):  # default - use default value, no starving
             feeder.feed('\n')
 
+    # noinspection PyUnusedLocal
     def ant_install_answer(self, out, feeder, p=None, *args, **kwargs):
         out = out.strip()
         if 'truststore with the CA certificate for https' in out:
@@ -446,7 +418,8 @@ class Ejbca(object):
         Installation
         :return:
         """
-        return self.ant_cmd('install', log_obj='/tmp/ant-install.log', write_dots=self.print_output, on_out=self.ant_install_answer)
+        return self.ant_cmd('install', log_obj='/tmp/ant-install.log', write_dots=self.print_output,
+                            on_out=self.ant_install_answer)
 
     def ant_client_tools(self):
         return self.ant_cmd('clientToolBox', log_obj='/tmp/ant-clientToolBox.log', write_dots=self.print_output)
@@ -455,27 +428,26 @@ class Ejbca(object):
     # JBoss CLI
     #
 
-    def jboss_cmd(self, cmd):
-        cli = os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_CLI))
-        cli_cmd = 'sudo -E -H -u %s %s -c \'%s\'' % (self.JBOSS_USER, cli, cmd)
-
-        with open('/tmp/jboss-cli.log', 'a+') as logger:
-            ret, out, err = self.cli_cmd(cli_cmd, log_obj=logger,
-                                         write_dots=self.print_output, ant_answer=False,
-                                         cwd=self.get_jboss_home())
-            return ret, out, err
-
     def jboss_reload(self):
-        ret = self.jboss_cmd(':reload')
-        time.sleep(3)
-        self.jboss_wait_after_start()
-        return ret
+        """
+        Reloads JBoss server via CLI
+        :return:
+        """
+        return self.jboss.reload()
 
     def jboss_undeploy(self):
-        return self.jboss_cmd('undeploy ejbca.ear')
+        """
+        Undeploys EJBCA from JBoss via CLI command
+        :return:
+        """
+        return self.jboss.cli_cmd('undeploy ejbca.ear')
 
     def jboss_remove_datasource(self):
-        return self.jboss_cmd('data-source remove --name=ejbcads')
+        """
+        Removes EJBCA Data source
+        :return:
+        """
+        return self.jboss.cli_cmd('data-source remove --name=ejbcads')
 
     def jboss_add_mysql_jdbc(self):
         """
@@ -483,7 +455,7 @@ class Ejbca(object):
         Performed only once after JBoss installation.
         :return:
         """
-        return self.jboss_cmd('/subsystem=datasources/jdbc-driver=com.mysql.jdbc.Driver:add(driver-name=com.mysql.jdbc.Driver,driver-class-name=com.mysql.jdbc.Driver,driver-module-name=com.mysql,driver-xa-datasource-class-name=com.mysql.jdbc.jdbc2.optional.MysqlXADataSource)')
+        return self.jboss.add_mysql_jdbc()
 
     def jboss_rollback_ejbca(self):
         cmds = ['/core-service=management/security-realm=SSLRealm/authentication=truststore:remove',
@@ -511,118 +483,35 @@ class Ejbca(object):
                 '/interface=httpspub:remove',
                 '/interface=httpspriv:remove']
         for cmd in cmds:
-            self.jboss_cmd(cmd)
+            self.jboss.cli_cmd(cmd)
         self.jboss_reload()
-
-    def _jboss_get_rewrite_rules_list(self):
-        """
-        Returns list of rewrite rules defined for default virtual serer.
-        :return:
-        """
-        cmd = '/subsystem=web/virtual-server=default-host:read-children-names(child-type=rewrite)'
-        ret, out, err = self.jboss_cmd(cmd)
-        if ret != 0:
-            raise errors.SetupError('Cannot get jboss rewrite rules')
-
-        out_json = util.jboss_to_json(out)
-        if out_json is None or 'result' not in out_json:
-            raise errors.SetupError('Invalid jboss response on rewrite rules get')
-        return out_json['result']
-
-    def _jboss_get_rewrite_rules(self):
-        """
-        Returns rewrite rules for the default virtual host with their definitions
-        :return:
-        """
-        cmd = '/subsystem=web/virtual-server=default-host:read-children-resources(child-type=rewrite)'
-        ret, out, err = self.jboss_cmd(cmd)
-        if ret != 0:
-            raise errors.SetupError('Cannot get jboss rewrite rules')
-
-        out_json = util.jboss_to_json(out)
-        if out_json is None or 'result' not in out_json:
-            raise errors.SetupError('Invalid jboss response on rewrite rules get')
-        return out_json['result']
-
-    def _jboss_remove_rewrite_rule(self, rule):
-        """
-        Removes rewrite rule from the default virtual host
-        :param rule:
-        :return:
-        """
-        cmd = '/subsystem=web/virtual-server=default-host/rewrite=%s:remove' % rule
-        ret, out, err = self.jboss_cmd(cmd)
-        if ret != 0:
-            raise errors.SetupError('Cannot get jboss rewrite rules')
-        return ret
-
-    def _jboss_add_rewrite_rule(self, rule_id, pattern, subs, flags='L,QSA,R'):
-        """
-        Adds a new rewrite rule to the jboss
-        :param rule_id:
-        :param pattern:
-        :param subs:
-        :param flags:
-        :return:
-        """
-        pattern = pattern.replace('"', '\\"')
-        subs = subs.replace('"', '\\"')
-        flags = flags.replace('"', '\\"')
-        cmd = '/subsystem=web/virtual-server=default-host/rewrite=%s:add(pattern="%s", substitution="%s", flags="%s")' \
-              % (rule_id, pattern, subs, flags)
-        ret, out, err = self.jboss_cmd(cmd)
-        if ret != 0:
-            raise errors.SetupError('Cannot set jboss rewrite rule %s' % rule_id)
-        return ret
-
-    def _jboss_enable_default_root(self):
-        """
-        Enables default root for JBoss - required for rewrites
-        /subsystem=web/virtual-server=default-host:write-attribute(name="enable-welcome-root",value=true)
-        :return:
-        """
-        cmd = '/subsystem=web/virtual-server=default-host:write-attribute(name="enable-welcome-root",value=true)'
-        ret, out, err = self.jboss_cmd(cmd)
-        if ret != 0:
-            raise errors.SetupError('Cannot set jboss default host')
-        return ret
-
-    def jboss_remove_all_rewrite_rules(self):
-        """
-        Removes all rewrite rules defined for the defualt virtual host.
-        Needs jboss reload
-        :return:
-        """
-        rules_list = self._jboss_get_rewrite_rules_list()
-        for rule_id in rules_list:
-            self._jboss_remove_rewrite_rule(rule_id)
 
     def jboss_add_rewrite_ejbca(self):
         """
         Adds EJBCA default rewrite rules
         :return:
         """
-        self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule02', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule01', '^/$', '/ejbca/adminweb', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule02', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
 
     def jboss_add_rewrite_vpn(self):
         """
         Adds default rewrites for VPN configuration
         :return:
         """
-        self._jboss_add_rewrite_rule('rule01', '^/$', '/ejbca/vpn/index.jsf', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule02', '^/admin$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule03', '^/key/?$', '/ejbca/vpn/config.jsf', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule04', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
-        self._jboss_add_rewrite_rule('rule05', '^/p12/?$', '/ejbca/vpn/p12.jsf', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule01', '^/$', '/ejbca/vpn/index.jsf', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule02', '^/admin$', '/ejbca/adminweb/vpn/vpnusers.jsf', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule03', '^/key/?$', '/ejbca/vpn/config.jsf', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule04', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule05', '^/p12/?$', '/ejbca/vpn/p12.jsf', 'L,QSA,R')
 
     def jboss_configure_rewrite_ejbca(self):
         """
         Configures EJBCA rewrite rules
         :return:
         """
-        self._jboss_enable_default_root()
-        self.jboss_remove_all_rewrite_rules()
+        self.jboss.enable_default_root()
+        self.jboss.remove_all_rewrite_rules()
         self.jboss_add_rewrite_ejbca()
 
     def jboss_configure_rewrite_vpn(self):
@@ -630,8 +519,8 @@ class Ejbca(object):
         Configures VPN rewrite rules
         :return:
         """
-        self._jboss_enable_default_root()
-        self.jboss_remove_all_rewrite_rules()
+        self.jboss.enable_default_root()
+        self.jboss.remove_all_rewrite_rules()
         self.jboss_add_rewrite_vpn()
 
     #
@@ -754,7 +643,7 @@ class Ejbca(object):
         Removes original database, moving it to a backup location.
         :return:
         """
-        jboss_dir = self.get_jboss_home()
+        jboss_dir = self.jboss.get_jboss_home()
         db1 = os.path.join(jboss_dir, 'ejbcadb.h2.db')
         db2 = os.path.join(jboss_dir, 'ejbcadb.trace.db')
         db3 = os.path.join(jboss_dir, 'ejbcadb.lock.db')
@@ -771,39 +660,14 @@ class Ejbca(object):
         return backup1, backup2, backup3
 
     def jboss_fix_privileges(self):
-        self.sysconfig.exec_shell('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_jboss_home()))
-        self.sysconfig.exec_shell('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_ejbca_home()))
-
-    def jboss_wait_after_start(self):
         """
-        Waits until JBoss responds with success after start
+        Fix privileges to JBoss user
+        #TODO: use JBoss object
         :return:
         """
-        jboss_works = False
-        max_attempts = 30
-
-        for i in range(0, max_attempts):
-            if i > 0:
-                if self.print_output:
-                    sys.stderr.write('.')
-                time.sleep(3)
-
-            try:
-                ret, out, err = self.jboss_cmd(':read-attribute(name=server-state)')
-                if out is None or len(out) == 0:
-                    continue
-
-                out_total = '\n'.join(out)
-
-                if re.search(r'["\']?outcome["\']?\s*=>\s*["\']?success["\']?', out_total) and \
-                        re.search(r'["\']?result["\']?\s*=>\s*["\']?running["\']?', out_total):
-                    jboss_works = True
-                    break
-
-            except Exception as ex:
-                continue
-
-        return jboss_works
+        usr = self.jboss.get_user()
+        self.sysconfig.exec_shell('sudo chown -R %s:%s %s' % (usr, usr, self.get_ejbca_home()))
+        self.jboss.fix_privileges()
 
     def jboss_wait_after_deploy(self):
         """
@@ -820,7 +684,7 @@ class Ejbca(object):
                 time.sleep(3)
 
             try:
-                ret, out, err = self.jboss_cmd('deploy -l')
+                ret, out, err = self.jboss.cli_cmd('deploy -l')
                 if out is None or len(out) == 0:
                     continue
 
@@ -838,18 +702,9 @@ class Ejbca(object):
     def jboss_restart(self):
         """
         Restarts JBoss daemon
-        Here is important to start it with setsid so daemon is started in a new shell session.
-        Otherwise Jboss would have been killed in case python terminates.
         :return:
         """
-        os.spawnlp(os.P_NOWAIT, "sudo", "bash", "bash", "-c",
-                   "setsid /etc/init.d/jboss-eap-6.4.0 restart 2>/dev/null >/dev/null </dev/null &")
-
-        self.audit.audit_exec('sudo bash -c "setsid /etc/init.d/jboss-eap-6.4.0 restart '
-                              '2>/dev/null >/dev/null </dev/null &"')
-
-        time.sleep(10)
-        return self.jboss_wait_after_start()
+        return self.jboss.jboss_restart()
 
     def backup_passwords(self):
         """
@@ -898,7 +753,7 @@ class Ejbca(object):
         return os.path.join(self.get_ejbca_home(), 'bin')
 
     def ejbca_get_command(self, cmd):
-        return 'sudo -E -H -u %s %s %s' % (self.JBOSS_USER, self.get_ejbca_sh(), cmd)
+        return 'sudo -E -H -u %s %s %s' % (self.jboss.get_user(), self.get_ejbca_sh(), cmd)
 
     def ejbca_cmd(self, cmd, retry_attempts=3, write_dots=False, on_out=None, on_err=None):
         """
@@ -907,6 +762,9 @@ class Ejbca(object):
 
         :param cmd:
         :param retry_attempts:
+        :param write_dots:
+        :param on_out:
+        :param on_err:
         :return: return code, stdout, stderr
         """
         cwd = self.ejbca_get_cwd()
@@ -954,7 +812,7 @@ class Ejbca(object):
         return os.path.join(self.get_ejbca_home(), 'bin')
 
     def pkcs11_get_command(self, cmd):
-        return 'sudo -E -H -u %s %s/pkcs11HSM.sh %s' % (self.JBOSS_USER, self.pkcs11_get_cwd(), cmd)
+        return 'sudo -E -H -u %s %s/pkcs11HSM.sh %s' % (self.jboss.get_user(), self.pkcs11_get_cwd(), cmd)
 
     def pkcs11_cmd(self, cmd, retry_attempts=3, write_dots=False, on_out=None, on_err=None):
         """
@@ -984,6 +842,7 @@ class Ejbca(object):
 
         return ret, out, err
 
+    # noinspection PyUnusedLocal
     def pkcs11_answer(self, out, feeder, p=None, *args, **kwargs):
         out = util.strip(out)
         if 'Password:' in out:
@@ -1179,7 +1038,7 @@ class Ejbca(object):
         :return: crl cron file string
         """
         crl = '# Check each half an hour if regeneration is needed\n'
-        crl += '*/30 * * * * %s %s vpn crl\n' % (self.JBOSS_USER, self.get_ejbca_sh())
+        crl += '*/30 * * * * %s %s vpn crl\n' % (self.jboss.get_user(), self.get_ejbca_sh())
         return crl
 
     def vpn_install_cron(self):
@@ -1224,7 +1083,11 @@ class Ejbca(object):
     #
 
     def get_keystore_path(self):
-        return os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_KEYSTORE))
+        """
+        Returns path to the JBoss key store (for https)
+        :return:
+        """
+        return self.jboss.get_keystore_path()
 
     def le_dns(self, domain=None, token=None, mdns=None, p=None, done=None, abort=None, *args, **kwargs):
         """
@@ -1283,6 +1146,7 @@ class Ejbca(object):
 
         le_method = self.get_le_method(le_method=le_method)
 
+        # noinspection PyUnusedLocal
         ret, out, err = -1, None, None
         if le_method == LE_VERIFY_DNS:
             mdns = self.lets_encrypt.manual_dns(expand=True, on_domain_challenge=self.le_dns)
@@ -1333,6 +1197,7 @@ class Ejbca(object):
         # Call letsencrypt renewal
         le_method = self.get_le_method(le_method=le_method)
 
+        # noinspection PyUnusedLocal
         ret, out, err = -1, None, None
         if le_method == LE_VERIFY_DNS:
             mdns = self.lets_encrypt.manual_dns(expand=True, on_domain_challenge=self.le_dns)
@@ -1396,7 +1261,7 @@ class Ejbca(object):
         if ret != 0:
             raise errors.SetupError('Could not extract update archive')
 
-        folders = [f for f in os.listdir(basedir) if not os.path.isfile(os.path.join(basedir, f)) \
+        folders = [f for f in os.listdir(basedir) if not os.path.isfile(os.path.join(basedir, f))
                    and f != '.' and f != '..']
 
         if len(folders) != 1:
@@ -1592,12 +1457,12 @@ class Ejbca(object):
         Very light check, but prevents from running and failing on hosts without our jboss installation.
         :return: true if env is OK (installation could finish successfully)
         """
-        return os.path.exists(self.get_ejbca_home()) and os.path.exists(self.get_jboss_home())
+        return os.path.exists(self.get_ejbca_home()) and self.jboss.test_environment()
 
     def setup_os(self):
         """
         Configures OS
-        Enables packet forwarding, sets up the masquerade
+        Allow port on the firewall
         :return:
         """
         ret = self.sysconfig.allow_port(port=self.PORT, tcp=True)
@@ -1609,4 +1474,5 @@ class Ejbca(object):
             return ret
 
         return 0
+
 
