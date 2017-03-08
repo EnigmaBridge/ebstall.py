@@ -97,6 +97,7 @@ class Jboss(object):
     #
     # Installation
     #
+
     def install(self):
         """
         Installs itself
@@ -140,6 +141,7 @@ class Jboss(object):
         Configures OS
         :return:
         """
+        self.install_cron()
         return 0
 
     def jboss_restart(self):
@@ -157,6 +159,27 @@ class Jboss(object):
 
         time.sleep(10)
         return self.wait_after_start()
+
+    def get_cron_file(self):
+        """
+        Returns contents of the cron.d file for cleaning log records
+        :return: crl cron file string
+        """
+        cron = '#!/bin/bash\n'
+        cron += "1 1 * * * root find %s/standalone/log/ -name 'server.log.*' -mtime +60 -exec /bin/rm {} \;\n" \
+                % self.get_jboss_home()
+        return cron
+
+    def install_cron(self):
+        """
+        Installs all cron.d files required by the JBoss
+        :return: 0 on success, can throw exception
+        """
+        crl_cron = self.get_cron_file()
+        if self.sysconfig is None:
+            raise ValueError('Sysconfig is None, required for cron installation')
+
+        return self.sysconfig.install_crond_file(file_name='jboss-log-clean', file_contents=crl_cron)
 
     #
     # CLI
