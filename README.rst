@@ -1,7 +1,7 @@
 EnigmaBridge Installer
 ======================
 
-This python installer helps witl deploying `EnigmaBridge <https://enigmabridge.com>`__ products to the virtual machines.
+This python installer helps with deploying `EnigmaBridge <https://enigmabridge.com>`__ products to the virtual machines.
 For now we support
 
 - EJBCA (PKI) deployment
@@ -78,6 +78,13 @@ Init
 The init command starts a new fresh installation. If a previous
 installation is present it asks user whether to proceed, backups the old
 installation databases and config files and installs a new one.
+
+Updating
+========
+To keep the installer and packages up to date we employ several mechanisms for updating.
+
+* Auto-updating wrapper scritps, similar principle used in Letsencrypt.
+* Updating EJBCA via our `deployment server <https://privatespace-deploy.enigmabridge.com/ejbca/index.json>`__
 
 Troubleshooting
 ===============
