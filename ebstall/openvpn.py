@@ -487,24 +487,33 @@ class OpenVpn(object):
         self.init_server_config()
         self.server_config.set_config_value('port', '%s' % port)
         self.server_config.set_config_value('proto', 'udp' if not tcp else 'tcp')
-        self.server_config.set_config_value('cipher', 'AES-256-CBC')
+        self.server_config.set_config_value('server', '%s %s' % (self.get_ip_net(), self.get_ip_mask()))
+
         self.server_config.set_config_value('dh', 'dh2048.pem')
         self.server_config.set_config_value('ca', 'ca.crt')
         self.server_config.set_config_value('cert', 'server.crt')
         self.server_config.set_config_value('key', 'server.key')
+
         self.server_config.set_config_value('client-to-client', None)
         self.server_config.set_config_value('persist-tun', None, remove=True)
         self.server_config.set_config_value('keepalive', '10 20')
         self.server_config.set_config_value('topology', 'subnet')
+        self.server_config.set_config_value('replay-window', '2048')
+        self.server_config.set_config_value('sndbuf', '0')
+        self.server_config.set_config_value('rcvbuf', '0')
+
+        self.server_config.set_config_value('cipher', 'AES-256-CBC')
+        self.server_config.set_config_value('auth', 'SHA256')
         # self.server_config.set_config_value('remote-cert-tls', 'server')
 
         self.server_config.set_config_value('user', 'nobody')
         self.server_config.set_config_value('group', 'nobody')
-        self.server_config.set_config_value('server', '%s %s' % (self.get_ip_net(), self.get_ip_mask()))
 
         # Use internal DNS to prevent DNS leaks
         push_values = ['"dhcp-option DNS %s"' % self.get_ip_vpn_server(),
-                       '"redirect-gateway def1 bypass-dhcp"']
+                       '"redirect-gateway def1 bypass-dhcp"',
+                       '"sndbuf 393216"',
+                       '"rcvbuf 393216"']
         self.server_config.set_config_value('push', push_values)
 
         return self.server_config.update_config_file()
@@ -522,8 +531,11 @@ class OpenVpn(object):
         port, tcp = self.get_port()
         self.client_config.set_config_value('proto', 'udp' if not tcp else 'tcp')
         self.client_config.set_config_value('cipher', 'AES-256-CBC')
+        self.server_config.set_config_value('auth', 'SHA256')
         self.client_config.set_config_value('persist-tun', None, remove=True)
         self.client_config.set_config_value('keepalive', '10 20')
+        self.server_config.set_config_value('replay-window', '2048')
+
         return self.client_config.update_config_file()
 
     def store_server_cert(self, ca, cert, key):
