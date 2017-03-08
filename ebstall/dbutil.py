@@ -110,20 +110,38 @@ class MySQL(object):
     """
 
     PORT = 3306
+    HOST = '127.0.0.1'
 
-    def __init__(self, audit=None, sysconfig=None, write_dots=False, root_passwd=None, *args, **kwargs):
+    def __init__(self, audit=None, sysconfig=None, config=None, write_dots=False, root_passwd=None, *args, **kwargs):
         self.audit = audit if audit is not None else AuditManager(disabled=True)
         self.sysconfig = sysconfig
+        self.config = config
         self.write_dots = write_dots
 
         self.secure_config = None
         self.secure_query = None
         self.root_passwd = root_passwd
 
+    def get_root_password(self):
+        """
+        Returns database root password.
+        :return:
+        """
+        return self.config.mysql_root_password if self.config is not None else None
+
+    def get_root_connstring(self):
+        """
+        Returns connection string to the MySQL database for root.
+        :return:
+        """
+        con_string = 'mysql://%s:%s@%s%s' % ('root', self.get_root_password(),
+                                             self.HOST, ':%s' % self.PORT)
+        return con_string
+
     def check_installed(self):
         """
         Checks if the MySQL is installed on the system
-        :return: True if mysql server is installed
+        :return: True if the mysql server is installed
         """
         cmd = 'mysql --no-defaults --help >/dev/null 2>/dev/null'
         ret, out, stderr = self.sysconfig.cli_cmd_sync(cmd=cmd)
@@ -142,7 +160,7 @@ class MySQL(object):
 
     def _escape_single_quote(self, inp):
         """
-        Escapes single quoted
+        Escapes single quoted query part
         :param inp:
         :return:
         """
@@ -152,7 +170,8 @@ class MySQL(object):
 
     def _prepare_files(self, root_password=None):
         """
-        Prepares configuration file.
+        Prepares mysql configuration file for SQL command execution under root.
+        Password & query do not leak via command arguments as it is quite sensitive (e.g., changing passwords)
         :return:
         """
         self.secure_config = os.path.join('/tmp', 'ebstall-sql.cnf.%s' % random.randint(0, 65535))
@@ -170,8 +189,10 @@ class MySQL(object):
 
     def _sql_command(self, sql, root_password=None):
         """
-        Executes sql command, returns return code, stdout, stderr
-        Uses configuration & root password already given.
+        Executes sql command as root, returns return code, stdout, stderr.
+        Uses configuration files not to leak credentials and query via arguments.
+        Used internally.
+
         :param sql:
         :param root_password: optional root password - another from the one set in the self
         :return: res, out, err
@@ -198,6 +219,130 @@ class MySQL(object):
         """
         res, out, err = self._sql_command('select 1;', root_password=root_password)
         return res == 0
+
+    def backup_database(self, database_name, backup_dir):
+        """
+        Backups given database to the backup dir.
+        Uses mysqldump command to create SQL dump.
+
+        :param database_name:
+        :param backup_dir:
+        :return:
+        """
+        util.make_or_verify_dir(backup_dir)
+
+        db_fpath = os.path.abspath(os.path.join(backup_dir, database_name + '.sql'))
+        fh, backup_file = util.safe_create_with_backup(db_fpath, mode='w', chmod=0o600)
+        fh.close()
+
+        self.audit.add_secrets(self.get_root_password())
+        cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
+              % (database_name, 'root', self.get_root_password(), db_fpath)
+
+        return self.sysconfig.exec_shell(cmd)
+
+    def build_engine(self, connstring=None, user=None, password=None):
+        """
+        Returns root SQLAlchemy engine.
+        :param connstring: connection string. if empty, default root is used
+        :param user: user to use for the engine, if connstring is not given, local database is used
+        :param password: user password to use for the engine, if connstring is not given, local database is used
+        :return:
+        """
+        self.db_install_python_mysql()
+
+        try:
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker, scoped_session
+            from sqlalchemy import exc as sa_exc
+            from warnings import filterwarnings
+            import MySQLdb as MySQLDatabase
+            filterwarnings('ignore', category=MySQLDatabase.Warning)
+            filterwarnings('ignore', category=sa_exc.SAWarning)
+
+            con_str = connstring
+            if con_str is None and user is not None:
+                con_str = 'mysql://%s:%s@%s%s' % (user, password, self.HOST, ':%s' % self.PORT)
+            if con_str is None and password is not None:
+                con_str = 'mysql://%s:%s@%s%s' % ('root', password, self.HOST, ':%s' % self.PORT)
+            if con_str is None:
+                con_str = self.get_root_connstring()
+            if password is not None:
+                self.audit.add_secrets(password)
+            self.audit.add_secrets(self.get_root_password())
+
+            engine = create_engine(con_str, pool_recycle=3600)
+            return engine
+
+        except Exception as e:
+            logger.info('Exception in building MySQL DB engine %s' % e)
+            raise
+
+    def execute_sql(self, engine, sql, user='root', ignore_fail=False):
+        """
+        Executes SQL query on the engine, logs the query
+        :param engine:
+        :param sql:
+        :param user: user performing the query, just for auditing purposes
+        :param ignore_fail: if true mysql error is caught and logged
+        :return:
+        """
+        res = None
+        result_code = 0
+        try:
+            res = engine.execute(sql)
+            return res
+
+        except Exception as e:
+            result_code = 1
+            logger.debug('Exception in sql: %s, %s' % (sql, e))
+            if ignore_fail:
+                self.audit.audit_exception(e)
+            else:
+                raise
+
+        finally:
+            self.audit.audit_sql(sql=sql, user=user, result=res, res_code=result_code)
+
+        return None
+
+    def drop_database(self, database_name, engine=None):
+        """
+        Drops the database. Uses sqlalchemy DB engine
+        :param database_name:
+        :return:
+        """
+        if engine is None:
+            engine = self.build_engine()
+
+        return self.execute_sql(engine, sql="DROP DATABASE IF EXISTS `%s`" % database_name, ignore_fail=True)
+
+    def create_database(self, database_name, engine=None):
+        """
+        Creates a new database. Uses sqlalchemy DB engine
+        :param database_name:
+        :param engine:
+        :return:
+        """
+        if engine is None:
+            engine = self.build_engine()
+
+        return self.execute_sql(engine, "CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % database_name)
+
+    def create_user(self, user, password, database_name, engine=None):
+        """
+        Grant user access to the database
+        :param user:
+        :param password:
+        :param database_name:
+        :return:
+        """
+        if engine is None:
+            engine = self.build_engine()
+
+        self.execute_sql(engine, "GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
+                         % (database_name, user, password))
+        return self.execute_sql(engine, "FLUSH PRIVILEGES")
 
     #
     # Installation
@@ -349,5 +494,34 @@ class MySQL(object):
         """
         return self.sysconfig.switch_svc(self.get_svc_map(), start=start, stop=stop, restart=restart)
 
+    def db_install_python_mysql(self):
+        """
+        Checks if Mysql for python is installed.
+        :return:
+        """
+        # noinspection PyBroadException
+        try:
+            # noinspection PyPackageRequirements
+            import MySQLdb
+        except:
+            logger.debug('MySQLdb not found')
+            pkger = self.sysconfig.get_packager()
+            ret = -1
+
+            if pkger == osutil.PKG_YUM:
+                ret = self.sysconfig.exec_shell('sudo yum install -y python python-devel mysql-devel '
+                                                'redhat-rpm-config gcc')
+            elif pkger == osutil.PKG_APT:
+                ret = self.sysconfig.exec_shell('sudo apt-get install -y python-pip python-dev libmysqlclient-dev')
+
+            else:
+                raise EnvironmentError('MySQLdb module not installed, code: %s' % ret)
+
+            if ret != 0:
+                raise OSError('Could not install MySQLdb related packages')
+
+            ret = self.sysconfig.exec_shell('sudo pip install MySQL-python')
+            if ret != 0:
+                raise OSError('Could not install MySQLdb, code: %s' % ret)
 
 

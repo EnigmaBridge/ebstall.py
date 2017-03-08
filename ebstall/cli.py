@@ -244,13 +244,13 @@ class Installer(InstallerBase):
                                     audit=self.audit, sysconfig=self.syscfg)
 
         self.soft_config = SoftHsmV1Config()
-        self.mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit,
+        self.mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
                                   write_dots=True, root_passwd=self.get_db_root_password())
         self.jboss = Jboss(config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
-                           sysconfig=self.syscfg, audit=self.audit, jboss=self.jboss)
+                           sysconfig=self.syscfg, audit=self.audit, jboss=self.jboss, mysql=self.mysql)
         return 0
 
     def init_prompt_user(self):
@@ -1325,9 +1325,11 @@ class Installer(InstallerBase):
                 return self.return_code(3)
 
         # EJBCA
+        mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
+                             write_dots=True, root_passwd=self.get_db_root_password())
         jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
         ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config, eb_config=self.eb_settings,
-                      staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit, jboss=jboss)
+                      staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit, jboss=jboss, mysql=mysql)
         ejbca.set_domains(config.ejbca_domains)
         ejbca.reg_svc = reg_svc
 
@@ -1495,9 +1497,11 @@ class Installer(InstallerBase):
                 return self.return_code(1)
 
             config = Core.read_configuration()
+            mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
+                                 write_dots=True, root_passwd=self.get_db_root_password())
             jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
             ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=config, eb_config=self.eb_settings,
-                          sysconfig=self.syscfg, audit=self.audit, jboss=jboss)
+                          sysconfig=self.syscfg, audit=self.audit, jboss=jboss, mysql=mysql)
 
             self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
             ejbca.undeploy()

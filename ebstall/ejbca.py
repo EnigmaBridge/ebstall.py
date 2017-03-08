@@ -101,7 +101,7 @@ class Ejbca(object):
 
     def __init__(self, install_props=None, web_props=None, print_output=False, eb_config=None, jks_pass=None,
                  config=None, staging=False, do_vpn=False, db_pass=None, master_p12_pass=None,
-                 sysconfig=None, audit=None, app=None, openvpn=None, jboss=None,
+                 sysconfig=None, audit=None, app=None, openvpn=None, jboss=None, mysql=None,
                  *args, **kwargs):
 
         self.install_props = util.defval(install_props, {})
@@ -137,6 +137,7 @@ class Ejbca(object):
             self.audit = AuditManager(disabled=True)
         self.jboss = jboss
         self.openvpn = openvpn
+        self.mysql = mysql
 
         # Remove secrets from audit logging
         self.audit.add_secrets([self.http_pass, self.superadmin_pass, self.db_pass, self.master_p12_pass])
@@ -527,84 +528,13 @@ class Ejbca(object):
     # Backup / env reset
     #
 
-    def get_mysql_root_connstring(self):
-        """
-        Returns connection string to the MySQL database for root.
-        :return:
-        """
-        con_string = 'mysql://%s:%s@%s%s' % ('root', self.get_database_root_password(),
-                                             self.MYSQL_HOST, ':%s' % self.MYSQL_PORT)
-        return con_string
-
     def backup_mysql_database(self):
         """
         Backups EJBCA database in the standard location.
         internally uses mysqldump command to create SQL dump
         :return:
         """
-        util.make_or_verify_dir(self.DB_BACKUPS)
-
-        db_fpath = os.path.abspath(os.path.join(self.DB_BACKUPS, 'dbdump.sql'))
-        fh, backup_file = util.safe_create_with_backup(db_fpath, mode='w', chmod=0o600)
-        fh.close()
-
-        self.audit.add_secrets(self.get_database_root_password())
-        cmd = 'sudo mysqldump --database \'%s\' -u \'%s\' -p\'%s\' > \'%s\'' \
-              % (self.MYSQL_DB, 'root', self.get_database_root_password(), db_fpath)
-
-        return self.sysconfig.exec_shell(cmd)
-
-    def db_install_python_mysql(self):
-        """
-        Checks if Mysql for python is installed.
-        :return:
-        """
-        try:
-            import MySQLdb
-        except:
-            logger.debug('MySQLdb not found')
-            pkger = self.sysconfig.get_packager()
-            ret = -1
-
-            if pkger == osutil.PKG_YUM:
-                ret = self.sysconfig.exec_shell('sudo yum install -y python python-devel mysql-devel '
-                                                'redhat-rpm-config gcc')
-            elif pkger == osutil.PKG_APT:
-                ret = self.sysconfig.exec_shell('sudo apt-get install -y python-pip python-dev libmysqlclient-dev')
-
-            else:
-                raise EnvironmentError('MySQLdb module not installed, code: %s' % ret)
-
-            if ret != 0:
-                raise OSError('Could not install MySQLdb related packages')
-
-            ret = self.sysconfig.exec_shell('sudo pip install MySQL-python')
-            if ret != 0:
-                raise OSError('Could not install MySQLdb, code: %s' % ret)
-
-    def _execute_sql(self, engine, sql, user='root', ignore_fail=False):
-        """
-        Executes SQL query on the engine, logs the query
-        :param engine:
-        :param sql:
-        :param user: user performing the query, just for auditing purposes
-        :param ignore_fail: if true mysql error is caught and logged
-        :return:
-        """
-        res = None
-        result_code = 0
-        try:
-            res = engine.execute(sql)
-        except Exception as e:
-            result_code = 1
-            logger.debug('Exception in sql: %s, %s' % (sql, e))
-            if ignore_fail:
-                self.audit.audit_exception(e)
-            else:
-                raise
-
-        finally:
-            self.audit.audit_sql(sql=sql, user=user, result=res, res_code=result_code)
+        return self.mysql.backup_database(database_name=self.MYSQL_DB, backup_dir=self.DB_BACKUPS)
 
     def reset_mysql_database(self):
         """
@@ -613,26 +543,12 @@ class Ejbca(object):
         :return:
         """
         self.backup_mysql_database()
-        con_str = self.get_mysql_root_connstring()
-
-        # Install required packages for mysql
-        self.db_install_python_mysql()
         self.audit.add_secrets(self.db_pass)
         try:
-            from sqlalchemy import create_engine
-            from sqlalchemy.orm import sessionmaker, scoped_session
-            from sqlalchemy import exc as sa_exc
-            from warnings import filterwarnings
-            import MySQLdb as MySQLDatabase
-            filterwarnings('ignore', category=MySQLDatabase.Warning)
-            filterwarnings('ignore', category=sa_exc.SAWarning)
-
-            engine = create_engine(con_str, pool_recycle=3600)
-            self._execute_sql(engine, "DROP DATABASE IF EXISTS `%s`" % self.MYSQL_DB, ignore_fail=True)
-            self._execute_sql(engine, "CREATE DATABASE `%s` CHARACTER SET utf8 COLLATE utf8_general_ci" % self.MYSQL_DB)
-            self._execute_sql(engine, "GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'localhost' IDENTIFIED BY '%s'"
-                              % (self.MYSQL_DB, self.MYSQL_USER, self.db_pass))
-            self._execute_sql(engine, "FLUSH PRIVILEGES")
+            engine = self.mysql.build_engine()
+            self.mysql.drop_database(self.MYSQL_DB, engine=engine)
+            self.mysql.create_database(self.MYSQL_DB, engine=engine)
+            self.mysql.create_user(self.MYSQL_USER, self.db_pass, self.MYSQL_DB, engine=engine)
 
         except Exception as e:
             logger.info('Exception in database regeneration %s' % e)
@@ -683,6 +599,7 @@ class Ejbca(object):
                     sys.stderr.write('.')
                 time.sleep(3)
 
+            # noinspection PyBroadException
             try:
                 ret, out, err = self.jboss.cli_cmd('deploy -l')
                 if out is None or len(out) == 0:
