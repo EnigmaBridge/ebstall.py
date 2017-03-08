@@ -494,8 +494,9 @@ class OpenVpn(object):
         self.server_config.set_config_value('cert', 'server.crt')
         self.server_config.set_config_value('key', 'server.key')
 
-        self.server_config.set_config_value('client-to-client', None)
-        self.server_config.set_config_value('persist-tun', None, remove=True)
+        self.server_config.set_config_value('client-to-client')
+        self.server_config.set_config_value('persist-tun', remove=True)
+        self.server_config.set_config_value('comp-lzo', remove=True)
         self.server_config.set_config_value('keepalive', '10 20')
         self.server_config.set_config_value('topology', 'subnet')
         self.server_config.set_config_value('replay-window', '2048')
@@ -535,6 +536,7 @@ class OpenVpn(object):
         self.client_config.set_config_value('persist-tun', None, remove=True)
         self.client_config.set_config_value('keepalive', '10 20')
         self.server_config.set_config_value('replay-window', '2048')
+        self.server_config.set_config_value('comp-lzo', remove=True)
 
         return self.client_config.update_config_file()
 
