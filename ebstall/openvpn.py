@@ -496,7 +496,7 @@ class OpenVpn(object):
         self.server_config.set_config_value('persist-tun', None, remove=True)
         self.server_config.set_config_value('keepalive', '10 20')
         self.server_config.set_config_value('topology', 'subnet')
-        self.server_config.set_config_value('remote-cert-tls', 'server')
+        #self.server_config.set_config_value('remote-cert-tls', 'server')
 
         self.server_config.set_config_value('user', 'nobody')
         self.server_config.set_config_value('group', 'nobody')
