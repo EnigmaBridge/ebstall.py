@@ -11,8 +11,8 @@ Features
 ========
 
 -  OpenVPN
--  EJBCA 6.3.1.1
--  JBoss EAP 6.4
+-  EJBCA 6.3.1.1 with MySQL backend
+-  JBoss EAP 6.4 with LetsEncrypt HTTPS certificate
 -  SoftHSMv1-EnigmaBridge PKCS#11 adapter
 -  EnigmaBridge Dynamic DNS for AWS
 
