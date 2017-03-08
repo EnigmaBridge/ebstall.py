@@ -532,11 +532,11 @@ class OpenVpn(object):
         port, tcp = self.get_port()
         self.client_config.set_config_value('proto', 'udp' if not tcp else 'tcp')
         self.client_config.set_config_value('cipher', 'AES-256-CBC')
-        self.server_config.set_config_value('auth', 'SHA256')
+        self.client_config.set_config_value('auth', 'SHA256')
         self.client_config.set_config_value('persist-tun', None, remove=True)
         self.client_config.set_config_value('keepalive', '10 20')
-        self.server_config.set_config_value('replay-window', '2048')
-        self.server_config.set_config_value('comp-lzo', remove=True)
+        self.client_config.set_config_value('replay-window', '2048')
+        self.client_config.set_config_value('comp-lzo', remove=True)
 
         return self.client_config.update_config_file()
 
