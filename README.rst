@@ -84,6 +84,8 @@ Updating
 To keep the installer and packages up to date we employ several mechanisms for updating.
 
 * Auto-updating wrapper scritps, similar principle used in Letsencrypt.
+  * Autoupdate via `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/EnigmaBridge/ebstall-update/master/update.sh)"`
+  * Autoupdate via `pip install --upgrade ebstall`
 * Updating EJBCA via our `deployment server <https://privatespace-deploy.enigmabridge.com/ejbca/index.json>`__
 
 Troubleshooting

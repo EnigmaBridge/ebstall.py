@@ -46,6 +46,8 @@ for arg in "$@" ; do
       # Do not upgrade this script (also prevents client upgrades, because each
       # copy of the script pins a hash of the python client)
       NO_SELF_UPGRADE=1;;
+    --already-updated)
+      ALREADY_UPDATED=1;;
     --help)
       HELP=1;;
     --non-interactive)
@@ -103,7 +105,7 @@ fi
 
 # Can we upgrade? Ask the user
 if [ "$ASSUME_YES" != 1 -a "$ALLOW_UPDATE" != 1 ]; then
-  echo "EnigmaBridge AWS client would like to update itself so you have the newest version"
+  echo "EnigmaBridge Installer would like to update itself so you have the newest version"
   if confirm "Do you allow it to do update with pip? [y/N]"; then
     UPDATE_ALLOWED=1
    else
@@ -113,9 +115,23 @@ fi
 
 # Upgrade step
 if [ "$NO_SELF_UPGRADE" != 1 -a "$UPDATE_ALLOWED" == 1 ]; then
-    echo "Checking for updates..."
+    if [ "$ALREADY_UPDATED" != 1 ]; then
+        echo "Checking for updates..."
+    fi
     set +e
-    PIP_OUT=`PATH=$PATH:/usr/local/bin pip install --no-cache-dir --upgrade ebstall 2>&1`
+
+    # Update machine / installer
+    if [ "$ALREADY_UPDATED" != 1 ]; then
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/EnigmaBridge/ebstall-update/ami-01/update.sh)"
+        $0 "$@" --already-updated
+        exit 1
+    fi
+
+    # Update pip trouble maker
+    pip install --upgrade appdirs 2>/dev/null >/dev/null
+
+    # Update with pip
+    PIP_OUT=`pip install --no-cache-dir --upgrade ebstall 2>&1`
     PIP_STATUS=$?
     set -e
 
