@@ -134,3 +134,13 @@ workarounds, but one can also use ``--user`` switch for pip.
 ::
 
     pip install --user cryptography
+
+PIP update appdirs error
+------------------------
+
+Pip may have a problem with updating appdirs due to missing directory. It helps to update this package manually
+
+::
+
+    pip install --upgrade --no-cache appdirs
+
