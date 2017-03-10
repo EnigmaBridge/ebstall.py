@@ -353,7 +353,7 @@ class OpenVpn(object):
     SETTINGS_DIR = '/etc/openvpn'
     SETTINGS_FILE = 'server.conf'
     PORT_NUM = 1194
-    PORT_TCP = False
+    PORT_TCP = True
 
     def __init__(self, sysconfig=None, audit=None, write_dots=False, client_config_path=None, *args, **kwargs):
         self.sysconfig = sysconfig
@@ -499,12 +499,19 @@ class OpenVpn(object):
         self.server_config.set_config_value('comp-lzo', remove=True)
         self.server_config.set_config_value('keepalive', '2 20')
         self.server_config.set_config_value('topology', 'subnet')
-        self.server_config.set_config_value('replay-window', '2048')
         self.server_config.set_config_value('sndbuf', '0')
         self.server_config.set_config_value('rcvbuf', '0')
 
+        # Protocol dependent
+        if tcp:
+            self.server_config.set_config_value('replay-window', remove=True)
+        else:
+            self.server_config.set_config_value('replay-window', '2048')
+
         self.server_config.set_config_value('cipher', 'AES-256-CBC')
         self.server_config.set_config_value('auth', 'SHA256')
+
+        # This can be enabled after certificates are generated with exact usage.
         # self.server_config.set_config_value('remote-cert-tls', 'server')
 
         self.server_config.set_config_value('user', 'nobody')
@@ -535,9 +542,14 @@ class OpenVpn(object):
         self.client_config.set_config_value('auth', 'SHA256')
         self.client_config.set_config_value('persist-tun', remove=True)
         self.client_config.set_config_value('keepalive', '2 20')
-        self.client_config.set_config_value('replay-window', '2048')
         self.client_config.set_config_value('comp-lzo', remove=True)
         self.client_config.set_config_value('block-outside-dns')
+
+        # Protocol dependent
+        if tcp:
+            self.client_config.set_config_value('replay-window', remove=True)
+        else:
+            self.client_config.set_config_value('replay-window', '2048')
 
         return self.client_config.update_config_file()
 
