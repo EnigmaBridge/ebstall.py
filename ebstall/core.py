@@ -18,14 +18,26 @@ class Core(object):
         self.pidlock_created = False
 
     def pidlock_create(self):
+        """
+        Creates a new pidlock if it was not yet created
+        :return:
+        """
         if not self.pidlock_created:
             self.pidlock.create()
             self.pidlock_created = True
 
     def pidlock_check(self):
+        """
+        Checks if the current process owns the pidlock
+        :return: True if the current process owns the pidlock
+        """
         return self.pidlock.check()
 
     def pidlock_get_pid(self):
+        """
+        Returns pid of the process holding pidlock, None if there is none.
+        :return:
+        """
         filename = self.pidlock.filename
         if filename and os.path.isfile(filename):
             try:
@@ -41,7 +53,7 @@ class Core(object):
     @staticmethod
     def get_config_file_path():
         """Returns basic configuration file"""
-        return CONFIG_DIR + '/' + CONFIG_FILE
+        return os.path.join(CONFIG_DIR, CONFIG_FILE)
 
     @staticmethod
     def config_file_exists():
