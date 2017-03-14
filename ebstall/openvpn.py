@@ -494,6 +494,7 @@ class OpenVpn(object):
         self.server_config.set_config_value('cert', 'server.crt')
         self.server_config.set_config_value('key', 'server.key')
 
+        self.server_config.set_config_value('status', 'openvpn-status.log 10')
         self.server_config.set_config_value('client-to-client')
         self.server_config.set_config_value('persist-tun', remove=True)
         self.server_config.set_config_value('comp-lzo', remove=True)
