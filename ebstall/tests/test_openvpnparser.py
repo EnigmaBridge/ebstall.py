@@ -37,6 +37,8 @@ line3
 </ca>
 persist-tun"""
 
+test8 = 'proto udp'
+
 
 class OpenVpnParserTest(unittest.TestCase):
     """Simple test from the readme"""
@@ -219,6 +221,23 @@ class OpenVpnParserTest(unittest.TestCase):
         data2 = parser.config_data
         self.assertEqual(data2, data, 'Parser did not return the same data')
 
+    def test8(self):
+        parser = OpenVpnConfig(static_config=test8)
+        parser.load()
+        data = parser.config_data
+        self.assertEqual(parser.dump().strip(), test8.strip(), 'Parser did not return the same data')
+
+        testx = parser.dump()
+        parser2 = OpenVpnConfig(static_config=testx)
+        parser2.load()
+        data2 = parser.config_data
+        self.assertEqual(data2, data, 'Parser did not return the same data')
+
+        parser.set_config_value('proto', 'tcp')
+        data = parser.config_data
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0].ltype, 2)
+        self.assertEqual(data[1].ltype, 3)
 
 if __name__ == "__main__":
     unittest.main()  # pragma: no cover
