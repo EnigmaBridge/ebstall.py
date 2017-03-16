@@ -505,6 +505,7 @@ class Ejbca(object):
         self.jboss.add_rewrite_rule('rule03', '^/key/?$', '/ejbca/vpn/config.jsf', 'L,QSA,R')
         self.jboss.add_rewrite_rule('rule04', '^/pki/?$', '/ejbca/adminweb', 'L,QSA,R')
         self.jboss.add_rewrite_rule('rule05', '^/p12/?$', '/ejbca/vpn/p12.jsf', 'L,QSA,R')
+        self.jboss.add_rewrite_rule('rule06', '^/direct/?$', '/ejbca/vpn/getvpn', 'L,QSA,R')
 
     def jboss_configure_rewrite_ejbca(self):
         """
