@@ -523,7 +523,9 @@ class OpenVpn(object):
                        '"redirect-gateway def1 bypass-dhcp"',
                        '"sndbuf 393216"',
                        '"rcvbuf 393216"',
-                       '"server-poll-timeout 0"']
+                       '"server-poll-timeout 0"',
+                       '"route 0.0.0.0 0.0.0.0"',
+                       '"route-metric 512"']
         self.server_config.set_config_value('push', push_values)
 
         return self.server_config.update_config_file()
