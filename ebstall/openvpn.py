@@ -570,6 +570,7 @@ class OpenVpn(object):
         self.client_config.set_config_value('comp-lzo', remove=True)
         self.client_config.set_config_value('block-outside-dns')
         self.client_config.set_config_value('server-poll-timeout', '2')
+        self.client_config.set_config_value('tran-window', '604800')
 
         # Protocol dependent
         if tcp:
