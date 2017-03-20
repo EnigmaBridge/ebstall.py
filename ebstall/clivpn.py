@@ -7,6 +7,8 @@ import errors
 import openvpn
 import dnsmasq
 import nginx
+import supervisord
+from ebstall import vpnauth
 from consts import *
 from core import Core
 from config import Config, EBSettings
@@ -42,6 +44,8 @@ class VpnInstaller(Installer):
         self.ovpn = None
         self.dnsmasq = None
         self.nginx = None
+        self.supervisord = None
+        self.vpnauth = None
 
         self.vpn_keys = None, None, None
         self.vpn_crl = None
@@ -249,6 +253,10 @@ class VpnInstaller(Installer):
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.supervisord = supervisord.Supervisord(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.vpnauth = vpnauth.VpnAuth(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
+                                       supervisord=self.supervisord, mysql=self.mysql, ovpn=self.ovpn)
+
         self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
 
@@ -349,6 +357,9 @@ class VpnInstaller(Installer):
         # VPN server - install, configure, enable, start
         self.tprint('\n\nInstalling & configuring VPN server')
         self.init_vpn()
+        self.init_supervisord()
+        self.init_vpnauth()
+        self.init_vpn_start()
 
         # dnsmasq server - install, configure, enable, start
         self.init_dnsmasq()
@@ -450,6 +461,11 @@ class VpnInstaller(Installer):
         if ret != 0:
             raise errors.SetupError('Cannot set openvpn server to start after boot')
 
+    def init_vpn_start(self):
+        """
+        Starts VPN server
+        :return:
+        """
         ret = self.ovpn.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Cannot start openvpn server')
@@ -497,6 +513,38 @@ class VpnInstaller(Installer):
         ret = self.nginx.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting nginx daemon')
+
+    def init_supervisord(self):
+        """
+        Installs supervisord
+        :return:
+        """
+        self.supervisord.install()
+
+        ret = self.supervisord.enable()
+        if ret != 0:
+            raise errors.SetupError('Error with setting supervisord to start after boot')
+
+        ret = self.supervisord.switch(restart=True)
+        if ret != 0:
+            raise errors.SetupError('Error in starting supervisord daemon')
+
+    def init_vpnauth(self):
+        """
+        Installs vpn auth server
+        Has to be called after VPN is installed buf before VPN is started
+        :return:
+        """
+        self.vpnauth.config = self.config
+        self.vpnauth.ejbca = self.ejbca
+
+        self.vpnauth.install()
+        self.vpnauth.configure()
+        self.vpnauth.configure_vpn_server()
+        Core.write_configuration(self.config)
+
+        self.vpnauth.enable()
+        self.vpnauth.switch(start=True)
 
     def init_create_vpn_eb_keys(self):
         """

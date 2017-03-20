@@ -530,6 +530,27 @@ class OpenVpn(object):
 
         return self.server_config.update_config_file()
 
+    def configure_server_scripts(self, connect=None, disconnect=None, up=None, down=None):
+        """
+        Installs scripts to the VPN server
+        :param connect:
+        :param disconnect:
+        :param up:
+        :param down:
+        :return:
+        """
+        script_names = ['client-connect', 'client-disconnect', 'up', 'down']
+        script_values = [connect, disconnect, up, down]
+
+        for idx, script_value in enumerate(script_values):
+            script_name = script_names[idx]
+            if script_value is None:
+                self.server_config.set_config_value(script_name, remove=True)
+            else:
+                self.server_config.set_config_value(script_name, '"%s"' % script_value)
+
+        return self.server_config.update_config_file()
+
     def configure_client(self):
         """
         Configures client VPN file

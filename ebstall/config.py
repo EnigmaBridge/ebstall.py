@@ -376,6 +376,33 @@ class Config(object):
     def p12_otp_superadmin(self, val):
         self.set_config('p12_otp_superadmin', val)
 
+    # vpn auth Db
+    @property
+    def vpnauth_db(self):
+        return self.get_config('vpnauth_db', default=None)
+
+    @vpnauth_db.setter
+    def vpnauth_db(self, val):
+        self.set_config('vpnauth_db', val)
+
+    # vpn auth password
+    @property
+    def vpnauth_db_password(self):
+        return self.get_config('vpnauth_db_password', default=None)
+
+    @vpnauth_db_password.setter
+    def vpnauth_db_password(self, val):
+        self.set_config('vpnauth_db_password', val)
+
+    # vpn API enc password
+    @property
+    def vpnauth_enc_password(self):
+        return self.get_config('vpnauth_enc_password', default=None)
+
+    @vpnauth_enc_password.setter
+    def vpnauth_enc_password(self, val):
+        self.set_config('vpnauth_enc_password', val)
+
 
 class EBSettings(object):
     """
