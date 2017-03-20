@@ -363,7 +363,9 @@ class OpenVpn(object):
         # Result of load_config_file_lines
         self.server_config = None
         self.client_config = None
+        self.client_config_windows = None
         self.client_config_path = client_config_path
+        self.client_config_path_windows = None
 
     #
     # Settings
@@ -551,6 +553,22 @@ class OpenVpn(object):
 
         return self.server_config.update_config_file()
 
+    def _configure_client_win(self):
+        """
+        Configures windows client
+        :return:
+        """
+        basename = os.path.basename(self.client_config_path)
+        filename, file_extension = os.path.splitext(basename)
+
+        self.client_config_path_windows = os.path.join(self.client_config_path.rsplit('/', 1),
+                                                       '%s_windows.%s' % (filename, file_extension))
+
+        self.client_config_windows = OpenVpnConfig(config_path=self.client_config_path_windows, audit=self.audit)
+        self.client_config_windows.set_config_value('route', '0.0.0.0 0.0.0.0 vpn_gateway 999')
+
+        self.client_config_windows.update_config_file()
+
     def configure_client(self):
         """
         Configures client VPN file
@@ -578,7 +596,10 @@ class OpenVpn(object):
         else:
             self.client_config.set_config_value('replay-window', '2048')
 
-        return self.client_config.update_config_file()
+        ret = self.client_config.update_config_file()
+        self._configure_client_win()
+
+        return ret
 
     def store_server_cert(self, ca, cert, key):
         """
