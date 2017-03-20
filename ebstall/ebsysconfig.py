@@ -301,6 +301,22 @@ class SysConfig(object):
 
         return self.install_crond_file('ebstall-renew', data)
 
+    def install_epiper(self):
+        """
+        Installs pip script called
+        :return:
+        """
+        resource_package = __name__
+        resource_path = '/'.join(('consts', 'epiper.sh'))
+        script = pkg_resources.resource_string(resource_package, resource_path)
+        epiper_path = '/usr/bin/epiper'
+
+        if os.path.exists(epiper_path):
+            os.remove(epiper_path)
+
+        with util.safe_open(epiper_path, 'w', chmod=0o755, exclusive=False) as fh:
+            fh.write(script + '\n')
+
     #
     # OR detection / specific settings
     #

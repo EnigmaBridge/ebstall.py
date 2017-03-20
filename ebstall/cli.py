@@ -366,6 +366,7 @@ class Installer(InstallerBase):
         Install OS hooks - cronjob for cert checking, on boot service for dynamic DNS
         :return: result
         """
+        self.syscfg.install_epiper()
         self.syscfg.install_onboot_check()
         self.syscfg.install_cron_renew()
         return 0
