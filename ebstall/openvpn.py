@@ -561,8 +561,8 @@ class OpenVpn(object):
         basename = os.path.basename(self.client_config_path)
         filename, file_extension = os.path.splitext(basename)
 
-        self.client_config_path_windows = os.path.join(self.client_config_path.rsplit('/', 1),
-                                                       '%s_windows.%s' % (filename, file_extension))
+        self.client_config_path_windows = os.path.join(self.client_config_path.rsplit('/', 1)[0],
+                                                       '%s_windows%s' % (filename, file_extension))
 
         self.client_config_windows = OpenVpnConfig(config_path=self.client_config_path_windows, audit=self.audit)
         self.client_config_windows.set_config_value('route', '0.0.0.0 0.0.0.0 vpn_gateway 999')
