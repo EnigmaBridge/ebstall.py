@@ -48,6 +48,9 @@ class VpnAuth(object):
         """
         self.config.vpnauth_enc_password = util.random_password(16)
         self.config.vpnauth_db_password = util.random_password(16)
+        self.audit.add_secrets(self.config.vpnauth_enc_password)
+        self.audit.add_secrets(self.config.vpnauth_db_password)
+
         self.config.vpnauth_db = self.ejbca.MYSQL_DB
         self.mysql.create_user(self.DB_USER, self.config.vpnauth_db_password, self.config.vpnauth_db)
 
