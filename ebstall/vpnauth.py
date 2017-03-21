@@ -8,6 +8,7 @@ import errors
 import collections
 import re
 import util
+import json
 import subprocess
 import types
 import osutil
@@ -24,6 +25,7 @@ class VpnAuth(object):
     VPN Auth server
     """
     CONFIG_FILE = '/etc/supervisord.d/vpnauth.conf'
+    VPN_CONFIG_FILE = '/etc/openvpn/vpnauth.json'
     DB_USER = 'vpnauth'
     SUPERVISOR_CMD = 'vpnauth'
 
@@ -54,16 +56,26 @@ class VpnAuth(object):
         self.config.vpnauth_db = self.ejbca.MYSQL_DB
         self.mysql.create_user(self.DB_USER, self.config.vpnauth_db_password, self.config.vpnauth_db)
 
+        # Create VPN-dir based configuration for vpnauth notifier.
+        # It is started under VPN server user so it has to be able to read the configuration with the API key.
+        if os.path.exists(self.VPN_CONFIG_FILE):
+            os.remove(self.VPN_CONFIG_FILE)
+        with util.safe_open(self.VPN_CONFIG_FILE, mode='w', chmod=0o600) as fh:
+            js = {'config': {'vpnauth_enc_password': self.config.vpnauth_enc_password}}
+            json.dump(js, fh, indent=2)
+
+        self.sysconfig.exec_shell('chown %s %s' % (self.ovpn.get_user(), self.VPN_CONFIG_FILE))
+
     def configure_vpn_server(self):
         """
         Configures VPN server to use VPNAuth event scripts
         :return:
         """
         epiper = self.sysconfig.epiper_path()
-        connect = '%s vpnauth-notif --ebstall --event connected' % epiper
-        disconnect = '%s vpnauth-notif --ebstall --event disconnected' % epiper
-        up = '%s vpnauth-notif --ebstall --event up' % epiper
-        down = '%s vpnauth-notif --ebstall --event down' % epiper
+        connect = '%s vpnauth-notif --vpncfg --event connected' % epiper
+        disconnect = '%s vpnauth-notif --vpncfg --event disconnected' % epiper
+        up = '%s vpnauth-notif --vpncfg --event up' % epiper
+        down = '%s vpnauth-notif --vpncfg --event down' % epiper
         self.ovpn.configure_server_scripts(connect=connect, disconnect=disconnect, up=up, down=down)
 
     def install(self):

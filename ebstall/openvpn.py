@@ -405,6 +405,20 @@ class OpenVpn(object):
         """
         return self.PORT_NUM, self.PORT_TCP
 
+    def get_user(self):
+        """
+        returns user the VPN server is going to run under
+        :return:
+        """
+        return 'nobody'
+
+    def get_group(self):
+        """
+        returns user the VPN server is going to run under
+        :return:
+        """
+        return 'nobody'
+
     #
     # server.conf reading & modification
     #
@@ -517,8 +531,8 @@ class OpenVpn(object):
         # This can be enabled after certificates are generated with exact usage.
         # self.server_config.set_config_value('remote-cert-tls', 'server')
 
-        self.server_config.set_config_value('user', 'nobody')
-        self.server_config.set_config_value('group', 'nobody')
+        self.server_config.set_config_value('user', self.get_user())
+        self.server_config.set_config_value('group', self.get_group())
 
         # Use internal DNS to prevent DNS leaks
         push_values = ['"dhcp-option DNS %s"' % self.get_ip_vpn_server(),
