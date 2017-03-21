@@ -190,11 +190,25 @@ class Supervisord(object):
     # API
     #
 
+    def ctl_refresh(self):
+        """
+        supervisorctl reread
+        supervisorctl update
+        :return:
+        """
+        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl reread')
+        if ret != 0:
+            raise errors.SetupError('Could not exec supervisorctl reread')
+
+        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl update')
+        if ret != 0:
+            raise errors.SetupError('Could not exec supervisorctl update')
+
     def ctl_add(self, cmd):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell(['sudo', 'epiper', 'supervisorctl', 'add', cmd])
+        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl add %s' % util.escape_shell(cmd))
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl add')
 
@@ -202,7 +216,7 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell(['sudo', 'epiper', 'supervisorctl', 'start', cmd])
+        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl start %s' % util.escape_shell(cmd))
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl start')
 
@@ -210,7 +224,7 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell(['sudo', 'epiper', 'supervisorctl', 'stop', cmd])
+        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl stop %s' % util.escape_shell(cmd))
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl stop')
 
