@@ -86,9 +86,10 @@ class VpnAuth(object):
             fh.write('user=root\n')
             fh.write('autostart=true\n')
             fh.write('autorestart=true\n')
-            fh.write('redirect_stderr=True\n')
+            fh.write('stderr_logfile=/var/log/vpnauth-server.err.log\n')
+            fh.write('stdout_logfile=/var/log/vpnauth-server.out.log\n')
 
-        self.supervisor.ctl_add(self.SUPERVISOR_CMD)
+        self.supervisor.ctl_refresh()
 
     def switch(self, start=None, stop=None, restart=None):
         """
