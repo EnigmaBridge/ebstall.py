@@ -12,8 +12,8 @@ SCRIPT=$1
 shift
 
 if [ -f "/usr/local/bin/${SCRIPT}" ]; then
-    /usr/local/bin/${SCRIPT} "$@"
+    exec /usr/local/bin/${SCRIPT} "$@"
 else
-    `which ${SCRIPT}` "$@"
+    exec `which ${SCRIPT}` "$@"
 fi
 
