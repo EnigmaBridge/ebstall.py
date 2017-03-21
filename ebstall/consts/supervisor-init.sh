@@ -16,9 +16,9 @@
 
 prog="supervisord"
 
-prefix="/usr/"
+prefix="/usr"
 exec_prefix="${prefix}"
-prog_bin="${exec_prefix}/bin/supervisord"
+prog_bin="${exec_prefix}/bin/epiper supervisord"
 PIDFILE="/var/run/$prog.pid"
 
 start()

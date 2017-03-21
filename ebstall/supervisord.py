@@ -127,7 +127,7 @@ class Supervisord(object):
         Configures supervisord after manual installation
         :return:
         """
-        cmd_prep = 'echo_supervisord_conf > %s' % self.CONFIG_FILE
+        cmd_prep = 'epiper echo_supervisord_conf > %s' % self.CONFIG_FILE
         ret = self.sysconfig.exec_shell(cmd_prep)
         if ret != 0:
             raise errors.SetupError('Could not initialize supervisord config file')
@@ -194,7 +194,7 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell(['sudo', 'supervisorctl', 'add', cmd])
+        ret = self.sysconfig.exec_shell(['sudo', 'epiper', 'supervisorctl', 'add', cmd])
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl add')
 
@@ -202,7 +202,7 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell(['sudo', 'supervisorctl', 'start', cmd])
+        ret = self.sysconfig.exec_shell(['sudo', 'epiper', 'supervisorctl', 'start', cmd])
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl start')
 
@@ -210,7 +210,7 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell(['sudo', 'supervisorctl', 'stop', cmd])
+        ret = self.sysconfig.exec_shell(['sudo', 'epiper', 'supervisorctl', 'stop', cmd])
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl stop')
 

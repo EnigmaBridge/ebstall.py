@@ -3,10 +3,10 @@ Description=Supervisord
 After=network.target iptables.service firewalld.service
 
 [Service]
-ExecStart=
+ExecStart=/usr/bin/epiper supervisord
 # ExecStop=
 # ExecReload=
-PIDFile=/var/run/enigmabridge-onboot.pid
+PIDFile=/var/run/supervisord.pid
 User=root
 Group=root
 # Restart=always
