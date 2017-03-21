@@ -924,7 +924,7 @@ class Ejbca(object):
         client_password = util.random_password(16)
         self.audit.add_secrets(client_password)
 
-        cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate" \
+        cmd = "vpn genclient --email '%s' --device '%s' --password '%s' --regenerate --superadmin" \
               % (util.escape_shell(email), util.escape_shell(device), util.escape_shell(client_password))
         return self.ejbca_cmd(cmd, retry_attempts=1, write_dots=self.print_output)[0]
 
