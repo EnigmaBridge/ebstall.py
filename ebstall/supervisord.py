@@ -147,6 +147,7 @@ class Supervisord(object):
         """
         install_package = self._install_package()
         if install_package == 0:
+            self._configure()
             return 0
 
         # Packager could not install it
