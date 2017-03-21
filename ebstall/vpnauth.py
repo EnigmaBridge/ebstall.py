@@ -23,7 +23,7 @@ class VpnAuth(object):
     """
     VPN Auth server
     """
-    CONFIG_FILE = '/etc/supervisord.d/vpnauth'
+    CONFIG_FILE = '/etc/supervisord.d/vpnauth.conf'
     DB_USER = 'vpnauth'
     SUPERVISOR_CMD = 'vpnauth'
 
