@@ -512,7 +512,7 @@ class OpenVpn(object):
 
         self.server_config.set_config_value('status', 'openvpn-status.log 10')
         self.server_config.set_config_value('client-to-client')
-        self.server_config.set_config_value('persist-tun', remove=True)
+        self.server_config.set_config_value('persist-tun')  # needed to chroot the process
         self.server_config.set_config_value('comp-lzo', remove=True)
         self.server_config.set_config_value('keepalive', '2 20')
         self.server_config.set_config_value('topology', 'subnet')
