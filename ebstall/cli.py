@@ -631,7 +631,7 @@ class Installer(InstallerBase):
         self.ejbca.set_config(new_config)
         self.ejbca.set_domains(new_config.domains)
         self.ejbca.reg_svc = self.reg_svc
-
+        self.ejbca.no_ejbca_update = self.args.no_ejbca_update
         self.ejbca.configure()
 
         if self.ejbca.ejbca_install_result != 0:
@@ -1784,6 +1784,9 @@ class Installer(InstallerBase):
 
         parser.add_argument('--le-staging', dest='le_staging', action='store_const', const=True, default=False,
                             help='Uses staging CA without rate limiting')
+
+        parser.add_argument('--no-ejbca-update', dest='no_ejbca_update', action='store_const', const=True, default=False,
+                            help='Disable EJBCA update during installation')
 
         parser.add_argument('--yes', dest='yes', action='store_const', const=True,
                             help='answers yes to the questions in the non-interactive mode, mainly for init')

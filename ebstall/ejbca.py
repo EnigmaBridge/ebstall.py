@@ -138,6 +138,7 @@ class Ejbca(object):
         self.jboss = jboss
         self.openvpn = openvpn
         self.mysql = mysql
+        self.no_ejbca_update = False
 
         # Remove secrets from audit logging
         self.audit.add_secrets([self.http_pass, self.superadmin_pass, self.db_pass, self.master_p12_pass])
@@ -1207,6 +1208,10 @@ class Ejbca(object):
         Downloads a new revision of the EJBCA from the provisioning server, if possible
         :return:
         """
+        if self.no_ejbca_update:
+            logger.debug('EJBCA update is disabled')
+            return
+
         try:
             logger.debug('Going to download specs from the provisioning servers')
             for provserver in PROVISIONING_SERVERS:
