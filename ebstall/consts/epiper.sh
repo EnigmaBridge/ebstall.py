@@ -13,6 +13,8 @@ shift
 
 if [ -f "/usr/local/bin/${SCRIPT}" ]; then
     exec /usr/local/bin/${SCRIPT} "$@"
+elif [ -f "/usr/bin/${SCRIPT}" ]; then
+    exec /usr/bin/${SCRIPT} "$@"
 else
     exec `which ${SCRIPT}` "$@"
 fi
