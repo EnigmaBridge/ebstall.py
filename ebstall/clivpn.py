@@ -285,6 +285,7 @@ class VpnInstaller(Installer):
         # Determine if we have enough RAM for the work.
         # If not, a new swap file is created so the system has at least 2GB total memory space
         # for compilation & deployment.
+        self.syscfg.install_epiper()
         res = self.install_check_memory(syscfg=self.syscfg)
         if res != 0:
             return self.return_code(res)
@@ -571,7 +572,6 @@ class VpnInstaller(Installer):
         :return: result
         """
         install_type = 'vpn'
-        self.syscfg.install_epiper()
         self.syscfg.install_onboot_check(install_type=install_type)
         self.syscfg.install_cron_renew(install_type=install_type)
         return 0

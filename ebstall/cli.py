@@ -366,7 +366,6 @@ class Installer(InstallerBase):
         Install OS hooks - cronjob for cert checking, on boot service for dynamic DNS
         :return: result
         """
-        self.syscfg.install_epiper()
         self.syscfg.install_onboot_check()
         self.syscfg.install_cron_renew()
         return 0
@@ -841,6 +840,7 @@ class Installer(InstallerBase):
         # Determine if we have enough RAM for the work.
         # If not, a new swap file is created so the system has at least 2GB total memory space
         # for compilation & deployment.
+        self.syscfg.install_epiper()
         res = self.install_check_memory(syscfg=self.syscfg)
         if res != 0:
             return self.return_code(res)
