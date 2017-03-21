@@ -127,7 +127,7 @@ class Supervisord(object):
         Configures supervisord after manual installation
         :return:
         """
-        cmd_prep = 'epiper echo_supervisord_conf > %s' % self.CONFIG_FILE
+        cmd_prep = '%s echo_supervisord_conf > %s' % (self.sysconfig.epiper_path(), self.CONFIG_FILE)
         ret = self.sysconfig.exec_shell(cmd_prep)
         if ret != 0:
             raise errors.SetupError('Could not initialize supervisord config file')
@@ -196,11 +196,11 @@ class Supervisord(object):
         supervisorctl update
         :return:
         """
-        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl reread')
+        ret = self.sysconfig.exec_shell('sudo %s supervisorctl reread' % self.sysconfig.epiper_path())
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl reread')
 
-        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl update')
+        ret = self.sysconfig.exec_shell('sudo %s supervisorctl update' % self.sysconfig.epiper_path())
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl update')
 
@@ -208,7 +208,8 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl add %s' % util.escape_shell(cmd))
+        ret = self.sysconfig.exec_shell('sudo %s supervisorctl add %s'
+                                        % (self.sysconfig.epiper_path(), util.escape_shell(cmd)))
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl add')
 
@@ -216,7 +217,8 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl start %s' % util.escape_shell(cmd))
+        ret = self.sysconfig.exec_shell('sudo %s supervisorctl start %s'
+                                        % (self.sysconfig.epiper_path(), util.escape_shell(cmd)))
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl start')
 
@@ -224,7 +226,8 @@ class Supervisord(object):
         """
         :return:
         """
-        ret = self.sysconfig.exec_shell('sudo epiper supervisorctl stop %s' % util.escape_shell(cmd))
+        ret = self.sysconfig.exec_shell('sudo %s supervisorctl stop %s'
+                                        % (self.sysconfig.epiper_path(), util.escape_shell(cmd)))
         if ret != 0:
             raise errors.SetupError('Could not exec supervisorctl stop')
 

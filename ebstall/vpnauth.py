@@ -59,10 +59,11 @@ class VpnAuth(object):
         Configures VPN server to use VPNAuth event scripts
         :return:
         """
-        connect = 'epiper vpnauth-notif --ebstall --event connected'
-        disconnect = 'epiper vpnauth-notif --ebstall --event disconnected'
-        up = 'epiper vpnauth-notif --ebstall --event up'
-        down = 'epiper vpnauth-notif --ebstall --event down'
+        epiper = self.sysconfig.epiper_path()
+        connect = '%s vpnauth-notif --ebstall --event connected' % epiper
+        disconnect = '%s vpnauth-notif --ebstall --event disconnected' % epiper
+        up = '%s vpnauth-notif --ebstall --event up' % epiper
+        down = '%s vpnauth-notif --ebstall --event down' % epiper
         self.ovpn.configure_server_scripts(connect=connect, disconnect=disconnect, up=up, down=down)
 
     def install(self):
@@ -85,7 +86,8 @@ class VpnAuth(object):
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write('[program:%s]\n' % self.SUPERVISOR_CMD)
             fh.write('directory=/tmp\n')
-            fh.write('command=epiper vpnauth-server --ebstall --dump-stats /usr/share/nginx/html/stats.json\n')
+            fh.write('command=%s vpnauth-server --ebstall --dump-stats /usr/share/nginx/html/stats.json\n'
+                     % self.sysconfig.epiper_path())
             fh.write('user=root\n')
             fh.write('autostart=true\n')
             fh.write('autorestart=true\n')

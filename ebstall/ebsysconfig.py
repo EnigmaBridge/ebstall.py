@@ -309,13 +309,20 @@ class SysConfig(object):
         resource_package = __name__
         resource_path = '/'.join(('consts', 'epiper.sh'))
         script = pkg_resources.resource_string(resource_package, resource_path)
-        epiper_path = '/usr/bin/epiper'
+        epiper_path = self.epiper_path()
 
         if os.path.exists(epiper_path):
             os.remove(epiper_path)
 
         with util.safe_open(epiper_path, 'w', chmod=0o755, exclusive=False) as fh:
             fh.write(script + '\n')
+
+    def epiper_path(self):
+        """
+        Returns epiper full path
+        :return:
+        """
+        return '/usr/bin/epiper'
 
     #
     # OR detection / specific settings
