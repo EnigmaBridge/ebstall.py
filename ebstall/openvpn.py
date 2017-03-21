@@ -581,6 +581,7 @@ class OpenVpn(object):
         shutil.copy(self.client_config_path, self.client_config_path_windows)
         self.client_config_windows = OpenVpnConfig(config_path=self.client_config_path_windows, audit=self.audit)
         self.client_config_windows.set_config_value('route', '0.0.0.0 0.0.0.0 vpn_gateway 999')
+        self.client_config_windows.set_config_value('block-outside-dns')
 
         self.client_config_windows.update_config_file()
 
@@ -601,7 +602,7 @@ class OpenVpn(object):
         self.client_config.set_config_value('persist-tun', remove=True)
         self.client_config.set_config_value('keepalive', '2 20')
         self.client_config.set_config_value('comp-lzo', remove=True)
-        self.client_config.set_config_value('block-outside-dns')
+        self.client_config.set_config_value('block-outside-dns', remove=True)
         self.client_config.set_config_value('server-poll-timeout', '2')
         self.client_config.set_config_value('tran-window', '604800')
 
