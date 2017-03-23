@@ -82,7 +82,8 @@ class Ejbca(object):
         'superadmin.dn': 'CN=SuperAdmin',
         'superadmin.batch': 'true',
 
-        'vpn.email.from': 'root@localhost'
+        'vpn.email.from': 'root@localhost',
+        'vpn.admin.sameemail': 'True'
     }
 
     # MySQL database properties
