@@ -29,7 +29,7 @@ class ConfigLine(object):
     """
     # One open vpn config line
     """
-    def __init__(self, idx=None, raw=None, ltype=None, cmd=None, params=None, comment=None, paired=False, *args, **kwargs):
+    def __init__(self, idx=None, raw=None, ltype=None, cmd=None, params=None, comment=None, paired=False, newline='\n', *args, **kwargs):
         self.idx = idx
         self._raw = raw
         self.ltype = ltype
@@ -37,6 +37,7 @@ class ConfigLine(object):
         self.params = params
         self.comment = comment
         self.paired = paired
+        self.newline = newline
 
     def __repr__(self):
         return 'ConfigLine(idx=%r, ltype=%r, cmd=%r, params=%r, comment=%r, raw=%r, paired=%r)' \
@@ -58,7 +59,7 @@ class ConfigLine(object):
             res = ['<%s>' % self.cmd, self.params, '</%s>' % self.cmd]
             if self.ltype == CONFIG_LINE_CMD_COMMENT:
                 return ';' + (''.join(res)).strip()
-            return ('\n'.join(res)).strip()
+            return (self.newline.join(res)).strip()
 
         res = '' if self.ltype == CONFIG_LINE_CMD else ';'
         res += '%s %s %s' % (util.defval(self.cmd, ''), util.defval(self.params, ''), util.defval(self.comment, ''))
@@ -120,12 +121,13 @@ class OpenVpnConfig(object):
     Parses OpenVPN configuration, allows to modify the configuration and save changes back to the file.
     """
 
-    def __init__(self, config_path=None, static_config=None, audit=None, *args, **kwargs):
+    def __init__(self, config_path=None, static_config=None, audit=None, newline='\n', *args, **kwargs):
         self.config_path = config_path
         self.static_config = static_config
         self.config_data = None
         self.config_modified = False
         self.audit = audit
+        self.newline = newline
 
     def load(self):
         """
@@ -168,7 +170,8 @@ class OpenVpnConfig(object):
                 if end_tag in cline and not cline.endswith(end_tag):
                     raise ValueError('Parse error, closing tag is on the same line, but not the last element')
                 elif end_tag in cline:
-                    ln = ConfigLine.build(line='\n'.join(paired_buff), idx=idx)
+                    ln = ConfigLine.build(line=self.newline.join(paired_buff), idx=idx)
+                    ln.newline = self.newline
                     config.append(ln)
                     paired_tag = None
                 continue
@@ -323,7 +326,7 @@ class OpenVpnConfig(object):
         data = []
         for cl in self.config_data:
             data.append(cl.raw)
-        return '\n'.join(data)
+        return self.newline.join(data)
 
     def update_config_file(self, force=False):
         """
@@ -338,7 +341,7 @@ class OpenVpnConfig(object):
         fh, backup = util.safe_create_with_backup(self.config_path, mode='w', chmod=0o644, backup_suffix='.backup')
         with fh:
             for cl in self.config_data:
-                fh.write(cl.raw + '\n')
+                fh.write(cl.raw + self.newline)
             self.audit.audit_file_write(self.config_path)
 
         self.config_modified = False  # reset after flush
@@ -579,7 +582,9 @@ class OpenVpn(object):
                                                        '%s_windows%s' % (filename, file_extension))
 
         shutil.copy(self.client_config_path, self.client_config_path_windows)
-        self.client_config_windows = OpenVpnConfig(config_path=self.client_config_path_windows, audit=self.audit)
+        self.client_config_windows = OpenVpnConfig(config_path=self.client_config_path_windows, audit=self.audit,
+                                                   newline='\r\n')
+
         self.client_config_windows.set_config_value('route', '0.0.0.0 0.0.0.0 vpn_gateway 999')
         self.client_config_windows.set_config_value('block-outside-dns')
 
