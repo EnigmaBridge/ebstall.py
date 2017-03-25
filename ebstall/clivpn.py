@@ -47,6 +47,7 @@ class VpnInstaller(Installer):
         self.nginx = None
         self.supervisord = None
         self.vpnauth = None
+        self.php = None
 
         self.vpn_keys = None, None, None
         self.vpn_crl = None
