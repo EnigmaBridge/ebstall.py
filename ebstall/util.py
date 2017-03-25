@@ -176,6 +176,18 @@ def chown(path, user, group=None, follow_symlinks=False):
     os.chown(path, uid, gid)
 
 
+def makedirs(path, mode=0o777):
+    """
+    Make dir if does not exist
+    :param path: 
+    :param mode: 
+    :return: 
+    """
+    if os.path.exists(path):
+        return
+    os.makedirs(path, mode=mode)
+
+
 def file_backup(path, chmod=0o644, backup_dir=None, backup_suffix=None):
     """
     Backup the given file by copying it to a new file

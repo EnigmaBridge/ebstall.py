@@ -24,7 +24,7 @@ class IniParser(object):
     Very simple INI file parser
     """
     def __init__(self, file_name=None, file_data=None):
-        self.data = []
+        self.data = None
         self.file_name = file_name
         self.file_data = file_data
         self.dirty = False
@@ -35,10 +35,12 @@ class IniParser(object):
                 self.data = self.file_data
             else:
                 self.data = self.file_data.split('\n')
+            return
 
         if self.file_name is not None:
             with open(self.file_name, 'r') as fh:
-                self.data = fh.read().split('\n')
+                self.data = [x.strip() for x in fh]
+            return
 
         raise ValueError('No data to process')
 
@@ -54,7 +56,7 @@ class IniParser(object):
             self.load()
 
         new_cfg = '%s = %s' % (key, value)
-        last_idx = len(self.data - 1)
+        last_idx = len(self.data) - 1
 
         for idx, line in enumerate(self.data):
             if re.match(r'^;\s*%s' % re.escape(key), line):
@@ -66,6 +68,7 @@ class IniParser(object):
                 return
 
         self.data.insert(last_idx+1, new_cfg)
+        self.dirty = True
 
     def get_value(self, key):
         """
@@ -176,12 +179,12 @@ class Php(object):
             spath = www_ini.get_value('php_value[session.save_path]')
 
         base_path = '/var/lib/php'
-        os.makedirs(base_path, exist_ok=True)
+        util.makedirs(base_path, mode=0o755)
         util.chown(base_path, 'nginx')
 
-        if not os.path.exists(spath):
-            os.makedirs(spath, mode=0o755, exist_ok=True)
-        util.chown(spath, 'nginx')
+        if spath is not None:
+            util.makedirs(spath, mode=0o755)
+            util.chown(spath, 'nginx')
 
     def install(self):
         """
