@@ -8,6 +8,7 @@ import openvpn
 import dnsmasq
 import nginx
 import supervisord
+import php
 from ebstall import vpnauth
 from consts import *
 from core import Core
@@ -256,6 +257,7 @@ class VpnInstaller(Installer):
         self.supervisord = supervisord.Supervisord(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.vpnauth = vpnauth.VpnAuth(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
                                        supervisord=self.supervisord, mysql=self.mysql, ovpn=self.ovpn)
+        self.php = php.Php(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
 
         self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
@@ -514,6 +516,22 @@ class VpnInstaller(Installer):
         ret = self.nginx.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting nginx daemon')
+
+    def init_php(self):
+        """
+        Installs php
+        :return: 
+        """
+        self.php.install()
+        self.php.configure()
+
+        ret = self.php.enable()
+        if ret != 0:
+            raise errors.SetupError('Error with setting php to start after boot')
+
+        ret = self.php.switch(restart=True)
+        if ret != 0:
+            raise errors.SetupError('Error in starting php daemon')
 
     def init_supervisord(self):
         """
