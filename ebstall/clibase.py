@@ -4,33 +4,24 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from cmd2 import Cmd
-import argparse
-import sys
-import os
-import math
-import types
-import traceback
-from audit import AuditManager
-import pid
-import time
-import util
-import errors
-import textwrap
 import logging
+import os
+import sys
+import textwrap
+import time
+
 import coloredlogs
+import pid
 from blessed import Terminal
-from consts import *
-from core import Core
-from config import Config, EBSettings
-from registration import Registration, InfoLoader
-from softhsm import SoftHsmV1Config
-from ejbca import Ejbca
-from ebsysconfig import SysConfig
-from letsencrypt import LetsEncrypt
+from cmd2 import Cmd
 from ebclient.registration import ENVIRONMENT_PRODUCTION, ENVIRONMENT_DEVELOPMENT, ENVIRONMENT_TEST
 from pkg_resources import get_distribution, DistributionNotFound
 
+import errors
+import util
+from audit import AuditManager
+from core import Core
+from ebsysconfig import SysConfig
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=logging.ERROR)

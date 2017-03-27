@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import os
-import util
+import ebstall.util as util
 from sarge import run, Capture, Feeder
 from ebclient.eb_utils import EBUtils
 from datetime import datetime
 import time
 import sys
 import types
-import errors
+import ebstall.errors as errors
 import subprocess
 import shutil
 import re

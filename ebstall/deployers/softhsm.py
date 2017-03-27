@@ -3,11 +3,11 @@
 
 import os
 import json
-from core import Core
-import util
-from consts import *
-from errors import *
-from config import Config
+from ebstall.core import Core
+import ebstall.util as util
+from ebstall.consts import *
+from ebstall.errors import *
+from ebstall.config import Config
 from datetime import datetime
 import shutil
 import errno

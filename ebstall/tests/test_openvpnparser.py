@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from ebstall.openvpn import OpenVpnConfig
 import unittest
+
+from ebstall.deployers.openvpn import OpenVpnConfig
 
 __author__ = 'dusanklinec'
 

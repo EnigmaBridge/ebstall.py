@@ -6,10 +6,10 @@ import os
 import logging
 import collections
 import re
-import util
+import ebstall.util as util
 import subprocess
 import types
-import osutil
+import ebstall.osutil as osutil
 import shutil
 import pkg_resources
 

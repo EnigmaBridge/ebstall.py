@@ -1,38 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from cmd2 import Cmd
-import argparse
-import sys
-import os
+import logging
 import math
-import types
-import traceback
-import pid
-import json
-import time
-import util
+import os
 import random
-import audit
+import sys
+import time
+import traceback
+
+import argparse
+import coloredlogs
+import types
+from ebclient.registration import ENVIRONMENT_PRODUCTION
+
+from ebstall.deployers.ejbca import Ejbca
+from ebstall.deployers.jboss import Jboss
+from ebstall.deployers.letsencrypt import LetsEncrypt
+
+import dbutil
 import errors
-import textwrap
-from blessed import Terminal
+import util
+from clibase import InstallerBase
+from config import Config, EBSettings
 from consts import *
 from core import Core
-from config import Config, EBSettings
+from ebstall.deployers.softhsm import SoftHsmV1Config
 from registration import Registration, InfoLoader
-from softhsm import SoftHsmV1Config
-from jboss import Jboss
-from ejbca import Ejbca
-from ebsysconfig import SysConfig
-from letsencrypt import LetsEncrypt
-from ebclient.registration import ENVIRONMENT_PRODUCTION, ENVIRONMENT_DEVELOPMENT, ENVIRONMENT_TEST
-from pkg_resources import get_distribution, DistributionNotFound
-from clibase import InstallerBase
-import dbutil
-import logging
-import coloredlogs
-
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=logging.ERROR)

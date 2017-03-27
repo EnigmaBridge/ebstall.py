@@ -4,13 +4,13 @@
 from __future__ import print_function
 import os
 import logging
-import errors
+import ebstall.errors as errors
 import collections
 import re
-import util
+import ebstall.util as util
 import subprocess
 import types
-import osutil
+import ebstall.osutil as osutil
 import shutil
 import pkg_resources
 

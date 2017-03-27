@@ -1,29 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import time
-import util
-import errors
-import openvpn
-import dnsmasq
-import nginx
-import supervisord
-import php
-from ebstall import vpnauth
-from consts import *
-from core import Core
-from config import Config, EBSettings
-from registration import Registration, InfoLoader
-from softhsm import SoftHsmV1Config
-from ejbca import Ejbca
-from ebsysconfig import SysConfig
-from letsencrypt import LetsEncrypt
-from ebclient.registration import ENVIRONMENT_PRODUCTION, ENVIRONMENT_DEVELOPMENT, ENVIRONMENT_TEST
-from pkg_resources import get_distribution, DistributionNotFound
-from cli import Installer
 import logging
+import time
+import traceback
+
 import coloredlogs
 
+from ebstall.deployers import dnsmasq
+from ebstall.deployers import nginx
+from ebstall.deployers import openvpn
+from ebstall.deployers import php
+from ebstall.deployers import supervisord
+from ebstall.deployers import vpnauth
+
+import errors
+import util
+from cli import Installer
+from core import Core
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=logging.ERROR)
