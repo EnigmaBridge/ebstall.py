@@ -125,6 +125,7 @@ class Ejbca(object):
         self.print_output = print_output
         self.hostname = None
         self.domains = None
+        self.cert_dir = None  # Certificate directory, filled in by LetsEncrypt
 
         self.staging = staging
         self.lets_encrypt = None
@@ -1087,9 +1088,9 @@ class Ejbca(object):
         util.delete_file_backup(jks_path, chmod=0o600, backup_dir=self.DB_BACKUPS)
 
         # Create new JKS
-        cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
+        self.cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
         self.lets_encrypt_jks = letsencrypt.LetsEncryptToJks(
-            cert_dir=cert_dir,
+            cert_dir=self.cert_dir,
             jks_path=jks_path,
             jks_alias=self.hostname,
             password=self.http_pass,
@@ -1140,9 +1141,9 @@ class Ejbca(object):
         util.delete_file_backup(jks_path, chmod=0o600, backup_dir=self.DB_BACKUPS)
 
         # Create new JKS
-        cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
+        self.cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
         self.lets_encrypt_jks = letsencrypt.LetsEncryptToJks(
-            cert_dir=cert_dir,
+            cert_dir=self.cert_dir,
             jks_path=jks_path,
             jks_alias=self.hostname,
             password=self.http_pass,
