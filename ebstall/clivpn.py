@@ -268,6 +268,7 @@ class VpnInstaller(Installer):
         # If VPN server was running, stop it now - easier port testing, minimal interference.
         self.ovpn.switch(stop=True)
         self.dnsmasq.switch(stop=True)
+        self.nginx.switch(stop=True)
 
         # Disable services which may interfere installation.
         self.init_prepare_install()
