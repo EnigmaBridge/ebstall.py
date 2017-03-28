@@ -115,6 +115,7 @@ class Php(object):
         self.sysconfig = sysconfig
         self.write_dost = write_dots
         self.audit = audit
+        self.user = 'nginx'
 
     #
     # Installation
@@ -169,8 +170,8 @@ class Php(object):
 
         # Change user for nginx
         www_ini = IniParser(file_name=self.CONFIG_FPM_WWW)
-        www_ini.set_value('user', 'nginx')
-        www_ini.set_value('group', 'nginx')
+        www_ini.set_value('user', self.user)
+        www_ini.set_value('group', self.user)
         www_ini.flush()
 
         # Get directory for sessions, create & setup if non-existing
@@ -180,11 +181,11 @@ class Php(object):
 
         base_path = '/var/lib/php'
         util.makedirs(base_path, mode=0o755)
-        util.chown(base_path, 'nginx')
+        util.chown(base_path, self.user)
 
         if spath is not None:
             util.makedirs(spath, mode=0o755)
-            util.chown(spath, 'nginx')
+            util.chown(spath, self.user)
 
     def install(self):
         """
