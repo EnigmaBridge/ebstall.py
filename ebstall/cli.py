@@ -558,7 +558,7 @@ class Installer(InstallerBase):
         if ejbca is None:
             ejbca = self.ejbca
 
-        le_certificate_installed = self.le_install(self.ejbca)
+        le_certificate_installed = self.le_install(ejbca)
 
         self.tprint('\n')
         self.cli_separator()
