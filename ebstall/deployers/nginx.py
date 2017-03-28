@@ -11,6 +11,7 @@ import ebstall.util as util
 import subprocess
 import types
 import ebstall.osutil as osutil
+import ebstall.deployers.letsencrypt as letsencrypt
 import shutil
 import pkg_resources
 import nginxparser_eb
@@ -163,6 +164,49 @@ class Nginx(object):
 
         self.flush_config()
 
+    def _get_default_server_hostnames(self):
+        """
+        Default server hostnames
+        :return: 
+        """
+        hostnames = ['private.space']
+        if self.hostname is not None:
+            hostnames += [self.hostname]
+        return hostnames
+
+    def _get_tls_paths(self):
+        """
+        Returns chain & key path for TLS or None, None
+        :return: keychain path, privkey path
+        """
+        if self.cert_dir is None:
+            logger.debug('Cert dir is none')
+            return None, None
+
+        cert_path = os.path.join(self.cert_dir, letsencrypt.LE_CA)
+        key_path = os.path.join(self.cert_dir, letsencrypt.LE_PRIVATE_KEY)
+        return cert_path, key_path
+
+    def _check_certificates(self):
+        """
+        Returns True if there is a fullchain.pem certificate and the key in the cert dir
+        :return: 
+        """
+        if self.cert_dir is None:
+            logger.debug('Cert dir is none')
+            return False
+
+        cert, key = self._get_tls_paths()
+        if cert is None or key is None:
+            logger.debug('Cert or key is none')
+            return False
+
+        if not os.path.exists(cert) or not os.path.exists(key):
+            logger.info('Certificate / key are empty: %s, %s' % (cert, key))
+            return False
+
+        return True
+
     def _install_default_server(self):
         """
         Installs a default server to the include dir
@@ -174,16 +218,60 @@ class Nginx(object):
         path = os.path.join(self.http_include, 'default.conf')
         util.safely_remove(path)
 
-        hostnames = ['private.space']
-        if self.hostname is not None:
-            hostnames += [self.hostname]
-
+        hostnames = self._get_default_server_hostnames()
         with util.safe_open(path, mode='w', chmod=0o644) as fh:
             fh.write('server { \n')
             fh.write('  listen 80 default_server;\n')
             fh.write('  listen [::]:80 default_server;\n')
             fh.write('  root %s;\n' % self.html_root)
             fh.write('  server_name _ %s;\n\n' % (' '.join(hostnames)))
+
+            # If we have https, do the redirect to https variant
+            if self._check_certificates():
+                fh.write('  return 301 https://%s$request_uri;\n' % self.hostname)
+
+            else:
+                fh.write('  location / {\n')
+                fh.write('    try_files $uri $uri/ =404;\n')
+                fh.write('    allow   127.0.0.1;\n')
+                for internal in self.internal_addresses:
+                    fh.write('    allow   %s;\n' % internal)
+
+                fh.write('    deny    all;\n')
+                fh.write('  }\n')
+
+            fh.write('}\n\n')
+
+    def _install_secure_default_server(self):
+        """
+        HTTPS variant of the default server
+        :return: 
+        """
+        if not self._check_certificates():
+            logger.debug('Not going to install secure server - cert fail')
+            return
+
+        path = os.path.join(self.http_include, 'default-tls.conf')
+        util.safely_remove(path)
+
+        hostnames = [self.hostname]
+        cert_path, key_path = self._get_tls_paths()
+        with util.safe_open(path, mode='w', chmod=0o644) as fh:
+            fh.write('server { \n')
+            fh.write('  listen 443 ssl;\n')
+            fh.write('  listen [::]:443 ssl;\n')
+            fh.write('  root %s;\n' % self.html_root)
+            fh.write('  server_name _ %s;\n\n' % (' '.join(hostnames)))
+            fh.write('  ssl_certificate %s;\n' % cert_path)
+            fh.write('  ssl_certificate_key %s;\n\n' % key_path)
+
+            fh.write('  add_header X-Content-Type-Options nosniff;\n')
+            fh.write('  add_header X-Frame-Options "SAMEORIGIN";\n')
+            fh.write('  add_header X-XSS-Protection "1; mode=block";\n')
+            fh.write('  add_header X-Robots-Tag none;\n')
+            fh.write('  add_header X-Download-Options noopen;\n')
+            fh.write('  add_header X-Permitted-Cross-Domain-Policies none;\n\n')
+
             fh.write('  location / {\n')
             fh.write('    try_files $uri $uri/ =404;\n')
             fh.write('    allow   127.0.0.1;\n')
@@ -191,6 +279,12 @@ class Nginx(object):
                 fh.write('    allow   %s;\n' % internal)
 
             fh.write('    deny    all;\n')
+            fh.write('  }\n\n')
+
+            fh.write('  location /robots.txt {\n')
+            fh.write('    allow all;\n')
+            fh.write('    log_not_found off;\n')
+            fh.write('    access_log off;\n')
             fh.write('  }\n')
             fh.write('}\n\n')
 
@@ -300,6 +394,7 @@ class Nginx(object):
         # Disable the default server, create a custom one.
         self._disable_default_server()
         self._install_default_server()
+        self._install_secure_default_server()
 
         # PHP integration
         self.add_php_handler()
