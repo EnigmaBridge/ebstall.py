@@ -229,8 +229,7 @@ class Nginx(object):
             # Well known serving from the directory
             fh.write('  location /.well-known {\n')
             fh.write('    allow all;\n')
-            fh.write('    return;\n')
-            fh.write('  };\n\n')
+            fh.write('  }\n\n')
 
             # If we have https, do the redirect to https variant
             if self._check_certificates():
@@ -282,8 +281,7 @@ class Nginx(object):
 
             fh.write('  location /.well-known {\n')
             fh.write('      allow all;\n')
-            fh.write('      return;\n')
-            fh.write('   };\n\n')
+            fh.write('   }\n\n')
 
             fh.write('  location / {\n')
             fh.write('    try_files $uri $uri/ =404;\n')
