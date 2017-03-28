@@ -251,7 +251,7 @@ class LetsEncrypt(object):
     """
 
     PORT = 443
-    CERTBOT_PATH = '/usr/local/bin/certbot'
+    CERTBOT_PATH = 'epiper certbot'
     LE_CERT_PATH = '/etc/letsencrypt/live'
     CERTBOT_LOG = '/tmp/certbot.log'
     PRIVATE_KEY = LE_PRIVATE_KEY
