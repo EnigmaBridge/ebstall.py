@@ -38,6 +38,7 @@ class VpnAuth(object):
         self.config = config
         self.ejbca = None
         self.ovpn = ovpn
+        self.webroot = '/var/www/html'
 
     #
     # Installation
@@ -95,11 +96,12 @@ class VpnAuth(object):
         Enables service after OS start
         :return:
         """
+        session_file = os.path.join(self.webroot, 'stats.json')
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write('[program:%s]\n' % self.SUPERVISOR_CMD)
             fh.write('directory=/tmp\n')
-            fh.write('command=%s vpnauth-server --ebstall --dump-stats /usr/share/nginx/html/stats.json\n'
-                     % self.sysconfig.epiper_path())
+            fh.write('command=%s vpnauth-server --ebstall --dump-stats %s\n'
+                     % (self.sysconfig.epiper_path(), session_file))
             fh.write('user=root\n')
             fh.write('autostart=true\n')
             fh.write('autorestart=true\n')

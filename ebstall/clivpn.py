@@ -353,24 +353,21 @@ class VpnInstaller(Installer):
         # VPN setup - create CA, profiles, server keys, CRL
         self.init_ejbca_vpn()
 
-        # VPN server - install, configure, enable, start
-        self.tprint('\n\nInstalling & configuring VPN server')
-        self.init_vpn()
-        self.init_supervisord()
-        self.init_vpnauth()
-        self.init_vpn_start()
-
-        # dnsmasq server - install, configure, enable, start
-        self.init_dnsmasq()
-
         # LetsEncrypt enrollment
         res = self.init_le_install()
         if res != 0:
             return self.return_code(res)
 
-        # Web server after we have TLS certs
+        # VPN server - install, configure, enable, start
+        self.tprint('\n\nInstalling & configuring VPN server')
+        self.init_vpn()
+        self.init_supervisord()
+        self.init_dnsmasq()
         self.init_nginx()
+        self.init_vpnauth()
+
         self.init_nginx_start()
+        self.init_vpn_start()
 
         self.tprint('')
         self.init_celebrate()
@@ -592,6 +589,7 @@ class VpnInstaller(Installer):
         """
         self.vpnauth.config = self.config
         self.vpnauth.ejbca = self.ejbca
+        self.vpnauth.webroot = self.nginx.html_root
 
         self.vpnauth.install()
         self.vpnauth.configure()
