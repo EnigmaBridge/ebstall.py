@@ -625,7 +625,13 @@ class Installer(InstallerBase):
         self.ejbca.set_domains(new_config.domains)
         self.ejbca.reg_svc = self.reg_svc
         self.ejbca.no_ejbca_update = self.args.no_ejbca_update
-        self.ejbca.configure()
+
+        if self.args.no_ejbca_install:
+            self.ejbca.ejbca_install_result = 0  # Debugging path, without EJBCA installation
+            logger.warning('EJBCA Installation is disabled, system won\'t work properly')
+
+        else:
+            self.ejbca.configure()
 
         if self.ejbca.ejbca_install_result != 0:
             self.tprint('\nPKI installation error. Please try again.')
@@ -1781,6 +1787,9 @@ class Installer(InstallerBase):
 
         parser.add_argument('--no-ejbca-update', dest='no_ejbca_update', action='store_const', const=True, default=False,
                             help='Disable EJBCA update during installation')
+
+        parser.add_argument('--no-ejbca-install', dest='no_ejbca_install', action='store_const', const=True, default=False,
+                            help='Disable EJBCA installation - DEBUGGING only')
 
         parser.add_argument('--yes', dest='yes', action='store_const', const=True,
                             help='answers yes to the questions in the non-interactive mode, mainly for init')

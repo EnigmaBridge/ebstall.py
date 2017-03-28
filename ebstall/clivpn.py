@@ -347,7 +347,7 @@ class VpnInstaller(Installer):
             return self.return_code(res)
 
         # JBoss restart is needed - so it sees the new keys
-        self.ejbca.jboss_restart()
+        self.init_jboss_restart()
 
         # VPN setup - create CA, profiles, server keys, CRL
         self.init_ejbca_vpn()
@@ -378,9 +378,7 @@ class VpnInstaller(Installer):
         self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
 
         # Generate VPN client for the admin. openvpn link will be emailed
-        self.ejbca.vpn_create_user(self.config.email, 'default')
-        token = self.ejbca.vpn_create_p12_otp()
-        self.config.p12_otp_superadmin = token
+        self.init_create_vpn_users()
 
         # Install to the OS - cron job & on boot service
         res = self.init_install_os_hooks()
@@ -393,12 +391,26 @@ class VpnInstaller(Installer):
         self.cli_sleep(5)
         return self.return_code(0)
 
+    def init_jboss_restart(self):
+        """
+        Restarts jboss
+        :return: 
+        """
+        if self.args.no_ejbca_install:
+            logger.warning('EJBCA disabled, JBoss restart skipped')
+            return
+        self.ejbca.jboss_restart()
+
     def init_ejbca_vpn(self):
         """
         Configures EJBCA for use for VPN
         Throws an exception if something goes wrong.
         :return:
         """
+        if self.args.no_ejbca_install:
+            logger.warning('EJBCA disabled, cannot prepare VPN vars')
+            return
+
         ret = self.ejbca.vpn_create_ca()
         if ret != 0:
             raise errors.SetupError('Cannot create CA for the VPN')
@@ -438,11 +450,15 @@ class VpnInstaller(Installer):
         self.ovpn.configure_server()
 
         vpn_ca, vpn_cert, vpn_key = self.vpn_keys
-        ret = self.ovpn.store_server_cert(ca=vpn_ca, cert=vpn_cert, key=vpn_key)
-        if ret != 0:
-            raise errors.SetupError('Cannot install VPN certificate+key to the VPN server')
+        if self.args.no_ejbca_install:
+            logger.warning('EJBCA disabled, VPN wont be configured properly')
 
-        self.ovpn.configure_crl(crl_path=self.vpn_crl)
+        else:
+            ret = self.ovpn.store_server_cert(ca=vpn_ca, cert=vpn_cert, key=vpn_key)
+            if ret != 0:
+                raise errors.SetupError('Cannot install VPN certificate+key to the VPN server')
+
+            self.ovpn.configure_crl(crl_path=self.vpn_crl)
 
         # Configure VPN client configuration file to match the server config
         self.ovpn.client_config_path = self.vpn_client_config
@@ -464,6 +480,10 @@ class VpnInstaller(Installer):
         Starts VPN server
         :return:
         """
+        if self.args.no_ejbca_install:
+            logger.warning('EJBCA disabled, VPN wont be started')
+            return
+
         ret = self.ovpn.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Cannot start openvpn server')
@@ -565,6 +585,10 @@ class VpnInstaller(Installer):
         Creates a new keys in the SoftHSM token -> EB.
         :return:
         """
+        if self.args.no_ejbca_install:
+            logger.warning('EJBCA disabled, cannot generate keys')
+            return 0
+
         self.tprint('\nEnigma Bridge service will generate new keys:')
         ret, out, err = self.ejbca.pkcs11_generate_default_key_set(softhsm=self.soft_config)
 
@@ -578,6 +602,19 @@ class VpnInstaller(Installer):
             self.tprint(''.join(err))
             return 1
         return 0
+
+    def init_create_vpn_users(self):
+        """
+        Create default VPN users, final steps
+        :return: 
+        """
+        if self.args.no_ejbca_install:
+            logger.warning('EJBCA disabled, cannot create VPN users')
+            return 0
+
+        self.ejbca.vpn_create_user(self.config.email, 'default')
+        token = self.ejbca.vpn_create_p12_otp()
+        self.config.p12_otp_superadmin = token
 
     def init_install_os_hooks(self):
         """
