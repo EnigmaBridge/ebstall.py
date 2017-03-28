@@ -361,12 +361,15 @@ class VpnInstaller(Installer):
 
         # dnsmasq server - install, configure, enable, start
         self.init_dnsmasq()
-        self.init_nginx()
 
         # LetsEncrypt enrollment
         res = self.init_le_install()
         if res != 0:
             return self.return_code(res)
+
+        # Web server after we have TLS certs
+        self.init_nginx()
+        self.init_nginx_start()
 
         self.tprint('')
         self.init_celebrate()
@@ -518,16 +521,32 @@ class VpnInstaller(Installer):
         :return:
         """
         self.nginx.hostname = self.ejbca.hostname
+        self.nginx.internal_addresses = ['%s/%s' % (self.ovpn.get_ip_net(), self.ovpn.get_ip_net_size())]
+        self.nginx.cert_dir = self.ejbca.cert_dir
+
         ret = self.nginx.install()
         if ret != 0:
             raise errors.SetupError('Error with nginx installation')
 
+        # Loading basic info
+        self.nginx.load_configuration()
+
+        # Install PHP
+        self.init_php()
+
+        # Configure properly
         self.nginx.configure_server()
 
         ret = self.nginx.enable()
         if ret != 0:
             raise errors.SetupError('Error with setting nginx to start after boot')
 
+    def init_nginx_start(self):
+        """
+        Starts Nginx
+        Can start it after it is properly configured & PHP is installed
+        :return: 
+        """
         ret = self.nginx.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting nginx daemon')
@@ -537,6 +556,7 @@ class VpnInstaller(Installer):
         Installs php
         :return: 
         """
+        self.php.user = self.nginx.nginx_user
         self.php.install()
         self.php.configure()
 
