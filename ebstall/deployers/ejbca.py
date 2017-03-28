@@ -135,12 +135,14 @@ class Ejbca(object):
         self.reg_svc = None
         self.sysconfig = sysconfig
         self.audit = audit
-        if self.audit is None:
-            self.audit = AuditManager(disabled=True)
         self.jboss = jboss
         self.openvpn = openvpn
         self.mysql = mysql
-        self.no_ejbca_update = False
+
+        if self.audit is None:
+            self.audit = AuditManager(disabled=True)
+
+        self.skip_installation = False
 
         # Remove secrets from audit logging
         self.audit.add_secrets([self.http_pass, self.superadmin_pass, self.db_pass, self.master_p12_pass])
@@ -1281,7 +1283,7 @@ class Ejbca(object):
 
     def configure(self):
         """
-        Configures EJBCA for installation deployment
+        Configures EJBCA for installation deployment 
         :return:
         """
 
