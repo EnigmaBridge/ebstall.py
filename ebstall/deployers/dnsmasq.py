@@ -47,7 +47,7 @@ class DnsMasq(object):
         :return:
         """
         resource_package = __name__
-        resource_path = '/'.join(('consts', 'dnsmasq.conf'))
+        resource_path = '/'.join(('..', 'consts', 'dnsmasq.conf'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
     #

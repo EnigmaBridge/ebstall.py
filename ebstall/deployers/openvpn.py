@@ -444,7 +444,7 @@ class OpenVpn(object):
         :return:
         """
         resource_package = __name__
-        resource_path = '/'.join(('consts', 'ovpn-server.conf'))
+        resource_path = '/'.join(('..', 'consts', 'ovpn-server.conf'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
     def init_server_config(self):

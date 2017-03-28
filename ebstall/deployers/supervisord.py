@@ -52,7 +52,7 @@ class Supervisord(object):
         :return:
         """
         resource_package = __name__
-        resource_path = '/'.join(('consts', 'supervisor-init.sh'))
+        resource_path = '/'.join(('..', 'consts', 'supervisor-init.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
     def _get_systemd_script(self):
@@ -61,7 +61,7 @@ class Supervisord(object):
         :return:
         """
         resource_package = __name__
-        resource_path = '/'.join(('consts', 'supervisor-systemd.sh'))
+        resource_path = '/'.join(('..', 'consts', 'supervisor-systemd.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
 
     def _install_systemd(self):
