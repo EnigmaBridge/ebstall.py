@@ -226,9 +226,17 @@ class Nginx(object):
             fh.write('  root %s;\n' % self.html_root)
             fh.write('  server_name _ %s;\n\n' % (' '.join(hostnames)))
 
+            # Well known serving from the directory
+            fh.write('  location /.well-known {\n')
+            fh.write('    allow all;\n')
+            fh.write('    return;\n')
+            fh.write('  };\n\n')
+
             # If we have https, do the redirect to https variant
             if self._check_certificates():
-                fh.write('  return 301 https://%s$request_uri;\n' % self.hostname)
+                fh.write('  location / {\n')
+                fh.write('    return 301 https://%s$request_uri;\n' % self.hostname)
+                fh.write('  }\n\n')
 
             else:
                 fh.write('  location / {\n')
@@ -272,9 +280,15 @@ class Nginx(object):
             fh.write('  add_header X-Download-Options noopen;\n')
             fh.write('  add_header X-Permitted-Cross-Domain-Policies none;\n\n')
 
+            fh.write('  location /.well-known {\n')
+            fh.write('      allow all;\n')
+            fh.write('      return;\n')
+            fh.write('   };\n\n')
+
             fh.write('  location / {\n')
             fh.write('    try_files $uri $uri/ =404;\n')
             fh.write('    allow   127.0.0.1;\n')
+
             for internal in self.internal_addresses:
                 fh.write('    allow   %s;\n' % internal)
 
