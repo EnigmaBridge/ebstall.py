@@ -222,6 +222,15 @@ class Config(object):
     def domains(self, val):
         self.set_config('domains', val)
 
+    # DNS service domains
+    @property
+    def domains_svc(self):
+        return self.get_config('domains_svc', list())
+
+    @domains_svc.setter
+    def domains_svc(self, val):
+        self.set_config('domains_svc', val)
+
     # EJBCA hostname
     @property
     def ejbca_hostname(self):
