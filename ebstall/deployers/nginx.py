@@ -271,7 +271,8 @@ class Nginx(object):
 
                 # PHP files
                 fh.write('  location ~ \.php$ {\n')
-                fh.write('\n    '.join(self._conf_php_file_handler()))
+                fh.write('    ' + ('\n    '.join(self._conf_php_file_handler())))
+                fh.write('\n')
                 fh.write('  }\n\n')
 
             fh.write('}\n\n')
@@ -324,7 +325,8 @@ class Nginx(object):
 
             # PHP files
             fh.write('  location ~ \.php$ {\n')
-            fh.write('\n    '.join(self._conf_php_file_handler()))
+            fh.write('    ' + ('\n    '.join(self._conf_php_file_handler())))
+            fh.write('\n')
             fh.write('  }\n\n')
 
             # Robots
