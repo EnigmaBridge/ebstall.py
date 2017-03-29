@@ -524,6 +524,7 @@ class VpnInstaller(Installer):
         :return:
         """
         self.nginx.hostname = self.ejbca.hostname
+        self.nginx.domains = self.config.domains
         self.nginx.internal_addresses = ['%s/%s' % (self.ovpn.get_ip_net(), self.ovpn.get_ip_net_size())]
         self.nginx.cert_dir = self.ejbca.cert_dir
 

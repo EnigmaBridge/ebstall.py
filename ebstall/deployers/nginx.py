@@ -35,6 +35,7 @@ class Nginx(object):
         self.write_dots = write_dots
         self.audit = audit
         self.hostname = 'private-space'
+        self.domains = []
 
         self.nginx_user = 'nginx'
         self.html_root = '/var/www/html'
@@ -164,15 +165,17 @@ class Nginx(object):
 
         self.flush_config()
 
-    def _get_default_server_hostnames(self):
+    def _get_default_server_hostnames(self, include_local=True):
         """
         Default server hostnames
         :return: 
         """
-        hostnames = ['private.space']
+        hostnames = ['private.space'] if include_local else []
+
+        tmp = self.domains
         if self.hostname is not None:
-            hostnames += [self.hostname]
-        return hostnames
+            tmp += [self.hostname]
+        return hostnames + sorted(list(set(hostnames)))
 
     def _get_tls_paths(self):
         """
@@ -218,7 +221,7 @@ class Nginx(object):
         path = os.path.join(self.http_include, 'default.conf')
         util.safely_remove(path)
 
-        hostnames = self._get_default_server_hostnames()
+        hostnames = self._get_default_server_hostnames(True)
         with util.safe_open(path, mode='w', chmod=0o644) as fh:
             fh.write('server { \n')
             fh.write('  listen 80 default_server;\n')
@@ -261,7 +264,7 @@ class Nginx(object):
         path = os.path.join(self.http_include, 'default-tls.conf')
         util.safely_remove(path)
 
-        hostnames = [self.hostname]
+        hostnames = self._get_default_server_hostnames(False)
         cert_path, key_path = self._get_tls_paths()
         with util.safe_open(path, mode='w', chmod=0o644) as fh:
             fh.write('server { \n')
