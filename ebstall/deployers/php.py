@@ -135,7 +135,7 @@ class Php(object):
             raise errors.SetupError('Unsupported packager, cannot install PHP')
 
         # Check out versions available
-        packages = ['php*-fpm', 'php*-mysql', 'php*-mbstring', 'php*-gd']
+        packages = ['php*-fpm', 'php*-mysql', 'php*-mbstring', 'php*-gd', 'php*-xml']
 
         cmd_version = 'sudo repoquery ' + (' '.join(packages))
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd_version, shell=True)
