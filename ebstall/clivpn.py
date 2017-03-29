@@ -541,6 +541,10 @@ class VpnInstaller(Installer):
         # Configure properly
         self.nginx.configure_server()
 
+        # Use Nginx certbot plugin for renewal
+        self.config.le_renew_nginx = True
+        Core.write_configuration(self.config)
+
         ret = self.nginx.enable()
         if ret != 0:
             raise errors.SetupError('Error with setting nginx to start after boot')

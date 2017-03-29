@@ -330,6 +330,15 @@ class Config(object):
     def le_preferred_verification(self, val):
         self.set_config('le_preferred_verification', val)
 
+    # Preferred LetsEncrypt renewal, use nginx ?
+    @property
+    def le_renew_nginx(self):
+        return self.get_config('le_renew_nginx', False)
+
+    @le_renew_nginx.setter
+    def le_renew_nginx(self, val):
+        self.set_config('le_renew_nginx', val)
+
     # Was VPN installed
     @property
     def vpn_installed(self):
