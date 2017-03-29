@@ -210,6 +210,24 @@ class Nginx(object):
 
         return True
 
+    def _conf_php_file_handler(self):
+        """
+        Returns php file handler configuration directive
+        :return: 
+        """
+        ret = [
+            'fastcgi_split_path_info ^(.+\.php)(/.*)$;',
+            'include fastcgi_params;',
+            'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;',
+            'fastcgi_param PATH_INFO $fastcgi_path_info;',
+            'fastcgi_param HTTPS on;',
+            'fastcgi_param modHeadersAvailable true; #Avoid sending the security headers twice',
+            'fastcgi_param front_controller_active true;',
+            'fastcgi_pass php-handler;',
+            'fastcgi_intercept_errors on;',
+            'fastcgi_request_buffering off; #Available since nginx 1.7.11']
+        return ret
+
     def _install_default_server(self):
         """
         Installs a default server to the include dir
@@ -241,6 +259,7 @@ class Nginx(object):
                 fh.write('  }\n\n')
 
             else:
+                # Root
                 fh.write('  location / {\n')
                 fh.write('    try_files $uri $uri/ =404;\n')
                 fh.write('    allow   127.0.0.1;\n')
@@ -249,6 +268,11 @@ class Nginx(object):
 
                 fh.write('    deny    all;\n')
                 fh.write('  }\n')
+
+                # PHP files
+                fh.write('  location ~ \.php$ {\n')
+                fh.write('\n    '.join(self._conf_php_file_handler()))
+                fh.write('  }\n\n')
 
             fh.write('}\n\n')
 
@@ -282,10 +306,12 @@ class Nginx(object):
             fh.write('  add_header X-Download-Options noopen;\n')
             fh.write('  add_header X-Permitted-Cross-Domain-Policies none;\n\n')
 
+            # LetsEncrypt validation
             fh.write('  location /.well-known {\n')
             fh.write('      allow all;\n')
             fh.write('   }\n\n')
 
+            # Root access only for internals
             fh.write('  location / {\n')
             fh.write('    try_files $uri $uri/ =404;\n')
             fh.write('    allow   127.0.0.1;\n')
@@ -296,6 +322,12 @@ class Nginx(object):
             fh.write('    deny    all;\n')
             fh.write('  }\n\n')
 
+            # PHP files
+            fh.write('  location ~ \.php$ {\n')
+            fh.write('\n    '.join(self._conf_php_file_handler()))
+            fh.write('  }\n\n')
+
+            # Robots
             fh.write('  location /robots.txt {\n')
             fh.write('    allow all;\n')
             fh.write('    log_not_found off;\n')
