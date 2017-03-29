@@ -1066,7 +1066,8 @@ class Ejbca(object):
             raise ValueError('Hostname not in domains, should not happen')
 
         self.lets_encrypt = letsencrypt.LetsEncrypt(email=self.config.email, domains=self.domains,
-                                                    print_output=self.print_output, staging=self.staging)
+                                                    print_output=self.print_output, staging=self.staging,
+                                                    audit=self.audit, sysconfig=self.sysconfig)
 
         le_method = self.get_le_method(le_method=le_method)
 
@@ -1088,13 +1089,16 @@ class Ejbca(object):
         util.delete_file_backup(jks_path, chmod=0o600, backup_dir=self.DB_BACKUPS)
 
         # Create new JKS
+        self.audit.add_secrets(self.http_pass)
         self.cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
         self.lets_encrypt_jks = letsencrypt.LetsEncryptToJks(
             cert_dir=self.cert_dir,
             jks_path=jks_path,
             jks_alias=self.hostname,
             password=self.http_pass,
-            print_output=self.print_output)
+            print_output=self.print_output,
+            audit=self.audit,
+            sysconfig=self.sysconfig)
 
         ret = self.lets_encrypt_jks.convert()
         if ret != 0:
@@ -1110,7 +1114,8 @@ class Ejbca(object):
         :return: 0 if certificate was renewed and JKS recreated, 1 if OK but no renewal was needed, error otherwise
         """
         self.lets_encrypt = letsencrypt.LetsEncrypt(email=self.config.email, domains=self.domains,
-                                                    print_output=self.print_output, staging=self.staging)
+                                                    print_output=self.print_output, staging=self.staging,
+                                                    audit=self.audit, sysconfig=self.sysconfig)
 
         if self.lets_encrypt.is_certificate_ready(domain=self.hostname) != 0:
             return 2
@@ -1141,13 +1146,16 @@ class Ejbca(object):
         util.delete_file_backup(jks_path, chmod=0o600, backup_dir=self.DB_BACKUPS)
 
         # Create new JKS
+        self.audit.add_secrets(self.http_pass)
         self.cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
         self.lets_encrypt_jks = letsencrypt.LetsEncryptToJks(
             cert_dir=self.cert_dir,
             jks_path=jks_path,
             jks_alias=self.hostname,
             password=self.http_pass,
-            print_output=self.print_output)
+            print_output=self.print_output,
+            audit=self.audit,
+            sysconfig=self.sysconfig)
 
         ret = self.lets_encrypt_jks.convert()
         if ret != 0:

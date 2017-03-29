@@ -1352,7 +1352,7 @@ class Installer(InstallerBase):
 
         ejbca_host = ejbca.hostname
 
-        le_test = LetsEncrypt(staging=self.args.le_staging)
+        le_test = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
         enroll_new_cert = ejbca_host is None or len(ejbca_host) == 0 or ejbca_host == 'localhost'
         if enroll_new_cert:
             ejbca.set_domains(domains)
@@ -1579,7 +1579,7 @@ class Installer(InstallerBase):
 
         self.last_le_port_open = False
         if letsencrypt is None:
-            letsencrypt = LetsEncrypt(staging=self.args.le_staging)
+            letsencrypt = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
 
         self.tprint('\nChecking if port %d is open for LetsEncrypt, ip: %s' % (letsencrypt.PORT, ip))
         ok = letsencrypt.test_port_open(ip=ip)
@@ -1638,7 +1638,7 @@ class Installer(InstallerBase):
         return ret
 
     def le_renew(self, ejbca):
-        le_test = LetsEncrypt(staging=self.args.le_staging)
+        le_test = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
 
         renew_needed = self.args.force or le_test.test_certificate_for_renew(domain=ejbca.hostname,
                                                                              renewal_before=60*60*24*20) != 0

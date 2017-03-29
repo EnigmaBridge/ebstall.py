@@ -14,10 +14,12 @@ import subprocess
 import shutil
 import re
 import json
+import logging
 import certbot_external_auth as cba
 
 
 __author__ = 'dusanklinec'
+logger = logging.getLogger(__name__)
 
 
 LE_PRIVATE_KEY = 'privkey.pem'
@@ -36,7 +38,8 @@ class LetsEncryptToJks(object):
     OPENSSL_LOG = '/tmp/openssl.log'
     KEYTOOL_LOG = '/tmp/keytool.log'
 
-    def __init__(self, cert_dir=None, jks_path=None, jks_alias='tomcat', password='password', keytool_path=None, print_output=False, *args, **kwargs):
+    def __init__(self, cert_dir=None, jks_path=None, jks_alias='tomcat', password='password', keytool_path=None,
+                 print_output=False, audit=None, sysconfig=None, *args, **kwargs):
         self.cert_dir = cert_dir
         self.jks_path = jks_path
         self.jks_alias = jks_alias
@@ -47,6 +50,9 @@ class LetsEncryptToJks(object):
         self.priv_file = None
         self.cert_file = None
         self.ca_file = None
+
+        self.sysconfig = sysconfig
+        self.audit = audit
 
     def get_keytool(self):
         return 'keytool' if self.keytool_path is None else self.keytool_path
@@ -72,7 +78,7 @@ class LetsEncryptToJks(object):
               % (keytool, alias, keystore, password)
 
         log_obj = self.KEYTOOL_LOG
-        ret, out, err = util.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=self.print_output)
+        ret, out, err = self.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=self.print_output)
         if ret != 0:
             self.print_error('\nKeyTool command failed.')
             self.print_error('For more information please refer to the log file: %s' % log_obj)
@@ -130,7 +136,7 @@ class LetsEncryptToJks(object):
                   ' -name "%s" ' % (openssl, p12_name, self.password, self.priv_file, self.cert_file, self.ca_file, self.jks_alias)
 
             log_obj = self.OPENSSL_LOG
-            ret, out, err = util.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=self.print_output)
+            ret, out, err = self.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=self.print_output)
             if ret != 0:
                 self.print_error('\nOpenSSL command failed.')
                 self.print_error('For more information please refer to the log file: %s' % log_obj)
@@ -146,7 +152,7 @@ class LetsEncryptToJks(object):
                   ' -alias "%s" ' % (keytool, self.password, self.password, self.jks_path, p12_name, self.password, self.jks_alias)
 
             log_obj = self.KEYTOOL_LOG
-            ret, out, err = util.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=self.print_output)
+            ret, out, err = self.cli_cmd_sync(cmd, log_obj=log_obj, write_dots=self.print_output)
             if ret != 0:
                 self.print_error('\nKeytool command failed.')
                 self.print_error('For more information please refer to the log file: %s' % log_obj)
@@ -158,6 +164,19 @@ class LetsEncryptToJks(object):
             if os.path.exists(p12_name):
                     os.remove(p12_name)
 
+    def cli_cmd_sync(self, *args, **kwargs):
+        """
+        Executes the command.
+        Uses sysconfig wrapper if available
+        :param args: 
+        :param kwargs: 
+        :return: 
+        """
+        if self.sysconfig is None:
+            return util.cli_cmd_sync(*args, **kwargs)
+        else:
+            return self.sysconfig.cli_cmd_sync(*args, **kwargs)
+
 
 class LetsEncryptManualDns(object):
     """
@@ -165,7 +184,7 @@ class LetsEncryptManualDns(object):
     """
 
     def __init__(self, email=None, domains=None, print_output=False, on_domain_challenge=None,
-                 cmd=None, cmd_exec=None, log_obj=None, debug=False, *args, **kwargs):
+                 cmd=None, cmd_exec=None, log_obj=None, debug=False, audit=None, sysconfig=None, *args, **kwargs):
 
         self.email = email
         self.domains = domains
@@ -182,6 +201,9 @@ class LetsEncryptManualDns(object):
         self.manual_dns_last_domain = None
         self.manual_dns_last_token = None
         self.manual_dns_report = None
+
+        self.sysconfig = sysconfig
+        self.audit = audit
 
     def answer_manual_dns_out(self, out, feeder, p, *args, **kwargs):
         return self.answer_manual_dns(out, feeder, p, err=False)
@@ -236,13 +258,26 @@ class LetsEncryptManualDns(object):
         """
         Trigger the new verification
         """
-        ret, out, err = util.cli_cmd_sync(self.cmd_exec, log_obj=self.log_obj, write_dots=self.print_output,
+        ret, out, err = self.cli_cmd_sync(self.cmd_exec, log_obj=self.log_obj, write_dots=self.print_output,
                                           on_err=self.answer_manual_dns_err, on_out=self.answer_manual_dns_out)
         if ret != 0:
             self.print_error('\nCertbot command failed: %s\n' % self.cmd_exec)
             self.print_error('For more information please refer to the log file: %s' % self.log_obj)
 
         return ret, out, err
+
+    def cli_cmd_sync(self, *args, **kwargs):
+        """
+        Executes the command.
+        Uses sysconfig wrapper if available
+        :param args: 
+        :param kwargs: 
+        :return: 
+        """
+        if self.sysconfig is None:
+            return util.cli_cmd_sync(*args, **kwargs)
+        else:
+            return self.sysconfig.cli_cmd_sync(*args, **kwargs)
 
 
 class LetsEncrypt(object):
@@ -259,12 +294,29 @@ class LetsEncrypt(object):
     CA = LE_CA
     FALLBACK_EMAIL = 'letsencrypt_support@enigmabridge.com'
 
-    def __init__(self, email=None, domains=None, print_output=False, staging=False, debug=False, *args, **kwargs):
+    def __init__(self, email=None, domains=None, print_output=False, staging=False, debug=False, config=None,
+                 audit=None, sysconfig=None, *args, **kwargs):
         self.email = email
         self.domains = domains
         self.print_output = print_output
         self.staging = staging
         self.debug = debug
+        self.config = config
+        self.sysconfig = sysconfig
+        self.audit = audit
+
+    def cli_cmd_sync(self, *args, **kwargs):
+        """
+        Executes the command.
+        Uses sysconfig wrapper if available
+        :param args: 
+        :param kwargs: 
+        :return: 
+        """
+        if self.sysconfig is None:
+            return util.cli_cmd_sync(*args, **kwargs)
+        else:
+            return self.sysconfig.cli_cmd_sync(*args, **kwargs)
 
     def certonly(self, email=None, domains=None, expand=False):
         """
@@ -291,7 +343,7 @@ class LetsEncrypt(object):
         cmd_exec = 'sudo -E -H %s %s' % (self.CERTBOT_PATH, cmd)
         log_obj = self.CERTBOT_LOG
 
-        ret, out, err = util.cli_cmd_sync(cmd_exec, log_obj=log_obj, write_dots=self.print_output)
+        ret, out, err = self.cli_cmd_sync(cmd_exec, log_obj=log_obj, write_dots=self.print_output)
         if ret != 0:
             self.print_error('\nCertbot command failed: %s\n' % cmd_exec)
             self.print_error('For more information please refer to the log file: %s' % log_obj)
@@ -322,15 +374,25 @@ class LetsEncrypt(object):
         log_obj = self.CERTBOT_LOG
 
         mdns = LetsEncryptManualDns(email=email, domains=self.domains, on_domain_challenge=on_domain_challenge,
-                                    cmd=cmd, cmd_exec=cmd_exec, log_obj=log_obj)
+                                    cmd=cmd, cmd_exec=cmd_exec, log_obj=log_obj,
+                                    audit=self.audit, sysconfig=self.sysconfig)
         return mdns
 
     def renew(self):
+        """
+        Calls certbot renew.
+        Certbot tries to renew all domains in its configuration
+        :return: 
+        """
         cmd = self.get_renew_cmd()
         cmd_exec = 'sudo -E -H %s %s' % (self.CERTBOT_PATH, cmd)
+
+        if self.config is not None and self.config.le_renew_nginx:
+            cmd_exec += ' --nginx'
+
         log_obj = self.CERTBOT_LOG
 
-        ret, out, err = util.cli_cmd_sync(cmd_exec, log_obj=log_obj, write_dots=self.print_output)
+        ret, out, err = self.cli_cmd_sync(cmd_exec, log_obj=log_obj, write_dots=self.print_output)
         if ret != 0 and self.print_output:
             self.print_error('\nCertbot command failed: %s\n' % cmd_exec)
             self.print_error('For more information please refer to the log file: %s' % log_obj)
