@@ -327,6 +327,11 @@ class VpnInstaller(Installer):
         conf_file = Core.write_configuration(new_config)
         self.tprint('New configuration was written to: %s\n' % conf_file)
 
+        # Certbot
+        res = self.init_certbot()
+        if res != 0:
+            return self.return_code(res)
+
         # Database
         res = self.init_database()
         if res != 0:

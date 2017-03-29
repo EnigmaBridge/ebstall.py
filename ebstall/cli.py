@@ -16,6 +16,7 @@ from ebclient.registration import ENVIRONMENT_PRODUCTION
 
 from ebstall.deployers.ejbca import Ejbca
 from ebstall.deployers.jboss import Jboss
+from ebstall.deployers.certbot import Certbot
 from ebstall.deployers.letsencrypt import LetsEncrypt
 
 import dbutil
@@ -54,6 +55,7 @@ class Installer(InstallerBase):
         self.jboss = None
         self.ejbca = None
         self.mysql = None
+        self.certbot = None
         self.eb_cfg = None
 
         self.previous_registration_continue = False
@@ -238,6 +240,7 @@ class Installer(InstallerBase):
                                     audit=self.audit, sysconfig=self.syscfg)
 
         self.soft_config = SoftHsmV1Config()
+        self.certbot = Certbot(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
                                   write_dots=True, root_passwd=self.get_db_root_password())
         self.jboss = Jboss(config=self.config, eb_config=self.eb_settings,
@@ -438,6 +441,14 @@ class Installer(InstallerBase):
             self.tprint('You can use these newly generated keys for your CA or generate another ones with:')
             for tmpcmd in key_gen_cmds:
                 self.tprint('  %s' % self.ejbca.pkcs11_get_command(tmpcmd))
+        return 0
+
+    def init_certbot(self):
+        """
+        Installs certbot requirements
+        :return: 
+        """
+        self.certbot.install()
         return 0
 
     def init_database(self):
@@ -881,6 +892,11 @@ class Installer(InstallerBase):
 
         # Database
         res = self.init_database()
+        if res != 0:
+            return self.return_code(res)
+
+        # Certbot
+        res = self.init_certbot()
         if res != 0:
             return self.return_code(res)
 
