@@ -267,6 +267,16 @@ class LetsEncrypt(object):
         self.debug = debug
 
     def certonly(self, email=None, domains=None, expand=False):
+        """
+        Calls certbot certonly command.
+        Used in the intial certbot enrollment. 
+        Uses standalone authentication.
+        
+        :param email: 
+        :param domains: 
+        :param expand: 
+        :return: 
+        """
         if email is not None:
             self.email = email
         if domains is not None:
@@ -289,6 +299,14 @@ class LetsEncrypt(object):
         return ret, out, err
 
     def manual_dns(self, email=None, domains=None, expand=True, on_domain_challenge=None):
+        """
+        Executes Certbot certonly with the manual-dns domain validation.
+        :param email: 
+        :param domains: 
+        :param expand: 
+        :param on_domain_challenge: 
+        :return: 
+        """
         if email is not None:
             self.email = email
         if domains is not None:
@@ -320,12 +338,24 @@ class LetsEncrypt(object):
         return ret, out, err
 
     def get_certificate_dir(self, domain=None):
+        """
+        Returns path to the certificate directory - live/ directory.
+        If domain is not None, returns path to the directory with certificates for the given domain.
+        :param domain: 
+        :return: 
+        """
         if domain is None:
             return self.LE_CERT_PATH
         else:
             return os.path.join(self.LE_CERT_PATH, domain)
 
     def get_cert_paths(self, cert_dir=None, domain=None):
+        """
+        Returns files for the given domain
+        :param cert_dir: 
+        :param domain: 
+        :return: privkey_file, cert_file, ca_file
+        """
         if domain is not None:
             cert_dir = self.get_certificate_dir(domain)
         if cert_dir is None:
@@ -337,6 +367,12 @@ class LetsEncrypt(object):
         return priv_file, cert_file, ca_file
 
     def is_certificate_ready(self, cert_dir=None, domain=None):
+        """
+        Checks if the given domain exists and all required files exist as well (privkey, cert, fullchain).
+        :param cert_dir: 
+        :param domain: 
+        :return: 
+        """
         priv_file, cert_file, ca_file = self.get_cert_paths(cert_dir=cert_dir, domain=domain)
         if not os.path.exists(priv_file):
             return 1
@@ -348,7 +384,14 @@ class LetsEncrypt(object):
             return 0
 
     def test_certificate_for_renew(self, cert_dir=None, domain=None, renewal_before=60*60*24*30):
-        """Tries to load PEM certificate and check not after"""
+        """
+        Tries to load PEM certificate and check not after
+        
+        :param cert_dir: 
+        :param domain: 
+        :param renewal_before: 
+        :return: 
+        """
         priv_file, cert_file, ca_file = self.get_cert_paths(cert_dir=cert_dir, domain=domain)
         if not os.path.exists(cert_file):
             return 1
@@ -405,6 +448,15 @@ class LetsEncrypt(object):
 
     @staticmethod
     def get_standalone_cmd(domain, email=None, expand=False, staging=False):
+        """
+        Returns Certbot standalone command for given settings (domains, staging, email, expand)
+        
+        :param domain: 
+        :param email: 
+        :param expand: 
+        :param staging: 
+        :return: 
+        """
         cmd_email_part = LetsEncrypt.get_email_cmd(email)
 
         domains = domain if isinstance(domain, types.ListType) else [domain]
@@ -421,6 +473,7 @@ class LetsEncrypt(object):
     @staticmethod
     def get_manual_dns(domain, email=None, expand=True, staging=False):
         """
+        Returns command for manual-dns certonly.
         Non-interactive mode is not yet supported with the manual authenticator.
 
         :param domain:
