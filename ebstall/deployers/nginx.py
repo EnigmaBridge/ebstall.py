@@ -172,10 +172,10 @@ class Nginx(object):
         """
         hostnames = ['private.space'] if include_local else []
 
-        tmp = self.domains
+        tmp = list(self.domains)
         if self.hostname is not None:
             tmp += [self.hostname]
-        return hostnames + sorted(list(set(hostnames)))
+        return hostnames + sorted(list(set(tmp)))
 
     def _get_tls_paths(self):
         """
