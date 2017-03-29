@@ -39,6 +39,7 @@ class Nginx(object):
 
         self.nginx_user = 'nginx'
         self.html_root = '/var/www/html'
+        self.html_root_old = '/var/www/html'
         self.http_include = '/etc/nginx/conf.d'
         self.site_enabled = None
         self.config_root = None
@@ -107,10 +108,10 @@ class Nginx(object):
         """
         roots = nginxparser_eb.find_in_model(self.config_root, ['http', 'server', 'root'])
         for root in roots:
-            self.html_root = root.value
+            self.html_root_old = root.value
             break
 
-        return self.html_root
+        return self.html_root_old
 
     def _load_config_vars(self):
         """
@@ -436,8 +437,8 @@ class Nginx(object):
         :return: True if file was changed
         """
 
-        root = self.load_html_root()
-        if root is None:
+        self.load_html_root()
+        if self.html_root is None:
             raise errors.SetupError('Could not determine default root of the Nginx server')
 
         # Disable the default server, create a custom one.
@@ -450,22 +451,22 @@ class Nginx(object):
         self.add_php_index()
         self.flush_config()
 
-        if os.path.exists(root):
-            util.dir_backup(root, backup_dir='/tmp')
-            shutil.rmtree(root)
+        if os.path.exists(self.html_root):
+            util.dir_backup(self.html_root, backup_dir='/tmp')
+            shutil.rmtree(self.html_root)
 
-        util.make_or_verify_dir(root)
+        util.make_or_verify_dir(self.html_root)
 
         # Clone git repo here
-        cmd = 'git clone "%s" "%s"' % (self.get_git_repo(), root)
+        cmd = 'git clone "%s" "%s"' % (self.get_git_repo(), self.html_root)
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd)
         if ret != 0:
             raise errors.SetupError('Git clone of the private space repo failed')
 
         # Update index.html
-        self.templatize_file(os.path.join(root, 'index.html'))
-        self.templatize_file(os.path.join(root, '404.html'), ignore_not_found=True)
-        self.templatize_file(os.path.join(root, '50x.html'), ignore_not_found=True)
+        self.templatize_file(os.path.join(self.html_root, 'index.html'))
+        self.templatize_file(os.path.join(self.html_root, '404.html'), ignore_not_found=True)
+        self.templatize_file(os.path.join(self.html_root, '50x.html'), ignore_not_found=True)
 
         return False
 
