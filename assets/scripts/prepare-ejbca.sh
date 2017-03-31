@@ -11,9 +11,9 @@ DEST=/tmp/${EJBCA_VER}
 EJBCA_SRC=/Volumes/EXTDATA/workspace/ejbca_ce_6_3_1_1/
 
 rsync -av --rsync-path="sudo rsync" --stats --delete \
+    --include='conf/extendedkeyusage.properties' \
     --exclude='conf/*.properties' --exclude='.git' --exclude='*.class' --exclude='*.swp' --exclude='*~' \
     --exclude='.DS_Store' --exclude='.idea' --exclude='.pc' --exclude='.settings' \
-    --include='conf/extendedkeyusage.properties' \
     ${EJBCA_SRC} ${HOST}:${DEST} \
 
 read -d '' EJBCA_PROP << EOMSTR
