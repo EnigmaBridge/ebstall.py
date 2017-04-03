@@ -676,6 +676,14 @@ class VpnInstaller(Installer):
         self.syscfg.install_cron_renew(install_type=install_type)
         return 0
 
+    def le_renewed(self):
+        """
+        Letsencrypt was renewed
+        :return: 
+        """
+        self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.nginx.switch(restart=True)
+
 
 def main():
     app = VpnInstaller()

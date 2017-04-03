@@ -1652,6 +1652,8 @@ class Installer(InstallerBase):
         if ret == 0:
             Core.write_configuration(ejbca.config)
             ejbca.jboss_reload()
+            self.le_renewed()
+
             self.tprint('\nNew publicly trusted certificate installed (issued by LetsEncrypt)')
 
         elif ret == 1:
@@ -1661,6 +1663,13 @@ class Installer(InstallerBase):
             self.tprint('\nFailed to renew LetsEncrypt certificate, code=%s.' % ret)
             self.tprint('You can try it again later with command renew\n')
         return ret
+
+    def le_renewed(self):
+        """
+        Letsencrypt was renewed, hook can be overridden to do additional cleanup
+        :return: 
+        """
+        pass
 
     def install_check_memory(self, syscfg=None):
         """
