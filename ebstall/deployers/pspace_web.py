@@ -111,6 +111,11 @@ class PrivSpaceWeb(object):
         with open(env_path, mode='w') as fh:
             fh.write(tpl_file)
 
+        cmd = 'sudo -E -H chown %s "%s"' % (self.user, env_path)
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, cwd=self.webroot)
+        if ret != 0:
+            raise errors.SetupError('Could not change .env owner')
+
     def configure(self):
         """
         Configures supervisord after manual installation
