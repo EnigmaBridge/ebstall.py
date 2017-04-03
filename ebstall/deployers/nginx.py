@@ -219,7 +219,11 @@ class Nginx(object):
         Returns php file handler configuration directive
         :return: 
         """
-        ret = [
+        perm = ['allow   127.0.0.1;'] + \
+               ['allow   %s;' % x for x in self.internal_addresses] + \
+               ['deny    all;']
+
+        ret = perm + [
             'fastcgi_split_path_info ^(.+\.php)(/.*)$;',
             'include fastcgi_params;',
             'fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;',
