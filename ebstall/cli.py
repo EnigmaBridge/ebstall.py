@@ -14,6 +14,7 @@ import coloredlogs
 import types
 from ebclient.registration import ENVIRONMENT_PRODUCTION
 
+from ebstall.deployers.mysql import MySQL
 from ebstall.deployers.ejbca import Ejbca
 from ebstall.deployers.jboss import Jboss
 from ebstall.deployers.certbot import Certbot
@@ -241,8 +242,8 @@ class Installer(InstallerBase):
 
         self.soft_config = SoftHsmV1Config()
         self.certbot = Certbot(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
-        self.mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
-                                  write_dots=True, root_passwd=self.get_db_root_password())
+        self.mysql = MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
+                           write_dots=True, root_passwd=self.get_db_root_password())
         self.jboss = Jboss(config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
@@ -1342,8 +1343,8 @@ class Installer(InstallerBase):
                 return self.return_code(3)
 
         # EJBCA
-        mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
-                             write_dots=True, root_passwd=self.get_db_root_password())
+        mysql = MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
+                      write_dots=True, root_passwd=self.get_db_root_password())
         jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
         ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config, eb_config=self.eb_settings,
                       staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit, jboss=jboss, mysql=mysql)
@@ -1514,8 +1515,8 @@ class Installer(InstallerBase):
                 return self.return_code(1)
 
             config = Core.read_configuration()
-            mysql = dbutil.MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
-                                 write_dots=True, root_passwd=self.get_db_root_password())
+            mysql = MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
+                          write_dots=True, root_passwd=self.get_db_root_password())
             jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
             ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=config, eb_config=self.eb_settings,
                           sysconfig=self.syscfg, audit=self.audit, jboss=jboss, mysql=mysql)
