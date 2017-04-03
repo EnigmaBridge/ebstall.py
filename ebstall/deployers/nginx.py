@@ -318,7 +318,7 @@ class Nginx(object):
 
             # Root access only for internals
             fh.write('  location / {\n')
-            fh.write('    try_files $uri $uri/ =404;\n')
+            fh.write('    try_files $uri $uri/ /index.php?$query_string;\n')
             fh.write('    allow   127.0.0.1;\n')
 
             for internal in self.internal_addresses:
