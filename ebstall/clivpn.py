@@ -13,6 +13,7 @@ from ebstall.deployers import openvpn
 from ebstall.deployers import php
 from ebstall.deployers import supervisord
 from ebstall.deployers import vpnauth
+from ebstall.deployers import pspace_web
 
 import errors
 import util
@@ -42,6 +43,7 @@ class VpnInstaller(Installer):
         self.supervisord = None
         self.vpnauth = None
         self.php = None
+        self.pspace_web = None
 
         self.vpn_keys = None, None, None
         self.vpn_crl = None
@@ -247,6 +249,8 @@ class VpnInstaller(Installer):
         self.vpnauth = vpnauth.VpnAuth(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
                                        supervisord=self.supervisord, mysql=self.mysql, ovpn=self.ovpn)
         self.php = php.Php(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+        self.pspace_web = pspace_web.PrivSpaceWeb(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
+                                                  mysql=self.mysql, nginx=self.nginx, config=self.config)
 
         self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
@@ -364,6 +368,7 @@ class VpnInstaller(Installer):
         self.init_dnsmasq()
         self.init_nginx()
         self.init_vpnauth()
+        self.init_privatespace_web()
 
         self.init_nginx_start()
         self.init_vpn_start()
@@ -525,6 +530,7 @@ class VpnInstaller(Installer):
         self.nginx.domains = self.config.domains
         self.nginx.internal_addresses = ['%s/%s' % (self.ovpn.get_ip_net(), self.ovpn.get_ip_net_size())]
         self.nginx.cert_dir = self.ejbca.cert_dir
+        self.nginx.html_root = self.pspace_web.get_public_dir()  # Laravel based private space landing page
 
         ret = self.nginx.install()
         if ret != 0:
@@ -573,6 +579,24 @@ class VpnInstaller(Installer):
         ret = self.php.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting php daemon')
+
+    def init_privatespace_web(self):
+        """
+        Initializes private space web
+        :return: 
+        """
+        self.pspace_web.config = self.config
+        self.pspace_web.user = self.nginx.nginx_user
+        self.pspace_web.stats_file_path = self.vpnauth.get_stats_file_path()
+        self.pspace_web.admin_email = self.config.email
+        self.pspace_web.hostname = self.ejbca.hostname
+        self.pspace_web.vpn_net_addr = self.ovpn.get_ip_net()
+        self.pspace_web.vpn_net_size = self.ovpn.get_ip_net_size()
+        self.pspace_web.vpn_net_server = self.ovpn.get_ip_vpn_server()
+
+        self.pspace_web.install()
+        self.pspace_web.configure()
+        Core.write_configuration(self.config)
 
     def init_supervisord(self):
         """

@@ -448,6 +448,33 @@ class Config(object):
     def vpnauth_enc_password(self, val):
         self.set_config('vpnauth_enc_password', val)
 
+    # private space web database name
+    @property
+    def pspace_db(self):
+        return self.get_config('pspace_db', default=None)
+
+    @pspace_db.setter
+    def pspace_db(self, val):
+        self.set_config('pspace_db', val)
+
+    # private space web database user
+    @property
+    def pspace_db_user(self):
+        return self.get_config('pspace_db_user', default=None)
+
+    @pspace_db_user.setter
+    def pspace_db_user(self, val):
+        self.set_config('pspace_db_user', val)
+
+    # private space web database password
+    @property
+    def pspace_db_password(self):
+        return self.get_config('pspace_db_password', default=None)
+
+    @pspace_db_password.setter
+    def pspace_db_password(self, val):
+        self.set_config('pspace_db_password', val)
+
 
 class EBSettings(object):
     """

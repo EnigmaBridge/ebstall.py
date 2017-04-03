@@ -28,7 +28,6 @@ class Nginx(object):
     TODO: edit for ubuntu, has default server in a separate dir, sites-enabled
     """
     SETTINGS_FILE = '/etc/nginx/nginx.conf'
-    DEFAULT_PRIVATE_SPACE_GIT = 'https://github.com/EnigmaBridge/privatespace.git'
 
     def __init__(self, sysconfig=None, write_dots=False, audit=None, mysql=None, config=None, *args, **kwargs):
         self.sysconfig = sysconfig
@@ -391,13 +390,6 @@ class Nginx(object):
 
         self.config_dirty = False
 
-    def get_git_repo(self):
-        """
-        Returns a git repo with private space intro page
-        :return:
-        """
-        return self.DEFAULT_PRIVATE_SPACE_GIT
-
     def templatize_file(self, file_path, ignore_not_found=False):
         """
         Fils in the template placeholders in the file.
@@ -460,19 +452,7 @@ class Nginx(object):
             shutil.rmtree(self.html_root)
 
         util.make_or_verify_dir(self.html_root)
-
-        # Clone git repo here
-        cmd = 'git clone "%s" "%s"' % (self.get_git_repo(), self.html_root)
-        ret, out, err = self.sysconfig.cli_cmd_sync(cmd)
-        if ret != 0:
-            raise errors.SetupError('Git clone of the private space repo failed')
-
-        # Update index.html
-        self.templatize_file(os.path.join(self.html_root, 'index.html'))
-        self.templatize_file(os.path.join(self.html_root, '404.html'), ignore_not_found=True)
-        self.templatize_file(os.path.join(self.html_root, '50x.html'), ignore_not_found=True)
-
-        return False
+        return 0
 
     #
     # Installation
