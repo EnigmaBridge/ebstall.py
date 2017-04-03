@@ -144,7 +144,7 @@ class Php(object):
 
         versions = util.get_repoquery_available_versions(out)
 
-        # Prefer versions 5.4
+        # Prefer versions 5.6
         versions_to_install = util.repoquery_find_version(versions, exact_version='5.6')
         if len(versions_to_install) < len(packages):
             versions_to_install = util.repoquery_find_version(versions, min_version='5.6', max_version='5.99')
