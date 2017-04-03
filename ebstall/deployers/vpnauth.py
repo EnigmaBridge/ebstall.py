@@ -38,7 +38,7 @@ class VpnAuth(object):
         self.config = config
         self.ejbca = None
         self.ovpn = ovpn
-        self.webroot = '/var/www/html'
+        self.webroot = '/var/www/stats'
 
     #
     # Installation
@@ -56,6 +56,10 @@ class VpnAuth(object):
 
         self.config.vpnauth_db = self.ejbca.MYSQL_DB
         self.mysql.create_user(self.DB_USER, self.config.vpnauth_db_password, self.config.vpnauth_db)
+
+        # Create stats dir if does not exist
+        if not os.path.exists(self.webroot):
+            os.makedirs(self.webroot, mode=0o755)
 
         # Create VPN-dir based configuration for vpnauth notifier.
         # It is started under VPN server user so it has to be able to read the configuration with the API key.

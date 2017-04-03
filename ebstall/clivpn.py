@@ -599,7 +599,6 @@ class VpnInstaller(Installer):
         """
         self.vpnauth.config = self.config
         self.vpnauth.ejbca = self.ejbca
-        self.vpnauth.webroot = self.nginx.html_root
 
         self.vpnauth.install()
         self.vpnauth.configure()
