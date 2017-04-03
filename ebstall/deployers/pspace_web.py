@@ -127,6 +127,7 @@ class PrivSpaceWeb(object):
         self.audit.add_secrets(self.config.pspace_db_password)
 
         # Create mysql database and user
+        self.mysql.drop_database(self.config.pspace_db)
         self.mysql.create_database(self.config.pspace_db)
         self.mysql.create_user(self.DB_USER, self.config.pspace_db_password, self.config.pspace_db)
 
