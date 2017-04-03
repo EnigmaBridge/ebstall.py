@@ -357,6 +357,33 @@ class Config(object):
     def vpn_installed(self, val):
         self.set_config('vpn_installed', val)
 
+    # VPN server addr
+    @property
+    def vpn_server_addr(self):
+        return self.get_config('vpn_server_addr')
+
+    @vpn_server_addr.setter
+    def vpn_server_addr(self, val):
+        self.set_config('vpn_server_addr', val)
+
+    # VPN network addr
+    @property
+    def vpn_net_addr(self):
+        return self.get_config('vpn_net_addr')
+
+    @vpn_net_addr.setter
+    def vpn_net_addr(self, val):
+        self.set_config('vpn_net_addr', val)
+
+    # VPN network size
+    @property
+    def vpn_net_size(self):
+        return self.get_config('vpn_net_size')
+
+    @vpn_net_size.setter
+    def vpn_net_size(self, val):
+        self.set_config('vpn_net_size', val)
+
     # process endpoint
     @property
     def endpoint_process(self):

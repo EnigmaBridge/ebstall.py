@@ -364,6 +364,7 @@ class OpenVpn(object):
         self.audit = audit
 
         # Result of load_config_file_lines
+        self.config = None
         self.server_config = None
         self.client_config = None
         self.client_config_windows = None
@@ -546,6 +547,11 @@ class OpenVpn(object):
                        # '"route-metric 512"'
                        ]
         self.server_config.set_config_value('push', push_values)
+
+        # Store VPN config to config
+        self.config.vpn_server_addr = self.get_ip_vpn_server()
+        self.config.vpn_net_addr = self.get_ip_net()
+        self.config.vpn_net_size = self.get_ip_net_size()
 
         return self.server_config.update_config_file()
 

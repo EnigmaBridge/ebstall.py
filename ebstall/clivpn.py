@@ -445,6 +445,8 @@ class VpnInstaller(Installer):
         Throws an exception if something goes wrong.
         :return:
         """
+        self.ovpn.config = self.config
+
         ret = self.ovpn.install()
         if ret != 0:
             raise errors.SetupError('Cannot install openvpn package')
@@ -480,6 +482,8 @@ class VpnInstaller(Installer):
         ret = self.ovpn.enable()
         if ret != 0:
             raise errors.SetupError('Cannot set openvpn server to start after boot')
+
+        Core.write_configuration(self.config)
 
     def init_vpn_start(self):
         """
