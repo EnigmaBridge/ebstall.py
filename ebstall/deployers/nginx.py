@@ -30,10 +30,14 @@ class Nginx(object):
     SETTINGS_FILE = '/etc/nginx/nginx.conf'
     DEFAULT_PRIVATE_SPACE_GIT = 'https://github.com/EnigmaBridge/privatespace.git'
 
-    def __init__(self, sysconfig=None, write_dots=False, audit=None, *args, **kwargs):
+    def __init__(self, sysconfig=None, write_dots=False, audit=None, mysql=None, config=None, *args, **kwargs):
         self.sysconfig = sysconfig
         self.write_dots = write_dots
         self.audit = audit
+        self.mysql = mysql
+        self.config = config
+        self.ejbca = None
+
         self.hostname = 'private-space'
         self.domains = []
 
