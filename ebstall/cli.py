@@ -1639,6 +1639,12 @@ class Installer(InstallerBase):
         return ret
 
     def le_renew(self, ejbca):
+        """
+        Performs LetsEncrypt certificate renewal.
+        Installs the new certificate to the EJBCA.
+        :param ejbca: 
+        :return: 
+        """
         le_test = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
 
         renew_needed = self.args.force or le_test.test_certificate_for_renew(domain=ejbca.hostname,

@@ -1110,7 +1110,7 @@ class Ejbca(object):
 
     def le_renew(self, le_method=None):
         """
-        Renews LetsEncrypt certificate
+        Renews LetsEncrypt certificate, updates JKS containing the certificate.
         :return: 0 if certificate was renewed and JKS recreated, 1 if OK but no renewal was needed, error otherwise
         """
         self.lets_encrypt = letsencrypt.LetsEncrypt(email=self.config.email, domains=self.domains,
