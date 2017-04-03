@@ -681,6 +681,7 @@ class VpnInstaller(Installer):
         Letsencrypt was renewed
         :return: 
         """
+        Installer.le_renewed(self)
         self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.nginx.switch(restart=True)
 
