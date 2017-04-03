@@ -119,12 +119,6 @@ class VpnInstaller(Installer):
 
         self.tprint('Port %s, echo server, reachable: %s' % (port, res_value))
 
-    # def do_debug_ovpn_config(self, line):
-    #     """VPN configuration"""
-    #     self.init_services()
-    #     self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
-    #     self.ovpn.configure_server()
-
     def do_update_ejbca_install(self, line):
         """Updates EJBCA distribution from the provisioning server"""
         self.load_base_settings()
