@@ -1118,6 +1118,7 @@ class Ejbca(object):
                                                     audit=self.audit, sysconfig=self.sysconfig)
 
         if self.lets_encrypt.is_certificate_ready(domain=self.hostname) != 0:
+            logger.info('Certificate does not exist, could not renew')
             return 2
 
         priv_file, cert_file, ca_file = self.lets_encrypt.get_cert_paths(domain=self.hostname)
@@ -1135,10 +1136,12 @@ class Ejbca(object):
             ret, out, err = self.lets_encrypt.renew()
 
         if ret != 0:
+            logger.info('LE renewal failed with code: %s' % ret)
             return 3
 
         cert_time_after = util.get_file_mtime(cert_file)
         if cert_time_before >= cert_time_after:
+            logger.debug('LE certificate did not renew')
             return 1
 
         # LetsEncrypt certificate is OK. Create JKS.
@@ -1159,6 +1162,7 @@ class Ejbca(object):
 
         ret = self.lets_encrypt_jks.convert()
         if ret != 0:
+            logger.debug('Problem with certificate conversion to JKS, code: %s' % ret)
             return 4
 
         self.config.ejbca_hostname = self.hostname
