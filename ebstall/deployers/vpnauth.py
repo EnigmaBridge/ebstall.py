@@ -44,6 +44,13 @@ class VpnAuth(object):
     # Installation
     #
 
+    def get_stats_file_path(self):
+        """
+        Returns stats.json file path
+        :return: 
+        """
+        return os.path.join(self.webroot, 'stats.json')
+
     def configure(self):
         """
         Configures supervisord after manual installation
@@ -100,7 +107,7 @@ class VpnAuth(object):
         Enables service after OS start
         :return:
         """
-        session_file = os.path.join(self.webroot, 'stats.json')
+        session_file = self.get_stats_file_path()
         with open(self.CONFIG_FILE, 'w') as fh:
             fh.write('[program:%s]\n' % self.SUPERVISOR_CMD)
             fh.write('directory=/tmp\n')
