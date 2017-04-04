@@ -220,8 +220,7 @@ class Nginx(object):
         :return: 
         """
         perm = ['allow   127.0.0.1;'] + \
-               ['allow   %s;' % x for x in self.internal_addresses] + \
-               ['deny    all;']
+               ['allow   %s;' % x for x in self.internal_addresses]
 
         ret = perm + [
             'fastcgi_split_path_info ^(.+\.php)(/.*)$;',
@@ -328,7 +327,6 @@ class Nginx(object):
             for internal in self.internal_addresses:
                 fh.write('    allow   %s;\n' % internal)
 
-            fh.write('    deny    all;\n')
             fh.write('  }\n\n')
 
             # PHP files
