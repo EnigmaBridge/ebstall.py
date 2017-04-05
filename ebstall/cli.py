@@ -232,6 +232,7 @@ class Installer(InstallerBase):
 
         # Determine the environment we are going to use in EB.
         self.config.env = self.get_env()
+        self.config.ebstall_version = self.version
         if self.config.env != ENVIRONMENT_PRODUCTION:
             pass  # Core.set_devel_endpoints(self.eb_cfg) # TODO: fix this
 

@@ -141,6 +141,15 @@ class Config(object):
             return default
         return LE_VERIFY_DEFAULT
 
+    # version of the installer that produced this file
+    @property
+    def ebstall_version(self):
+        return self.get_config('ebstall_version')
+
+    @ebstall_version.setter
+    def ebstall_version(self, val):
+        self.set_config('ebstall_version', val)
+
     # email
     @property
     def email(self):
