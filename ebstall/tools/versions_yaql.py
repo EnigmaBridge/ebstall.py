@@ -4,7 +4,7 @@ The module describes which operations can be done with strings in YAQL.
 
 import string as string_module
 
-
+from yaql.language.factory import OperatorType
 
 from ebstall import versions
 import six
@@ -92,7 +92,30 @@ def neq(left, right):
     return left != right
 
 
+@specs.name('#unary_operator_v')
+def vop(x):
+    """:yaql:operator v
+    """
+    return versions.Version(str(x))
+
+
+def register_factory(factory):
+    """
+    Registers all combols to the factory
+    :param factory: 
+    :return: 
+    """
+    factory.insert_operator(None, None, new_operator='v', new_operator_type=OperatorType.PREFIX_UNARY,
+                            create_group=False)
+
+
 def register(context, parser=None):
+    """
+    Registers all functions to the context
+    :param context: 
+    :param parser: 
+    :return: 
+    """
     context.register_function(gt)
     context.register_function(lt)
     context.register_function(gte)
@@ -100,6 +123,7 @@ def register(context, parser=None):
     context.register_function(eq)
     context.register_function(neq)
     context.register_function(v)
+    context.register_function(vop)
 
     context.register_function(versions.version_len, name='version_len')
     context.register_function(versions.version_trim, name='version_trim')
