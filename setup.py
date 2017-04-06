@@ -28,7 +28,8 @@ install_requires = [
     'SQLAlchemy',
     'shellescape',
     'jbossply',
-    'nginxparser_eb'
+    'nginxparser_eb',
+    'yaql'
 ]
 
 # env markers in extras_require cause problems with older pip: #517
