@@ -95,7 +95,7 @@ class VpnAuth(object):
         Installs itself
         :return: installer return code
         """
-        cmd_exec = 'sudo pip install vpnauth'
+        cmd_exec = 'sudo -E -H pip install --upgrade --no-cache vpnauth'
         ret = self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dost)
         if ret != 0:
             raise errors.SetupError('Could not install vpnauth from the pip')
