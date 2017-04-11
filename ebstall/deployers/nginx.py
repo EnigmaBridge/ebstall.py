@@ -262,7 +262,7 @@ class Nginx(object):
             # If we have https, do the redirect to https variant
             if self._check_certificates():
                 fh.write('  location / {\n')
-                fh.write('    return 301 https://%s$request_uri;\n' % self.hostname)
+                fh.write('    return 302 https://%s$request_uri;\n' % self.hostname)
                 fh.write('  }\n\n')
 
             else:
