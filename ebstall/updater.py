@@ -18,6 +18,7 @@ import re
 import errors
 import consts
 import json
+import collections
 from audit import AuditManager
 
 from ebstall import versions
@@ -41,6 +42,7 @@ class Updater(object):
     """
     def __init__(self):
         self.engine = None
+        self.root = None
 
     def init_parser(self):
         """
@@ -76,7 +78,22 @@ class Updater(object):
         Generates the root data object for the YAQL evaluation.
         :return: 
         """
+        self.root = collections.OrderedDict()
 
+        return self.root
+
+    def eval(self, expr):
+        """
+        Evaluates an expression
+        :param expr: 
+        :return: 
+        """
+        if self.engine is None:
+            self.init_parser()
+
+        ctx = self.new_context()
+        res = self.engine(expr).evaluate(self.root, ctx)
+        return res
 
 if __name__ == "__main__":
     data = None
