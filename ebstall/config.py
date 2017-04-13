@@ -484,6 +484,15 @@ class Config(object):
     def pspace_db_password(self, val):
         self.set_config('pspace_db_password', val)
 
+    # source image ebstall was based on
+    @property
+    def source_image_code(self):
+        return self.get_config('source_image_code', default='aws-ami')
+
+    @source_image_code.setter
+    def source_image_code(self, val):
+        self.set_config('source_image_code', val)
+
 
 class EBSettings(object):
     """
