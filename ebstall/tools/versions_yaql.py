@@ -38,8 +38,8 @@ def v(x):
     return versions.Version(x)
 
 
-@specs.parameter('left', VersionType())
-@specs.parameter('right', VersionType())
+@specs.parameter('left', VersionType(), nullable=True)
+@specs.parameter('right', VersionType(), nullable=True)
 @specs.name('#operator_>')
 def gt(left, right):
     """:yaql:operator >
@@ -47,8 +47,8 @@ def gt(left, right):
     return left > right
 
 
-@specs.parameter('left', VersionType())
-@specs.parameter('right', VersionType())
+@specs.parameter('left', VersionType(), nullable=True)
+@specs.parameter('right', VersionType(), nullable=True)
 @specs.name('#operator_<')
 def lt(left, right):
     """:yaql:operator <
@@ -56,8 +56,8 @@ def lt(left, right):
     return left < right
 
 
-@specs.parameter('left', VersionType())
-@specs.parameter('right', VersionType())
+@specs.parameter('left', VersionType(), nullable=True)
+@specs.parameter('right', VersionType(), nullable=True)
 @specs.name('#operator_>=')
 def gte(left, right):
     """:yaql:operator >=
@@ -65,8 +65,8 @@ def gte(left, right):
     return left >= right
 
 
-@specs.parameter('left', VersionType())
-@specs.parameter('right', VersionType())
+@specs.parameter('left', VersionType(), nullable=True)
+@specs.parameter('right', VersionType(), nullable=True)
 @specs.name('#operator_<=')
 def lte(left, right):
     """:yaql:operator <=
@@ -74,8 +74,8 @@ def lte(left, right):
     return left <= right
 
 
-@specs.parameter('left', VersionType())
-@specs.parameter('right', VersionType())
+@specs.parameter('left', VersionType(), nullable=True)
+@specs.parameter('right', VersionType(), nullable=True)
 @specs.name('#operator_=')
 def eq(left, right):
     """:yaql:operator =
@@ -83,8 +83,8 @@ def eq(left, right):
     return left == right
 
 
-@specs.parameter('left', VersionType())
-@specs.parameter('right', VersionType())
+@specs.parameter('left', VersionType(), nullable=True)
+@specs.parameter('right', VersionType(), nullable=True)
 @specs.name('#operator_!=')
 def neq(left, right):
     """:yaql:operator !=
