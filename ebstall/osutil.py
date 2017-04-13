@@ -19,6 +19,7 @@ from datetime import datetime
 import time
 import types
 import util
+from ebstall.versions import Version
 from ebstall.util import normalize_string
 
 logger = logging.getLogger(__name__)
@@ -132,6 +133,40 @@ class OSInfo(object):
         js['start_system'] = self.start_system
         js['has_os_release'] = self.has_os_release
         js['fallback_detection'] = self.fallback_detection
+        return js
+
+
+class PackageInfo(object):
+    """
+    Basic information about particular package
+    """
+    def __init__(self, name, version, arch, repo):
+        self.name = name
+        self.version = version
+        self.arch = arch
+        self.repo = repo
+
+    @property
+    def version(self):
+        return self._version
+
+    @version.setter
+    def version(self, val):
+        self._version = Version(val)
+
+    def __str__(self):
+        return '%s-%s.%s' % (self.name, self.version, self.arch)
+
+    def to_json(self):
+        """
+        Converts to the JSON
+        :return:
+        """
+        js = collections.OrderedDict()
+        js['name'] = self.name
+        js['version'] = str(self.version)
+        js['arch'] = self.arch
+        js['repo'] = self.repo
         return js
 
 
@@ -470,4 +505,34 @@ def os_like_constants():
             if os_name in CLI_DEFAULTS.keys():
                 return CLI_DEFAULTS[os_name]
     return {}
+
+
+def get_yum_packages(out):
+    """
+    List of all packages parsing
+    :param out: 
+    :return: 
+    """
+    ret = []
+    lines = out if isinstance(out, types.ListType) else out.split('\n')
+    for line in lines:
+        line = line.strip()
+        match = re.match(r'^([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.\-_]+)$', line)
+        if match is None:
+            continue
+
+        package = match.group(1).strip()
+        version = match.group(2).strip()
+        repo = match.group(3).strip()
+        arch = None
+
+        # Architecture extract
+        match_arch = re.match(r'^(.+?)\.([^.]+)$', package)
+        if match_arch:
+            package = match_arch.group(1).strip()
+            arch = match_arch.group(2).strip()
+
+        pkg = PackageInfo(name=package, version=version, arch=arch, repo=repo)
+        ret.append(pkg)
+    return ret
 

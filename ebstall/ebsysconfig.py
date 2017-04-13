@@ -24,6 +24,7 @@ import logging
 import traceback
 import pkg_resources
 
+from ebstall import errors
 
 __author__ = 'dusanklinec'
 logger = logging.getLogger(__name__)
@@ -600,6 +601,24 @@ class SysConfig(object):
         resource_package = __name__
         resource_path = '/'.join(('consts', 'eb-systemd.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
+
+    def get_installed_packages(self):
+        """
+        Returns list of installed packages
+        :return: 
+        """
+        pkg = self.get_packager()
+        if pkg == osutil.PKG_YUM:
+            ret, out, err = self.cli_cmd_sync('sudo yum list installed', shell=True)
+            if ret != 0:
+                raise errors.SetupError('Could not list all versions')
+
+            return osutil.get_yum_packages(out)
+
+        elif pkg == osutil.PKG_APT:
+            raise OSError('Not implemented yet')
+        else:
+            raise OSError('Unknown packager, could not get list of packages')
 
     #
     # Networking / Firewall
