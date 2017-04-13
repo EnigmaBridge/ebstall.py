@@ -5,12 +5,15 @@ from __future__ import print_function
 
 import logging
 import yaql
+from yaql import yaqlization
 from yaql.language import specs
 from yaql.cli import cli_functions
 from yaql.language.factory import OperatorType
 
 from config import Config
 from core import Core
+from ebstall.ebsysconfig import SysConfig
+from ebstall.osutil import PackageInfo, OSInfo
 from errors import *
 import requests
 import util
@@ -40,9 +43,12 @@ class Updater(object):
     """
     Updating the private space
     """
-    def __init__(self):
+    def __init__(self, config=None, audit=None, syscfg=None):
         self.engine = None
         self.root = None
+        self.config = config
+        self.audit = audit
+        self.syscfg = syscfg
 
     def init_parser(self):
         """
@@ -79,10 +85,19 @@ class Updater(object):
         :return: 
         """
         self.root = collections.OrderedDict()
+        self.root['config'] = self.config
+        self.root['ebstall_version'] = versions.Version(self.config.ebstall_version) if self.config is not None else versions.Version('0')
+        self.root['os'] = self.syscfg.get_os()
+        self.root['pkgs'] = self.syscfg.get_installed_packages()
+
+        # Allowing access to methods & attributes
+        yaqlization.yaqlize(Config, blacklist=['set_config'])
+        yaqlization.yaqlize(OSInfo)
+        yaqlization.yaqlize(PackageInfo)
 
         return self.root
 
-    def eval(self, expr):
+    def eval(self, expr, ctx=None):
         """
         Evaluates an expression
         :param expr: 
@@ -91,25 +106,30 @@ class Updater(object):
         if self.engine is None:
             self.init_parser()
 
-        ctx = self.new_context()
+        if ctx is None:
+            ctx = self.new_context()
+
         res = self.engine(expr).evaluate(self.root, ctx)
         return res
 
 if __name__ == "__main__":
-    data = None
+    data = {}
     engine_options = {
         'yaql.limitIterators': 1000,
         'yaql.convertSetsToLists': True,
         'yaql.memoryQuota': 100000
     }
 
-    factory = yaql.YaqlFactory()
-    versions_yaql.register_factory(factory)
-    parser = factory.create(options=engine_options)
-    context = yaql.create_context()
-    versions_yaql.register(context, parser)
-    cli_functions.register_in_context(context, parser)
-    parser('__main(false)').evaluate(data, context)
+    config = None
+    syscfg = SysConfig()
+    updater = Updater(syscfg=syscfg, config=config)
+    updater.init_parser()
+    updater.gen_data()
+
+    # CLI hack
+    ctx = updater.new_context()
+    cli_functions.register_in_context(ctx, updater.engine)
+    updater.eval('__main(false)', ctx)
 
 
 
