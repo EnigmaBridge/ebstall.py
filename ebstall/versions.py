@@ -190,7 +190,7 @@ def int_if_int(x):
     if isinstance(x, types.IntType):
         return x
 
-    if re.match('^[0-9]', x):
+    if re.match('^[0-9]+$', x):
         return int(x)
 
     return x
