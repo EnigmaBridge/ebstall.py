@@ -231,7 +231,7 @@ class Config(object):
     def domains(self, val):
         self.set_config('domains', val)
 
-    # DNS service domains
+    # DNS service domains - e.g. cloud.hs1.umph, photos.hs1.umph, ...
     @property
     def domains_svc(self):
         return self.get_config('domains_svc', list())
