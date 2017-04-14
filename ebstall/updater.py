@@ -88,7 +88,11 @@ class Updater(object):
         self.root['config'] = self.config
         self.root['ebstall_version'] = versions.Version(self.config.ebstall_version) if self.config is not None else versions.Version('0')
         self.root['os'] = self.syscfg.get_os()
-        self.root['pkgs'] = {x.name: x for x in self.syscfg.get_installed_packages()}
+
+        packages = self.syscfg.get_installed_packages()
+        self.root['pkgs'] = {x.name: x for x in packages}
+        self.root['pkgs_lst'] = packages
+        self.root['pkgs_map'] = {str(x): x for x in packages}
 
         # Allowing access to methods & attributes
         yaqlization.yaqlize(Config, blacklist=['set_config'])
