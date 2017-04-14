@@ -19,6 +19,7 @@ from datetime import datetime
 import time
 import types
 import util
+import json
 from ebstall.versions import Version
 from ebstall.util import normalize_string
 
@@ -117,6 +118,12 @@ class OSInfo(object):
         self.has_os_release = has_os_release
         self.fallback_detection = fallback_detection
 
+    def __str__(self):
+        return 'OSInfo(%r)' % json.dumps(self.to_json())
+
+    def __repr__(self):
+        return 'OSInfo(%r)' % json.dumps(self.to_json())
+
     def to_json(self):
         """
         Converts to the JSON
@@ -156,6 +163,9 @@ class PackageInfo(object):
 
     def __str__(self):
         return '%s-%s.%s' % (self.name, self.version, self.arch)
+
+    def __repr__(self):
+        return 'PackageInfo(name=%r, version=%r, arch=%r, repo=%r)' % (self.name, self.version, self.arch, self.repo)
 
     def to_json(self):
         """
