@@ -148,6 +148,7 @@ class PackageInfo(object):
     Basic information about particular package
     """
     def __init__(self, name, version, arch, repo):
+        self._version = None
         self.name = name
         self.version = version
         self.arch = arch
