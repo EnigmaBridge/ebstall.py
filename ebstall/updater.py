@@ -191,21 +191,22 @@ class Updater(object):
 
         # CLI hack
         ctx = self.new_context()
+
+        def print_output(v, context):
+            if context['#nativeOutput']:
+                print(v)
+            else:
+                print(json.dumps(v, indent=4, ensure_ascii=False, cls=util.AutoJSONEncoder))
+
+        cli_functions.print_output = print_output
         cli_functions.register_in_context(ctx, self.engine)
         self.eval('__main(false)', ctx)
 
 
 if __name__ == "__main__":
-    config = None
     syscfg = SysConfig()
-    updater = Updater(sysconfig=syscfg, config=config)
-    updater.init_parser()
-    updater.gen_rule_data()
-
-    # CLI hack
-    ctx = updater.new_context()
-    cli_functions.register_in_context(ctx, updater.engine)
-    updater.eval('__main(false)', ctx)
+    updater = Updater(sysconfig=syscfg, config=None)
+    updater.yaql_cli()
 
 
 
