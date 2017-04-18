@@ -7,28 +7,32 @@ import os
 import random
 import sys
 import time
+import json
 import traceback
 
 import argparse
 import coloredlogs
 import types
+
 from ebclient.registration import ENVIRONMENT_PRODUCTION
 
+from ebstall.registration import Registration, InfoLoader
+from ebstall.updater import Updater
 from ebstall.deployers.mysql import MySQL
 from ebstall.deployers.ejbca import Ejbca
 from ebstall.deployers.jboss import Jboss
 from ebstall.deployers.certbot import Certbot
 from ebstall.deployers.letsencrypt import LetsEncrypt
+from ebstall.deployers.softhsm import SoftHsmV1Config
 
-import dbutil
 import errors
 import util
 from clibase import InstallerBase
 from config import Config, EBSettings
 from consts import *
 from core import Core
-from ebstall.deployers.softhsm import SoftHsmV1Config
-from registration import Registration, InfoLoader
+
+
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level=logging.ERROR)
@@ -58,6 +62,7 @@ class Installer(InstallerBase):
         self.mysql = None
         self.certbot = None
         self.eb_cfg = None
+        self.updater = None
 
         self.previous_registration_continue = False
         self.domain_is_ok = False
@@ -150,6 +155,34 @@ class Installer(InstallerBase):
             return self.eb_settings.mysql_root_password
         return None
 
+    def get_usr_reg_type(self):
+        """
+        Returns EB user registration type.
+        Priority: ENV[EB_USER_REG_TYPE], args, /opt/enigma, None
+        :return:
+        """
+        if 'EB_USER_REG_TYPE' in os.environ:
+            return os.environ['EB_USER_REG_TYPE']
+        if self.args is not None and self.args.reg_type is not None:
+            return self.args.reg_type
+        if self.eb_settings is not None and self.eb_settings.user_reg_type is not None:
+            return self.eb_settings.user_reg_type
+        return None
+
+    def get_usr_reg_token(self):
+        """
+        Returns EB user registration token.
+        Priority: ENV[EB_USER_REG_TOKEN], args, /opt/enigma, None
+        :return:
+        """
+        if 'EB_USER_REG_TOKEN' in os.environ:
+            return os.environ['EB_USER_REG_TOKEN']
+        if self.args is not None and self.args.reg_token is not None:
+            return self.args.reg_token
+        if self.eb_settings is not None and self.eb_settings.user_reg_token is not None:
+            return self.eb_settings.user_reg_token
+        return None
+
     #
     # Install action
     #
@@ -208,10 +241,10 @@ class Installer(InstallerBase):
 
         return 0
 
-    def init_services(self):
+    def init_config_new_install(self):
         """
-        Installer services initialization
-        :return:
+        Initializes new EB configuration and new Config() before installation
+        :return: 
         """
         self.eb_cfg = Core.get_default_eb_config()
         if self.previous_registration_continue:
@@ -237,6 +270,37 @@ class Installer(InstallerBase):
         if self.config.env != ENVIRONMENT_PRODUCTION:
             pass  # Core.set_devel_endpoints(self.eb_cfg) # TODO: fix this
 
+    def init_config(self):
+        """
+        Loads existing configuration
+        :return: 
+        """
+        self.config = Core.read_configuration()
+        if self.config is None or not self.config.has_nonempty_config():
+            raise errors.EnvError('Configuration not found')
+
+    def load_base_settings(self):
+        """
+        Loads EB settings - defining the image / host VM.
+        :return:
+        """
+        self.eb_settings, eb_aws_settings_path = Core.read_settings()
+        self.user_reg_type = self.get_usr_reg_type()
+        self.user_reg_token = self.get_usr_reg_token()
+
+        if self.eb_settings is None:
+            self.eb_settings = EBSettings()
+
+        if self.user_reg_type is not None:
+            self.eb_settings.user_reg_type = self.user_reg_type
+        if self.user_reg_token is not None:
+            self.eb_settings.user_reg_token = self.user_reg_token
+
+    def init_services(self):
+        """
+        Installer services initialization
+        :return:
+        """
         # Initialize helper classes for registration & configuration.
         self.reg_svc = Registration(email=self.config.email, config=self.config,
                                     eb_config=self.eb_cfg, eb_settings=self.eb_settings,
@@ -251,6 +315,7 @@ class Installer(InstallerBase):
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit, jboss=self.jboss, mysql=self.mysql)
+        self.updater = Updater(sysconfig=self.syscfg, audit=self.audit, config=self.config)
         return 0
 
     def init_prompt_user(self):
@@ -833,6 +898,7 @@ class Installer(InstallerBase):
         Main installer block, called from the global try:
         :return:
         """
+        self.init_config_new_install()
         self.init_services()
 
         # Get registration options and choose one - network call.
@@ -1083,51 +1149,6 @@ class Installer(InstallerBase):
         self.tprint('Please wait for a while, generating report...')
         return self.init_send_audit_log()
 
-    def get_usr_reg_type(self):
-        """
-        Returns EB user registration type.
-        Priority: ENV[EB_USER_REG_TYPE], args, /opt/enigma, None
-        :return:
-        """
-        if 'EB_USER_REG_TYPE' in os.environ:
-            return os.environ['EB_USER_REG_TYPE']
-        if self.args is not None and self.args.reg_type is not None:
-            return self.args.reg_type
-        if self.eb_settings is not None and self.eb_settings.user_reg_type is not None:
-            return self.eb_settings.user_reg_type
-        return None
-
-    def get_usr_reg_token(self):
-        """
-        Returns EB user registration token.
-        Priority: ENV[EB_USER_REG_TOKEN], args, /opt/enigma, None
-        :return:
-        """
-        if 'EB_USER_REG_TOKEN' in os.environ:
-            return os.environ['EB_USER_REG_TOKEN']
-        if self.args is not None and self.args.reg_token is not None:
-            return self.args.reg_token
-        if self.eb_settings is not None and self.eb_settings.user_reg_token is not None:
-            return self.eb_settings.user_reg_token
-        return None
-
-    def load_base_settings(self):
-        """
-        Loads EB settings - defining the image / host VM.
-        :return:
-        """
-        self.eb_settings, eb_aws_settings_path = Core.read_settings()
-        self.user_reg_type = self.get_usr_reg_type()
-        self.user_reg_token = self.get_usr_reg_token()
-
-        if self.eb_settings is None:
-            self.eb_settings = EBSettings()
-
-        if self.user_reg_type is not None:
-            self.eb_settings.user_reg_type = self.user_reg_type
-        if self.user_reg_token is not None:
-            self.eb_settings.user_reg_token = self.user_reg_token
-
     def init_print_intro(self):
         """
         Prints introduction text before the installation.
@@ -1293,35 +1314,62 @@ class Installer(InstallerBase):
         """Check if there is enough memory in the system, adds a new swapfile if not"""
         self.install_check_memory(self.syscfg)
 
-    def do_update(self, arg):
+    def do_list_packages(self, arg):
         """
-        Update call, should be called after wrapper updates the installer
+        List all installed packages
         :param arg: 
         :return: 
         """
+        pkgs = self.syscfg.get_installed_packages()
+        js = [x.to_json() for x in pkgs]
+        print(json.dumps(js))
 
-        # Main try-catch block for the overall init operation.
+    def do_yaql_cli(self, arg):
+        """
+        Provides yaql interface for testing update clauses
+        :param arg: 
+        :return: 
+        """
         # noinspection PyBroadException
         try:
             self.init_started_time = time.time()
             if not self.check_root() or not self.check_pid():
                 return self.return_code(1)
 
-            # EB Settings read. Optional.
             self.load_base_settings()
+            self.init_config()
+            self.init_services()
 
-            self.config = Core.read_configuration()
-            if self.config is None or not self.config.has_nonempty_config():
-                self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
-                self.tprint(' Cannot continue. Have you run init already?\n')
+            self.updater.yaql_cli()
+            return self.return_code(0)
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            self.audit.audit_exception(e)
+            self.init_exception = str(e)
+            self.tprint('Exception in the installation process, cannot continue.')
+            self.install_analysis_send()
+
+        return self.return_code(1)
+
+    def do_update(self, arg):
+        """
+        Update call, should be called after wrapper updates the installer
+        :param arg: 
+        :return: 
+        """
+        # noinspection PyBroadException
+        try:
+            self.init_started_time = time.time()
+            if not self.check_root() or not self.check_pid():
                 return self.return_code(1)
 
-            ret = self.update_main_try()
-            if ret != 0:
-                return self.return_code(ret)
+            self.load_base_settings()
+            self.init_config()
+            self.init_services()
 
-            self.init_finished_success = True
-            return self.return_code(0)
+            ret = self.update_main_try()
+            return self.return_code(ret)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
@@ -1335,6 +1383,11 @@ class Installer(InstallerBase):
     def update_main_try(self):
         """
         Main update block, after init.
+        
+        Ebstall could probably updated from the previous run so the migration can be done here (version diff between
+        current version and version stored in the config file)
+        
+        Then system update might be performed.
         :return: 
         """
 

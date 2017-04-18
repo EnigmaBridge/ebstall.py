@@ -126,6 +126,7 @@ class VpnInstaller(Installer):
         self.load_base_settings()
         self.init_load_settings()
         self.init_services()
+        self.init_services()
         self.ejbca.update_installation()
 
     def init_test_ports_pre_install_res(self, host=None, *args, **kwargs):
@@ -241,6 +242,7 @@ class VpnInstaller(Installer):
         Main installer block, called from the global try:
         :return:
         """
+        self.init_config_new_install()
         self.init_services()
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
