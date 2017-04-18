@@ -202,6 +202,67 @@ class Updater(object):
         cli_functions.register_in_context(ctx, self.engine)
         self.eval('__main(false)', ctx)
 
+    def fetch_update_specs(self, attempts=3):
+        """
+        Fetched update.json from the provisioning servers
+        :return: 
+        """
+
+        logger.debug('Going to download update specs from the provisioning servers')
+        for provserver in consts.PROVISIONING_SERVERS:
+            url = 'https://%s/update/update.json' % provserver
+
+            for attempt in range(attempts):
+                try:
+                    self.audit.audit_evt('prov-update', url=url)
+                    res = requests.get(url=url, timeout=15)
+                    res.raise_for_status()
+                    js = res.json()
+
+                    self.audit.audit_evt('prov-update', url=url, response=js)
+                    return js
+
+                except Exception as e:
+                    logger.debug('Exception in fetching update defs from the provisioning server: %s' % e)
+                    self.audit.audit_exception(e, process='prov-update')
+
+            return 0
+
+    def update_rule_single(self, rule):
+        """
+        Processes single update rule
+        :param rule: 
+        :return: 
+        """
+        # TODO: implement
+
+    def update_rule(self, rule):
+        """
+        Processes update rule, recursively
+        :param rule: 
+        :return: 
+        """
+        if not isinstance(rule, types.ListType):
+            return self.update_rule_single(rule)
+
+        res = []
+        for crule in rule:
+            cur_res = self.update_rule_single(crule)
+            res.append(cur_res)
+        return res
+
+    def update(self):
+        """
+        Main update method.
+        Downloads update specs from the provisoning server, processes it...
+        :return: 
+        """
+
+        specs = self.fetch_update_specs()
+        updates = specs['updates']
+        res = self.update_rule(updates)
+        return res
+
 
 if __name__ == "__main__":
     syscfg = SysConfig()
