@@ -85,10 +85,23 @@ class Updater(object):
         :return: 
         """
         self.root = collections.OrderedDict()
+
+        # Config & versions
         self.root['config'] = self.config
-        self.root['ebstall_version'] = versions.Version(self.config.ebstall_version) if self.config is not None else versions.Version('0')
+
+        self.root['ebstall_version_initial'] = versions.Version(self.config.ebstall_version_initial) \
+            if self.config is not None else versions.Version('0')
+
+        self.root['ebstall_version'] = versions.Version(self.config.ebstall_version) \
+            if self.config is not None else versions.Version('0')
+
+        self.root['install_version'] = versions.Version(self.config.install_version) \
+            if self.config is not None else versions.Version('0')
+
+        # Current OS info
         self.root['os'] = self.syscfg.get_os()
 
+        # Installed packages
         packages = self.syscfg.get_installed_packages()
         self.root['pkgs'] = {x.name: x for x in packages}
         self.root['pkgs_lst'] = packages
@@ -115,6 +128,7 @@ class Updater(object):
 
         res = self.engine(expr).evaluate(self.root, ctx)
         return res
+
 
 if __name__ == "__main__":
     data = {}
