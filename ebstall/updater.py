@@ -196,7 +196,7 @@ class Updater(object):
 if __name__ == "__main__":
     config = None
     syscfg = SysConfig()
-    updater = Updater(syscfg=syscfg, config=config)
+    updater = Updater(sysconfig=syscfg, config=config)
     updater.init_parser()
     updater.gen_rule_data()
 
