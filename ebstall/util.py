@@ -3,6 +3,9 @@
 
 from __future__ import print_function
 from __future__ import unicode_literals
+
+from json import JSONEncoder
+
 from past.builtins import basestring
 
 # noinspection PyUnresolvedReferences
@@ -32,6 +35,8 @@ import time
 import types
 import psutil
 import requests
+import datetime
+import decimal
 from audit import AuditManager
 
 import OpenSSL
@@ -66,6 +71,34 @@ class Port(object):
             return '%s/%s' % ('tcp' if self.tcp else 'udp', self.port)
         else:
             return '%s/%s (%s)' % ('tcp' if self.tcp else 'udp', self.port, self.service)
+
+
+class AutoJSONEncoder(JSONEncoder):
+    """
+    JSON encoder trying to_json() first
+    """
+    DATE_FORMAT = "%Y-%m-%d"
+    TIME_FORMAT = "%H:%M:%S"
+
+    def default(self, obj):
+        try:
+            return obj.to_json()
+        except AttributeError:
+            return self.default_classic(obj)
+
+    def default_classic(self, o):
+        if isinstance(o, set):
+            return list(o)
+        elif isinstance(o, datetime.datetime):
+            return o.strftime("%s %s" % (self.DATE_FORMAT, self.TIME_FORMAT))
+        elif isinstance(o, datetime.date):
+            return o.strftime(self.DATE_FORMAT)
+        elif isinstance(o, datetime.time):
+            return o.strftime(self.TIME_FORMAT)
+        elif isinstance(o, decimal.Decimal):
+            return str(o)
+        else:
+            return super(AutoJSONEncoder, self).default(o)
 
 
 def run_script(params, shell=False):
