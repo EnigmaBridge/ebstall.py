@@ -141,7 +141,7 @@ class Config(object):
             return default
         return LE_VERIFY_DEFAULT
 
-    # version of the installer that produced this file
+    # version of the installer that produced this file, changes with updates
     @property
     def ebstall_version(self):
         return self.get_config('ebstall_version')
@@ -149,6 +149,24 @@ class Config(object):
     @ebstall_version.setter
     def ebstall_version(self, val):
         self.set_config('ebstall_version', val)
+
+    # version of the installer that installed the system, does not change with update
+    @property
+    def ebstall_version_initial(self):
+        return self.get_config('ebstall_version_initial')
+
+    @ebstall_version_initial.setter
+    def ebstall_version_initial(self, val):
+        self.set_config('ebstall_version_initial', val)
+
+    # version of the system installation, changes with updates
+    @property
+    def install_version(self):
+        return self.get_config('install_version')
+
+    @install_version.setter
+    def install_version(self, val):
+        self.set_config('install_version', val)
 
     # email
     @property
