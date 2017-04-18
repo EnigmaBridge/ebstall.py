@@ -130,6 +130,7 @@ class Ejbca(object):
         self.staging = staging
         self.lets_encrypt = None
         self.lets_encrypt_jks = None
+        self.no_ejbca_update = False
 
         self.eb_config = eb_config
         self.config = config
