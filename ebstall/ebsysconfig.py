@@ -302,6 +302,25 @@ class SysConfig(object):
 
         return self.install_crond_file('ebstall-renew', data)
 
+    def remove_cron_update(self):
+        """
+        Removes previous cron file for update
+        :return:
+        """
+        cron_path = self.get_cron_file('ebstall-update')
+        self.delete_cron_file(cron_path)
+
+    def install_cron_update(self, install_type=None):
+        """
+        Installs cronjob for the update
+        :return:v
+        """
+        wrapper_path = self.get_wrapper_script(install_type=install_type)
+        data = '# Updating the system & installer\n'
+        data += '59 */2 * * * root %s -n --pid-lock 100 update >/dev/null 2>/dev/null \n' % wrapper_path
+
+        return self.install_crond_file('ebstall-update', data)
+
     def install_epiper(self):
         """
         Installs pip script called

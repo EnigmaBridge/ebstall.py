@@ -674,6 +674,7 @@ class VpnInstaller(Installer):
         install_type = 'vpn'
         self.syscfg.install_onboot_check(install_type=install_type)
         self.syscfg.install_cron_renew(install_type=install_type)
+        self.syscfg.install_cron_update(install_type=install_type)
         return 0
 
     def le_renewed(self):

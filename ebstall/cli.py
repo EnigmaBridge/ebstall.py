@@ -289,6 +289,7 @@ class Installer(InstallerBase):
         :return:
         """
         self.syscfg.remove_cron_renew()
+        self.syscfg.remove_cron_update()
 
     def init_test_environment(self):
         """
@@ -368,6 +369,7 @@ class Installer(InstallerBase):
         """
         self.syscfg.install_onboot_check()
         self.syscfg.install_cron_renew()
+        self.syscfg.install_cron_update()
         return 0
 
     def init_softhsm(self, new_config):
@@ -1290,6 +1292,53 @@ class Installer(InstallerBase):
     def do_check_memory(self, args):
         """Check if there is enough memory in the system, adds a new swapfile if not"""
         self.install_check_memory(self.syscfg)
+
+    def do_update(self, arg):
+        """
+        Update call, should be called after wrapper updates the installer
+        :param arg: 
+        :return: 
+        """
+
+        # Main try-catch block for the overall init operation.
+        # noinspection PyBroadException
+        try:
+            self.init_started_time = time.time()
+            if not self.check_root() or not self.check_pid():
+                return self.return_code(1)
+
+            # EB Settings read. Optional.
+            self.load_base_settings()
+
+            self.config = Core.read_configuration()
+            if self.config is None or not self.config.has_nonempty_config():
+                self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
+                self.tprint(' Cannot continue. Have you run init already?\n')
+                return self.return_code(1)
+
+            ret = self.update_main_try()
+            if ret != 0:
+                return self.return_code(ret)
+
+            self.init_finished_success = True
+            return self.return_code(0)
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            self.audit.audit_exception(e)
+            self.init_exception = str(e)
+            self.tprint('Exception in the installation process, cannot continue.')
+            self.install_analysis_send()
+
+        return self.return_code(1)
+
+    def update_main_try(self):
+        """
+        Main update block, after init.
+        :return: 
+        """
+
+        return 0
 
     def do_renew(self, arg):
         """Renews LetsEncrypt certificates used for the JBoss"""
