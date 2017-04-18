@@ -91,7 +91,7 @@ class Updater(object):
 
         # Config & versions, abbrevs
         self.root['config'] = self.config
-        self.root['ebstall_version'] = versions.Version('0')
+        self.root['ebstall_version'] = versions.Version(self.ebstall_version)
 
         self.root['ebstall_version_initial'] = versions.Version(self.config.ebstall_version_initial) \
             if self.config is not None else versions.Version('0')
