@@ -102,6 +102,12 @@ class Updater(object):
         self.root['install_version'] = versions.Version(self.config.install_version) \
             if self.config is not None else versions.Version('0')
 
+        self.root['jboss_version'] = versions.Version(self.config.jboss_version) \
+            if self.config is not None else versions.Version('0')
+
+        self.root['ejbca_version'] = versions.Version(self.config.ejbca_version) \
+            if self.config is not None else versions.Version('0')
+
         self.root['source_image_code'] = self.config.source_image_code \
             if self.config is not None else None
 

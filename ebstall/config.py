@@ -168,6 +168,24 @@ class Config(object):
     def install_version(self, val):
         self.set_config('install_version', val)
 
+    # version of the JBoss server installed
+    @property
+    def jboss_version(self):
+        return self.get_config('jboss_version', '6.4')
+
+    @jboss_version.setter
+    def jboss_version(self, val):
+        self.set_config('jboss_version', val)
+
+    # version of the EJBCA installed
+    @property
+    def ejbca_version(self):
+        return self.get_config('ejbca_version', '6.3.1.1')
+
+    @ejbca_version.setter
+    def ejbca_version(self, val):
+        self.set_config('ejbca_version', val)
+
     # email
     @property
     def email(self):
