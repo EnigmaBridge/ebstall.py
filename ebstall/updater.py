@@ -45,12 +45,13 @@ class Updater(object):
     """
     Updating the private space
     """
-    def __init__(self, config=None, audit=None, sysconfig=None):
+    def __init__(self, config=None, audit=None, sysconfig=None, ebstall_version=None):
         self.engine = None
         self.root = None
         self.config = config
         self.audit = audit
         self.syscfg = sysconfig
+        self.ebstall_version = ebstall_version
 
     def init_parser(self):
         """
@@ -90,11 +91,12 @@ class Updater(object):
 
         # Config & versions, abbrevs
         self.root['config'] = self.config
+        self.root['ebstall_version'] = versions.Version('0')
 
         self.root['ebstall_version_initial'] = versions.Version(self.config.ebstall_version_initial) \
             if self.config is not None else versions.Version('0')
 
-        self.root['ebstall_version'] = versions.Version(self.config.ebstall_version) \
+        self.root['ebstall_cfg_version'] = versions.Version(self.config.ebstall_version) \
             if self.config is not None else versions.Version('0')
 
         self.root['install_version'] = versions.Version(self.config.install_version) \

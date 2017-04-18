@@ -315,7 +315,7 @@ class Installer(InstallerBase):
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit, jboss=self.jboss, mysql=self.mysql)
-        self.updater = Updater(sysconfig=self.syscfg, audit=self.audit, config=self.config)
+        self.updater = Updater(sysconfig=self.syscfg, audit=self.audit, config=self.config, ebstall_version=self.version)
         return 0
 
     def init_prompt_user(self):
