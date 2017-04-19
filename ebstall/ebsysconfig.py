@@ -13,6 +13,7 @@ import time
 import sys
 import types
 import subprocess
+import threading
 import shutil
 import re
 import psutil
@@ -25,6 +26,7 @@ import traceback
 import pkg_resources
 
 from ebstall import errors
+from ebstall.watcher import Watcher
 
 __author__ = 'dusanklinec'
 logger = logging.getLogger(__name__)
@@ -34,6 +36,40 @@ FIREWALL_IPTABLES = 'iptables'
 FIREWALL_FIREWALLD = 'firewalld'
 FIREWALL_UFW = 'ufw'
 FIREWALLS = [FIREWALL_FIREWALLD, FIREWALL_UFW, FIREWALL_IPTABLES]
+
+
+class YumUpdateStatus(object):
+    """
+    Status object for Yum update procedure
+    """
+    def __init__(self):
+        self.acc = []
+        self.last_time = 0
+        self.feeder = None
+        self.p = None
+        self.watcher = None
+
+    def reset(self):
+        self.acc = []
+        self.last_time = 0
+        self.feeder = None
+        self.p = None
+        self.watcher = None
+
+    def append(self, x):
+        self.acc.append(x)
+
+    def stop(self):
+        if self.watcher is not None:
+            self.watcher.stop()
+            self.watcher = None
+
+    def signal(self):
+        if self.watcher is not None:
+            self.watcher.signal()
+
+    def out(self):
+        return ''.join(self.acc)
 
 
 class SysConfig(object):
@@ -120,7 +156,7 @@ class SysConfig(object):
         return ret[0]
 
     def cli_cmd_sync(self, cmd, log_obj=None, write_dots=None, on_out=None, on_err=None, cwd=None, shell=True,
-                     sensitive=None):
+                     sensitive=None, readlines=True):
         """
         Runs command line task synchronously
         :return: ret_code, stdout, stderr
@@ -134,7 +170,7 @@ class SysConfig(object):
         ret = None
         try:
             ret = util.cli_cmd_sync(cmd=cmd, log_obj=log_obj, write_dots=write_dots,
-                                    on_out=on_out, on_err=on_err, cwd=cwd, shell=shell)
+                                    on_out=on_out, on_err=on_err, cwd=cwd, shell=shell, readlines=readlines)
 
             ret_code, out_acc, err_acc = ret
             self.audit.audit_exec(cmd, cwd=cwd, retcode=ret_code, stdout=out_acc, stderr=err_acc)
@@ -639,12 +675,18 @@ class SysConfig(object):
         else:
             raise OSError('Unknown packager, could not get list of packages')
 
-    def update_packages(self, packages=None, packages_var=None, security=None, bugfix=None,
-                        skip_broken=None, excludes=None, enable_repos=None, disable_repos=None):
+    def _package_to_yum_update(self, pkg):
         """
-        Updates system with the yum update
-        :param packages: 
-        :param packages_var: 
+        Converts package info object to yum package ID string
+        :param pkg: 
+        :return: 
+        """
+        return '%s-%s.%s' % (pkg.name, pkg.version, pkg.arch)
+
+    def _yum_update_cli_build(self, security=None, bugfix=None, skip_broken=None, excludes=None,
+                              enable_repos=None, disable_repos=None):
+        """
+        Builds CLI args for yum update from the arguments given
         :param security: 
         :param bugfix: 
         :param skip_broken: 
@@ -653,7 +695,6 @@ class SysConfig(object):
         :param disable_repos: 
         :return: 
         """
-
         cli_switches = []
         if security:
             cli_switches.append('--security')
@@ -682,13 +723,122 @@ class SysConfig(object):
             for cur in disable_repos:
                 cli_switches.append('--disable-repo "%s"' % util.escape_shell(cur))
 
+        return cli_switches
+
+    def update_packages(self, packages=None, packages_var=None, security=None, bugfix=None,
+                        skip_broken=None, excludes=None, enable_repos=None, disable_repos=None):
+        """
+        Updates system with the yum update
+        :param packages: 
+        :param packages_var: 
+        :param security: 
+        :param bugfix: 
+        :param skip_broken: 
+        :param excludes: 
+        :param enable_repos: 
+        :param disable_repos: 
+        :return: 
+        """
+        cli_switches = self._yum_update_cli_build(security=security, bugfix=bugfix, skip_broken=skip_broken,
+                                                  excludes=excludes, enable_repos=enable_repos,
+                                                  disable_repos=disable_repos)
+
+        if packages_var is None:
+            packages_var = []
+        if not isinstance(packages_var, types.ListType):
+            packages_var = [packages_var]
+
+        if packages is None:
+            packages = []
+        if not isinstance(packages, types.ListType):
+            packages = [packages]
+
+        # Sanitization
+        packages_var_sanit = ['%s' % util.escape_shell(x) for x in packages_var]
+
         # If there are none particular packages, update.
-        if (packages is None or len(packages) == 0) and (packages_var is None or len(packages_var) == 0):
+        if len(packages) == 0:
             cmd = 'sudo yum update %s' % (' '.join(cli_switches))
+            cmd += ' '
+            cmd += ' '.join(packages_var_sanit)
+
             ret, out, err = self.cli_cmd_sync(cmd, shell=True)
             return ret
 
         # Packages specified - control the update so only given packages are updated.
+        # Filtering step - load currently installed packages, remove those from targets if versions are higher / same
+        installed_packages = self.get_installed_packages()
+        logger.debug('Installed packages count: %s, package to update/check: %s'
+                     % (len(installed_packages), len(packages)))
+
+        packages_to_update = osutil.package_diff(packages, installed_packages)
+        logger.debug('Packages to update: %s' % len(packages_to_update))
+        if len(packages_to_update) == 0:
+            return 0
+
+        # packages_var may contain wildcard characters and do not present mandatory / maximal version packages.
+        packages_sanit = ['%s' % util.escape_shell(self._package_to_yum_update(x)) for x in packages_to_update]
+        update_status = YumUpdateStatus()
+
+        # handle the yum question
+        def timer_task():
+            logger.info('Timer task...')
+            out = update_status.out()
+            logger.debug('Out: %s' % out)
+
+            eqlines_cnt = len([x for x in out.split('\n') if '=======' in x])
+            if eqlines_cnt >= 3:
+                logger.debug('QUESTION')
+                update_pkgs = osutil.get_yum_packages_update(out)
+                conflicts, new_pkgs = osutil.check_package_restrictions(update_pkgs, packages)
+
+                if len(conflicts) > 0:
+                    logger.warning('Conflicting packages found: %s' % conflicts)
+                    update_status.feeder.feed('n\n')
+                    return
+
+                if len(new_pkgs) > 0:
+                    logger.info('New packages, not mentioned in policy: %s' % new_pkgs)
+
+                logger.debug('Update passing, accepting.')
+                update_status.feeder.feed('y\n')
+
+            else:
+                logger.info('Yum question did not detected, terminate')
+                update_status.feeder.feed('n\n')
+                time.sleep(2)
+                update_status.p.terminate()
+
+        # noinspection PyUnusedLocal
+        def yum_answer(out, feeder, p=None, *args, **kwargs):
+            update_status.append(out)  # store total output to the accumulator for inspection
+            update_status.last_time = time.time()  # last CLI output
+            update_status.feeder = feeder
+            update_status.p = p
+            update_status.signal()
+
+        # iterate over packages sanit, maximally 200 packages on one line
+        chunk_size = 200
+        while True:
+            packages_sanit_chunk = packages_sanit[:chunk_size]
+            packages_sanit = packages_sanit[chunk_size:]
+            if len(packages_sanit_chunk) == 0:
+                break
+
+            update_status.reset()
+            update_status.watcher = Watcher(timer_task, 10.0)
+            update_status.watcher.start(paused=True)
+
+            cmd = 'sudo yum update-to %s' % (' '.join(cli_switches))
+            cmd += ' '
+            cmd += ' '.join(packages_sanit_chunk)
+
+            logger.debug('Going to update chunk: %s' % cmd)
+            ret, out, err = self.cli_cmd_sync(cmd, shell=True, on_out=yum_answer, on_err=yum_answer)
+
+            logger.debug('Updated with result: %s' % ret)
+
+        return 0
 
     #
     # Networking / Firewall
