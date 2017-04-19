@@ -7,16 +7,7 @@ import logging
 import os
 import platform
 import re
-import six
-import stat
 import subprocess
-import sys
-import errors
-import shutil
-import random
-import string
-from datetime import datetime
-import time
 import types
 import util
 import json
@@ -179,6 +170,15 @@ class PackageInfo(object):
         js['arch'] = self.arch
         js['repo'] = self.repo
         return js
+
+    @classmethod
+    def from_json(cls, js):
+        """
+        Converts json dict to the object
+        :param js: 
+        :return: 
+        """
+        return cls(name=js['name'], version=js['version'], arch=js['arch'], repo=js['repo'])
 
 
 def get_os():
