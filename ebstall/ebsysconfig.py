@@ -805,9 +805,17 @@ class SysConfig(object):
 
             else:
                 logger.info('Yum question did not detected, terminate')
-                update_status.feeder.feed('n\n')
+                try:
+                    update_status.feeder.feed('n\n')
+                except Exception as e:
+                    logger.error('Exception in sending n: %s' % e)
+
                 time.sleep(2)
-                update_status.p.terminate()
+                try:
+                    update_status.p.terminate()
+                except Exception as e:
+                    logger.error('Exception in terminating: %s' % e)
+
 
         # noinspection PyUnusedLocal
         def yum_answer(out, feeder, p=None, *args, **kwargs):
