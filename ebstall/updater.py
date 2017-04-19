@@ -132,6 +132,7 @@ class Updater(object):
         """
         Evaluates a single expression
         :param expr: 
+        :param ctx: 
         :return: 
         """
         if self.engine is None:
@@ -140,6 +141,7 @@ class Updater(object):
         if ctx is None:
             ctx = self.new_context()
 
+        logger.debug('Eval: %s' % expr)
         res = self.engine(expr).evaluate(self.root, ctx)
         return res
 
@@ -151,26 +153,27 @@ class Updater(object):
         :param lazy: evaluates from the first element, stops if some expression evaluates to None / False
         :return: 
         """
-        if isinstance(expr, types.ListType):
-            if not lazy:
-                return [self.eval_single(x, ctx) for x in expr]
 
-            # Lazy eval
-            res = []
-            finish_lazy_none = False
-            for x in expr:
-                if finish_lazy_none:
-                    res.append(None)
-                    continue
+        if not isinstance(expr, types.ListType):
+            expr = [expr]
 
-                cur_res = self.eval_single(expr, ctx)
-                res.append(cur_res)
+        if not lazy:
+            return [self.eval_single(x, ctx) for x in expr]
 
-                if cur_res is None or not cur_res:
-                    finish_lazy_none = True
+        # Lazy eval
+        res = []
+        finish_lazy_none = False
+        for x in expr:
+            if finish_lazy_none:
+                res.append(None)
+                continue
 
-        else:
-            return self.eval_single(expr, ctx)
+            cur_res = self.eval_single(x, ctx)
+            res.append(cur_res)
+
+            if cur_res is None or not cur_res:
+                finish_lazy_none = True
+        return res
 
     def eval_rule(self, rule, ctx=None):
         """
@@ -182,10 +185,7 @@ class Updater(object):
         :return: 
         """
         res = self.eval_expr(rule, ctx, lazy=True)
-        if isinstance(rule, types.ListType):
-            return reduce(lambda x, y: x and y, res)
-        else:
-            return res
+        return reduce(lambda x, y: x and y, res)
 
     def yaql_cli(self):
         """
@@ -334,6 +334,7 @@ class Updater(object):
         # Process then
         if 'then' in rule:
             self.update_rule(rule['then'])
+        return 0
 
     def update_rule(self, rule):
         """
@@ -359,6 +360,10 @@ class Updater(object):
 
         specs = self.fetch_update_specs()
         updates = specs['updates']
+
+        self.init_parser()
+        self.gen_rule_data()
+
         res = self.update_rule(updates)
         return res
 
