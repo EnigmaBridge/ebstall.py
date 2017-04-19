@@ -1322,6 +1322,7 @@ class Installer(InstallerBase):
         """
         pkgs = self.syscfg.get_installed_packages()
         js = [x.to_json() for x in pkgs]
+        logger.info('Total number of packages: %s' % len(js))
         print(json.dumps(js))
 
     def do_yaql_cli(self, arg):
@@ -1390,7 +1391,7 @@ class Installer(InstallerBase):
         Then system update might be performed.
         :return: 
         """
-
+        self.updater.update()
         return 0
 
     def do_renew(self, arg):
