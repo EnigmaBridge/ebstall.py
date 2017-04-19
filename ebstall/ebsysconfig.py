@@ -771,7 +771,7 @@ class SysConfig(object):
         logger.debug('Installed packages count: %s, package to update/check: %s'
                      % (len(installed_packages), len(packages)))
 
-        packages_to_update = osutil.package_diff(packages, installed_packages)
+        packages_to_update = osutil.package_diff(packages, installed_packages, only_in_b=True)
         logger.debug('Packages to update: %s' % len(packages_to_update))
         if len(packages_to_update) == 0:
             return 0

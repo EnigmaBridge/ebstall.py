@@ -631,7 +631,7 @@ def check_package_restrictions(yum_output_packages, allowed_packages):
     return conflicting_packages, new_packages
 
 
-def package_diff(a, b):
+def package_diff(a, b, only_in_b=False):
     """
     Package diff a - b
     package x \in a is removed from a if the same package (or higher version) is in b.
@@ -640,6 +640,7 @@ def package_diff(a, b):
     Used for removing already installed packages (b) from the packages to install (a). 
     :param a: 
     :param b: 
+    :param only_in_b: if True the element in a has to be in the b in the lower version.
     :return: 
     """
     res = []
@@ -648,7 +649,8 @@ def package_diff(a, b):
 
         # New package, not in b
         if len(b_filtered) == 0:
-            res.append(pkg)
+            if not only_in_b:
+                res.append(pkg)
             continue
 
         # Sort packages based on the version, highest first.
