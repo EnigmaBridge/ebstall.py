@@ -569,7 +569,7 @@ class SargeLogFilter(logging.Filter):
         return 1
 
 
-def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None, shell=True):
+def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, cwd=None, shell=True, readlines=True):
     """
     Runs command line task synchronously
     :return: return code, out_acc, err_acc
@@ -604,8 +604,14 @@ def cli_cmd_sync(cmd, log_obj=None, write_dots=False, on_out=None, on_err=None, 
             time.sleep(0.15)
 
         while p.commands[0].returncode is None:
-            out = p.stdout.readline()
-            err = p.stderr.readline()
+            out, err = None, None
+
+            if readlines:
+                out = p.stdout.readline()
+                err = p.stderr.readline()
+            else:
+                out = p.stdout.read(1)
+                err = p.stdout.read(1)
 
             # If output - react on input challenges
             if out is not None and len(out) > 0:
