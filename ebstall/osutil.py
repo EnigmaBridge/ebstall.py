@@ -620,6 +620,10 @@ def check_package_restrictions(yum_output_packages, allowed_packages):
             new_packages.append(out_package)
             continue
 
+        # Sort packages based on the version, highest first.
+        if len(allowed_list) > 1:
+            allowed_list.sort(key=lambda x: x.version, reverse=True)
+
         allowed = allowed_list[0]
         if out_package.version > allowed.version:
             conflicting_packages.append(out_package)
@@ -630,7 +634,8 @@ def check_package_restrictions(yum_output_packages, allowed_packages):
 def package_diff(a, b):
     """
     Package diff a - b
-    package x \in a is removed from a if the same package (or higher version) is in b
+    package x \in a is removed from a if the same package (or higher version) is in b.
+    If there are more packages in b, the one with higher version is taken
     
     Used for removing already installed packages (b) from the packages to install (a). 
     :param a: 
@@ -644,13 +649,14 @@ def package_diff(a, b):
         # New package, not in b
         if len(b_filtered) == 0:
             res.append(pkg)
+            continue
 
-        # Too many packages, weird, cannot decide, add.
-        elif len(b_filtered) > 1:
-            res.append(pkg)
+        # Sort packages based on the version, highest first.
+        if len(b_filtered) > 1:
+            b_filtered.sort(key=lambda x: x.version, reverse=True)
 
         # b contains smaller version of the package, add to the result
-        elif b_filtered[0].version < pkg.version:
+        if b_filtered[0].version < pkg.version:
             res.append(pkg)
 
     return res
