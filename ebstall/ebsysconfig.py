@@ -639,6 +639,57 @@ class SysConfig(object):
         else:
             raise OSError('Unknown packager, could not get list of packages')
 
+    def update_packages(self, packages=None, packages_var=None, security=None, bugfix=None,
+                        skip_broken=None, excludes=None, enable_repos=None, disable_repos=None):
+        """
+        Updates system with the yum update
+        :param packages: 
+        :param packages_var: 
+        :param security: 
+        :param bugfix: 
+        :param skip_broken: 
+        :param excludes: 
+        :param enable_repos: 
+        :param disable_repos: 
+        :return: 
+        """
+
+        cli_switches = []
+        if security:
+            cli_switches.append('--security')
+
+        if bugfix:
+            cli_switches.append('--bugfix')
+
+        if skip_broken:
+            cli_switches.append('--skip-broken')
+
+        if excludes:
+            if not isinstance(excludes, types.ListType):
+                excludes = [excludes]
+            for cur in excludes:
+                cli_switches.append('--exclude "%s"' % util.escape_shell(cur))
+
+        if enable_repos:
+            if not isinstance(enable_repos, types.ListType):
+                enable_repos = [enable_repos]
+            for cur in enable_repos:
+                cli_switches.append('--enable-repo "%s"' % util.escape_shell(cur))
+
+        if disable_repos:
+            if not isinstance(disable_repos, types.ListType):
+                disable_repos = [disable_repos]
+            for cur in disable_repos:
+                cli_switches.append('--disable-repo "%s"' % util.escape_shell(cur))
+
+        # If there are none particular packages, update.
+        if (packages is None or len(packages) == 0) and (packages_var is None or len(packages_var) == 0):
+            cmd = 'sudo yum update %s' % (' '.join(cli_switches))
+            ret, out, err = self.cli_cmd_sync(cmd, shell=True)
+            return ret
+
+        # Packages specified - control the update so only given packages are updated.
+
     #
     # Networking / Firewall
     #

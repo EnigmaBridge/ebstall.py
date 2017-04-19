@@ -23,6 +23,7 @@ import consts
 import json
 from functools import reduce
 import types
+import time
 import collections
 from audit import AuditManager
 
@@ -73,7 +74,7 @@ class Updater(object):
     def new_context(self):
         """
         Prepares a new context for new evaluation. 
-        Context should be new for each eval. Lightweight object.
+        Context should be new for each eval_expr. Lightweight object.
         :return: 
         """
         ctxt = yaql.create_context()
@@ -142,7 +143,7 @@ class Updater(object):
         res = self.engine(expr).evaluate(self.root, ctx)
         return res
 
-    def eval(self, expr, ctx=None, lazy=False):
+    def eval_expr(self, expr, ctx=None, lazy=False):
         """
         Evaluates a single expression / list of expressions
         :param expr: 
@@ -180,7 +181,7 @@ class Updater(object):
         :param ctx: 
         :return: 
         """
-        res = self.eval(rule, ctx, lazy=True)
+        res = self.eval_expr(rule, ctx, lazy=True)
         if isinstance(rule, types.ListType):
             return reduce(lambda x, y: x and y, res)
         else:
@@ -206,7 +207,7 @@ class Updater(object):
 
         cli_functions.print_output = print_output
         cli_functions.register_in_context(ctx, self.engine)
-        self.eval('__main(false)', ctx)
+        self.eval_expr('__main(false)', ctx)
 
     def fetch_update_specs(self, attempts=3):
         """
@@ -231,8 +232,83 @@ class Updater(object):
                 except Exception as e:
                     logger.debug('Exception in fetching update defs from the provisioning server: %s' % e)
                     self.audit.audit_exception(e, process='prov-update')
+                    time.sleep(1)
 
             return 0
+
+    def update_rule_id(self, rule):
+        """
+        Generates textual ID of the rule
+        :param rule: 
+        :return: 
+        """
+        id = ""
+        if 'desc' in rule:
+            id += rule['desc']
+        if 'comment' in rule:
+            id += ': %s' % rule['comment']
+
+        if len(id) == 0:
+            id = json.dumps(rule)[:15]
+
+        return id
+
+    def update_action(self, rule):
+        """
+        Handles particular update action
+        :param rule: 
+        :return: 
+        """
+        action = rule['action']
+        if action == 'update-system':
+            self.update_action_update_system(rule)
+        else:
+            logger.info('Unknown action for update rule: %s' % self.update_rule_id(rule))
+
+    def update_action_update_system(self, rule):
+        """
+        Update system with yum update
+        :return: 
+        """
+        packages = None
+        packages_var = None
+        excludes = None
+        bugfix = None
+        security = None
+        skip_broken = None
+        enable_repos = None
+        disable_repos = None
+
+        if 'packages' in rule:
+            packages = [PackageInfo.from_json(x) for x in rule['packages']]
+
+        if 'packages-var' in rule:
+            packages_var = rule['packages-var']
+
+        if 'pkg-excludes' in rule:
+            excludes = rule['pkg-excludes']
+
+        if 'pkg-security' in rule:
+            security = rule['pkg-security']
+
+        if 'pkg-bugfix' in rule:
+            bugfix = rule['pkg-bugfix']
+
+        if 'pkg-skip-broken' in rule:
+            skip_broken = rule['pkg-skip-broken']
+
+        if 'pkg-enable-repos' in rule:
+            enable_repos = rule['pkg-enable-repos']
+
+        if 'pkg-disable-repos' in rule:
+            disable_repos = rule['pkg-disable-repos']
+
+        res = self.syscfg.update_packages(packages=packages, packages_var=packages_var,
+                                          security=security, bugfix=bugfix, excludes=excludes, skip_broken=skip_broken,
+                                          enable_repos=enable_repos, disable_repos=disable_repos)
+
+        logger.info('Updating rule %s resulted in %s' % (self.update_rule_id(rule), res))
+        return res
 
     def update_rule_single(self, rule):
         """
@@ -240,7 +316,24 @@ class Updater(object):
         :param rule: 
         :return: 
         """
-        # TODO: implement
+
+        # Some rule identifier
+        id = self.update_rule_id(rule)
+
+        # If there are some conditions on the update rule, process them
+        if 'rule' in rule:
+            res = self.eval_rule(rule['rule'])
+            if not res:
+                logger.debug('Rule not passed: %s' % id)
+                return
+
+        # Process rule...
+        if 'action' in rule:
+            self.update_action(rule)
+
+        # Process then
+        if 'then' in rule:
+            self.update_rule(rule['then'])
 
     def update_rule(self, rule):
         """
