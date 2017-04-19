@@ -540,7 +540,7 @@ def get_yum_packages(out):
     lines = out if isinstance(out, types.ListType) else out.split('\n')
     for line in lines:
         line = line.strip()
-        match = re.match(r'^([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.:\-_]+)[\s\t]+([a-zA-Z0-9.\-_]+)$', line)
+        match = re.match(r'^([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.:\-_]+)[\s\t]+([@a-zA-Z0-9.\-_]+)$', line)
         if match is None:
             continue
 
@@ -587,7 +587,7 @@ def get_yum_packages_update(out):
             continue
 
         match = re.match(r'^([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.:\-_]+)'
-                         r'[\s\t]+([a-zA-Z0-9.:\-_]+)[\s\t]+([a-zA-Z0-9.\-_\s]+?)$', line)
+                         r'[\s\t]+([@a-zA-Z0-9.:\-_]+)[\s\t]+([a-zA-Z0-9.\-_\s]+?)$', line)
         if match is None:
             continue
 
