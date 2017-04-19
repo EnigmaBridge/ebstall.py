@@ -1,6 +1,7 @@
 include README.rst
 include LICENSE
 include ebstall/consts/*
+include ebstall/tests/data/*
 
 include ovpn-server.conf
 include eb-init.sh

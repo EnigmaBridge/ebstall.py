@@ -138,12 +138,14 @@ class PackageInfo(object):
     """
     Basic information about particular package
     """
-    def __init__(self, name, version, arch, repo):
+    def __init__(self, name, version, arch, repo, size=None, section=None):
         self._version = None
         self.name = name
         self.version = version
         self.arch = arch
         self.repo = repo
+        self.size = size
+        self.section = section
 
     @property
     def version(self):
@@ -157,7 +159,8 @@ class PackageInfo(object):
         return '%s-%s.%s' % (self.name, self.version, self.arch)
 
     def __repr__(self):
-        return 'PackageInfo(name=%r, version=%r, arch=%r, repo=%r)' % (self.name, self.version, self.arch, self.repo)
+        return 'PackageInfo(name=%r, version=%r, arch=%r, repo=%r, size=%r, section=%r)' \
+               % (self.name, self.version, self.arch, self.repo, self.size, self.section)
 
     def to_json(self):
         """
@@ -169,6 +172,10 @@ class PackageInfo(object):
         js['version'] = str(self.version)
         js['arch'] = self.arch
         js['repo'] = self.repo
+        if self.size is not None:
+            js['size'] = self.size
+        if self.section is not None:
+            js['section'] = self.section
         return js
 
     @classmethod
@@ -178,7 +185,12 @@ class PackageInfo(object):
         :param js: 
         :return: 
         """
-        return cls(name=js['name'], version=js['version'], arch=js['arch'], repo=js['repo'])
+        obj = cls(name=js['name'], version=js['version'], arch=js['arch'], repo=js['repo'])
+        if 'size' in js:
+            obj.size = js['size']
+        if 'section' in js:
+            obj.section = js['section']
+        return obj
 
 
 def get_os():
@@ -546,4 +558,48 @@ def get_yum_packages(out):
         pkg = PackageInfo(name=package, version=version, arch=arch, repo=repo)
         ret.append(pkg)
     return ret
+
+
+def get_yum_packages_update(out):
+    """
+    List of packages to update parsing
+    :param out: 
+    :return: 
+    """
+    ret = []
+    eqline = 0
+    cur_section = None
+
+    lines = out if isinstance(out, types.ListType) else out.split('\n')
+    for line in lines:
+        line = line.strip()
+        if line.startswith('====='):
+            eqline += 1
+            continue
+
+        # Process lines only after 2nd ====== line - should be the package list.
+        if eqline != 2:
+            continue
+
+        lmatch = re.match(r'^([a-zA-Z\s]+):$', line)
+        if lmatch is not None:
+            cur_section = lmatch.group(1)
+            continue
+
+        match = re.match(r'^([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.\-_]+)[\s\t]+([a-zA-Z0-9.:\-_]+)'
+                         r'[\s\t]+([a-zA-Z0-9.:\-_]+)[\s\t]+([a-zA-Z0-9.\-_\s]+?)$', line)
+        if match is None:
+            continue
+
+        package = match.group(1).strip()
+        version = match.group(3).strip()
+        repo = match.group(4).strip()
+        arch = match.group(2).strip()
+        size = match.group(5).strip()
+        pkg = PackageInfo(name=package, version=version, arch=arch, repo=repo, size=size, section=cur_section)
+        ret.append(pkg)
+
+    return ret
+
+
 
