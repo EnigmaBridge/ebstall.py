@@ -47,7 +47,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509.base import load_pem_x509_certificate
 from sarge import run, Capture, Feeder
 from jbossply.jbossparser import JbossParser
-from ebstall import versions
+from ebstall import versions as ebversions
 
 import errors
 
@@ -1272,8 +1272,8 @@ def repoquery_find_version(versions, min_version=None, max_version=None, exact_v
     :param exact_version: 
     :return: 
     """
-    return versions.version_filter(versions, key=lambda x: x[1], min_version=min_version, max_version=max_version,
-                                   exact_version=exact_version)
+    return ebversions.version_filter(versions, key=lambda x: x[1], min_version=min_version, max_version=max_version,
+                                     exact_version=exact_version)
 
 
 def repoquery_pick_version(versions, pick_min=True, pick_max=False, max_comp=None):
@@ -1288,7 +1288,7 @@ def repoquery_pick_version(versions, pick_min=True, pick_max=False, max_comp=Non
     :param max_comp: 
     :return: 
     """
-    return versions.version_pick(versions, key=lambda x: x[1], pick_min=pick_min, pick_max=pick_max, max_comp=max_comp)
+    return ebversions.version_pick(versions, key=lambda x: x[1], pick_min=pick_min, pick_max=pick_max, max_comp=max_comp)
 
 
 def int_if_int(x):
