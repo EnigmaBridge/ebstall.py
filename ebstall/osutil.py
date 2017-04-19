@@ -602,4 +602,56 @@ def get_yum_packages_update(out):
     return ret
 
 
+def check_package_restrictions(yum_output_packages, allowed_packages):
+    """
+    Checks list of the yum output pakcages vs. allowed packages
+    :param yum_output_packages: 
+    :param check_packages:  
+    :return: (conflicting packages, new packages)
+    """
+
+    new_packages = []
+    conflicting_packages = []
+
+    for out_package in yum_output_packages:
+        allowed_list = [x for x in allowed_packages if x.name == out_package.name]
+
+        if len(allowed_list) == 0:
+            new_packages.append(out_package)
+            continue
+
+        allowed = allowed_list[0]
+        if out_package.version > allowed.version:
+            conflicting_packages.append(out_package)
+
+    return conflicting_packages, new_packages
+
+
+def package_diff(a, b):
+    """
+    Package diff a - b
+    package x \in a is removed from a if the same package (or higher version) is in b
+    
+    Used for removing already installed packages (b) from the packages to install (a). 
+    :param a: 
+    :param b: 
+    :return: 
+    """
+    res = []
+    for pkg in a:
+        b_filtered = [x for x in b if x.name == pkg.name and x.arch == pkg.arch]
+
+        # New package, not in b
+        if len(b_filtered) == 0:
+            res.append(pkg)
+
+        # Too many packages, weird, cannot decide, add.
+        elif len(b_filtered) > 1:
+            res.append(pkg)
+
+        # b contains smaller version of the package, add to the result
+        elif b_filtered[0].version < pkg.version:
+            res.append(pkg)
+
+    return res
 
