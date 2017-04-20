@@ -288,6 +288,10 @@ class VpnInstaller(Installer):
         if res != 0:
             return self.return_code(res)
 
+        # Update the OS.
+        if not self.args.no_os_update:
+            self.update_main_try()
+
         # Preferred LE method? If set...
         self.last_is_vpc = False
 

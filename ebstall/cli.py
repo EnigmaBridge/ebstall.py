@@ -927,6 +927,10 @@ class Installer(InstallerBase):
         if res != 0:
             return self.return_code(res)
 
+        # Update the OS.
+        if not self.args.no_os_update:
+            self.update_main_try()
+
         # Preferred LE method? If set...
         self.last_is_vpc = False
 
@@ -1927,6 +1931,9 @@ class Installer(InstallerBase):
 
         parser.add_argument('--no-ejbca-install', dest='no_ejbca_install', action='store_const', const=True, default=False,
                             help='Disable EJBCA installation - DEBUGGING only')
+
+        parser.add_argument('--no-os-update', dest='no_os_update', action='store_const', const=True, default=False,
+                            help='Disable OS udpate during the installation')
 
         parser.add_argument('--yes', dest='yes', action='store_const', const=True,
                             help='answers yes to the questions in the non-interactive mode, mainly for init')
