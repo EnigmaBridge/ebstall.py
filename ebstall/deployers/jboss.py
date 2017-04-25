@@ -166,7 +166,7 @@ class Jboss(object):
         :return: crl cron file string
         """
         cron = '#!/bin/bash\n'
-        cron += "1 1 * * * root find %s/standalone/log/ -name 'server.log.*' -mtime +60 -exec /bin/rm {} \;\n" \
+        cron += "1 1 * * * root find %s/standalone/log/ -name 'server.log.*' -mtime +15 -exec /bin/rm {} \;\n" \
                 % self.get_jboss_home()
         return cron
 
