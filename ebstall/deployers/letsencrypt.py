@@ -22,6 +22,7 @@ __author__ = 'dusanklinec'
 logger = logging.getLogger(__name__)
 
 
+LE_CERT_PATH = '/etc/letsencrypt/live'
 LE_PRIVATE_KEY = 'privkey.pem'
 LE_CERT = 'cert.pem'
 LE_CA = 'fullchain.pem'
