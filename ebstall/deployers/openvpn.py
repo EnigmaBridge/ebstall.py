@@ -543,6 +543,9 @@ class OpenVpn(object):
                        '"redirect-gateway def1 bypass-dhcp"',
                        '"sndbuf 393216"',
                        '"rcvbuf 393216"',
+                       'route 172.16.0.0 255.240.0.0 net_gateway',
+                       'route 192.168.0.0 255.255.0.0 net_gateway',
+                       'route 10.0.0.0 255.0.0.0 net_gateway',
                        # '"route 0.0.0.0 0.0.0.0"',
                        # '"route-metric 512"'
                        ]
