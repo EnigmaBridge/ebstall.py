@@ -14,6 +14,8 @@ from ebstall.deployers import php
 from ebstall.deployers import supervisord
 from ebstall.deployers import vpnauth
 from ebstall.deployers import pspace_web
+from ebstall.deployers import nextcloud
+from ebstall.deployers import ejabberd
 
 import errors
 import util
@@ -44,6 +46,8 @@ class VpnInstaller(Installer):
         self.vpnauth = None
         self.php = None
         self.pspace_web = None
+        self.nextcloud = None
+        self.ejabberd = None
 
         self.vpn_keys = None, None, None
         self.vpn_crl = None
@@ -253,6 +257,9 @@ class VpnInstaller(Installer):
         self.php = php.Php(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.pspace_web = pspace_web.PrivSpaceWeb(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
                                                   mysql=self.mysql, nginx=self.nginx, config=self.config)
+        self.nextcloud = nextcloud.NextCloud(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
+                                                  mysql=self.mysql, nginx=self.nginx, config=self.config)
+        self.ejabberd = None
 
         self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
@@ -376,6 +383,8 @@ class VpnInstaller(Installer):
         self.init_nginx()
         self.init_vpnauth()
         self.init_privatespace_web()
+        self.init_ejabberd()
+        self.init_nextcloud()
 
         self.init_nginx_start()
         self.init_vpn_start()
@@ -597,7 +606,7 @@ class VpnInstaller(Installer):
         self.pspace_web.user = self.nginx.nginx_user
         self.pspace_web.stats_file_path = self.vpnauth.get_stats_file_path()
         self.pspace_web.admin_email = self.config.email
-        self.pspace_web.hostname = self.ejbca.hostname
+        self.pspace_web.hostname = self.certificates.hostname
         self.pspace_web.vpn_net_addr = self.ovpn.get_ip_net()
         self.pspace_web.vpn_net_size = self.ovpn.get_ip_net_size()
         self.pspace_web.vpn_net_server = self.ovpn.get_ip_vpn_server()
@@ -693,6 +702,47 @@ class VpnInstaller(Installer):
         Installer.le_renewed(self)
         self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.nginx.switch(restart=True)
+
+    def init_ejabberd(self):
+        """
+        Installs ejabberd
+        :return: 
+        """
+        pass
+
+    def init_nextcloud(self):
+        """
+        Initializes private space web
+        :return: 
+        """
+        self.nextcloud.config = self.config
+        self.nextcloud.user = self.nginx.nginx_user
+        self.nextcloud.hostname = self.certificates.hostname
+
+        self.nextcloud.install()
+        self.nextcloud.configure()
+        Core.write_configuration(self.config)
+
+    def is_cloud_enabled(self):
+        """
+        Clud installation enabled
+        :return: 
+        """
+        return self.args.cloud
+
+    def init_le_subdomains(self):
+        """
+        Init subdomains
+        :return: 
+        """
+        Installer.init_le_subdomains(self)
+
+        self.nextcloud.config = self.config
+        self.nextcloud.hostname = self.certificates.hostname
+
+        subs = self.nextcloud.get_domains()
+        self.certificates.add_subdomains(subs)
+        self.certificates.register_subdomains()
 
 
 def main():

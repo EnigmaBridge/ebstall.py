@@ -538,6 +538,15 @@ class Config(object):
     def source_image_code(self, val):
         self.set_config('source_image_code', val)
 
+    # nextcloud admin password
+    @property
+    def nextcloud_admin_pass(self):
+        return self.get_config('nextcloud_admin_pass', default=None)
+
+    @nextcloud_admin_pass.setter
+    def nextcloud_admin_pass(self, val):
+        self.set_config('nextcloud_admin_pass', val)
+
 
 class EBSettings(object):
     """
