@@ -547,6 +547,15 @@ class Config(object):
     def nextcloud_admin_pass(self, val):
         self.set_config('nextcloud_admin_pass', val)
 
+    # nextcloud jsxc apikey
+    @property
+    def nextcloud_jsxc_token(self):
+        return self.get_config('nextcloud_jsxc_token', default=None)
+
+    @nextcloud_jsxc_token.setter
+    def nextcloud_jsxc_token(self, val):
+        self.set_config('nextcloud_jsxc_token', val)
+
 
 class EBSettings(object):
     """

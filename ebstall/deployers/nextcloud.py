@@ -251,7 +251,7 @@ class NextCloud(object):
             self.audit.audit_exception(e)
             raise errors.SetupError('Could not install NextCloud', cause=e)
 
-    def _occ_cmd(self, cmd):
+    def _occ_cmd(self, cmd, require_zero_result=True):
         """
         Calls OCC command, returns ret, out, err
         :param cmd: 
@@ -259,7 +259,7 @@ class NextCloud(object):
         """
         cmd = 'sudo -u %s php occ %s ' % (self.user, cmd)
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd, cwd=self.webroot)
-        if ret != 0:
+        if require_zero_result and ret != 0:
             raise errors.SetupError('OCC call failed')
 
         return ret, out, err
@@ -277,6 +277,29 @@ class NextCloud(object):
               ' --database mysql --database-name owncloud  --database-user root --database-pass %s  ' \
               ' --admin-user admin --admin-pass %s' % (self.mysql.get_root_password(), admin_pass)
         self._occ_cmd(cmd)
+
+    def _occ_set_config(self, app, key, value):
+        """
+        Sets OCC config value
+        :param key: 
+        :param value: 
+        :return: 
+        """
+        cmd = 'config:app:set --value %s %s %s' \
+              % (util.escape_shell(value), util.escape_shell(app), util.escape_shell(key))
+        self._occ_cmd(cmd)
+
+    def _occ_get_config(self, app, key):
+        """
+        Gets OCC config value
+        :param key: 
+        :return: 
+        """
+        cmd = 'config:app:get %s %s' % (util.escape_shell(app), util.escape_shell(key))
+        ret, out, err = self._occ_cmd(cmd, require_zero_result=False)
+        if ret != 0:
+            return None
+        return out.strip()
 
     def _trusted_domains(self):
         """
@@ -330,6 +353,15 @@ class NextCloud(object):
 
                 self._fix_privileges()
                 self._occ_cmd('app:enable ojsxc')
+
+                self.config.nextcloud_jsxc_token = util.random_password(23)
+                self._occ_set_config('ojsxc', 'apiSecret', self.config.nextcloud_jsxc_token)
+                self._occ_set_config('ojsxc', 'boshUrl', '/http-bind/')
+                self._occ_set_config('ojsxc', 'timeLimitedToken', 'true')
+                self._occ_set_config('ojsxc', 'serverType', 'external')
+                self._occ_set_config('ojsxc', 'externalServices', '|'.join(self.get_domains() + [self.hostname]))
+                self._occ_set_config('ojsxc', 'xmppDomain', self.hostname)
+                self._occ_set_config('ojsxc', 'xmppOverwrite', 'true')
 
             except Exception as e:
                 logger.debug('Exception in fetching NextCloud/ojsxc: %s' % e)
