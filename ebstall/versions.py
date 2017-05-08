@@ -144,13 +144,44 @@ def version_pad(a, ln):
     return '.'.join(p + (['0'] * (ln - vlen)))
 
 
-def version_cmp(a, b, max_comp=None, version_delim='.'):
+def version_cmp_norm(a, b, max_comp=None, version_delim='.'):
+    """
+    Version comparison - normalize
+    :param a: 
+    :param b: 
+    :param max_comp: 
+    :param version_delim: 
+    :return: 
+    """
+    return version_cmp(a, b, max_comp, version_delim, normalize=True)
+
+
+def version_split(v, version_delim='.', normalize=False):
+    """
+    Version split to base components
+    :param v: 
+    :param version_delim: 
+    :param normalize: 
+    :return: 
+    """
+    if isinstance(v, types.IntType):
+        return [v]
+    if isinstance(v, types.ListType):
+        return v
+
+    if normalize:
+        v = Version.normalize(v)
+    return v.split(version_delim)
+
+
+def version_cmp(a, b, max_comp=None, version_delim='.', normalize=False):
     """
     Compares versions a, b lexicographically
     :param a: 
     :param b: 
     :param max_comp: maximal number of descent
     :param version_delim: version delimitier
+    :param normalize: version delimitier
     :return: 
     """
     def v_split(x, delim):
@@ -159,6 +190,10 @@ def version_cmp(a, b, max_comp=None, version_delim='.'):
         if isinstance(x, types.ListType):
             return x
         return x.split(delim)
+
+    if normalize:
+        a = Version.normalize(a)
+        b = Version.normalize(b)
 
     parts_a = v_split(a, version_delim)
     parts_b = v_split(b, version_delim)
