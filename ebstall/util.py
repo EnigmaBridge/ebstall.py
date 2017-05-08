@@ -1310,3 +1310,28 @@ def int_if_int(x):
         return int(x)
 
     return x
+
+
+def untar_get_single_dir(archive_path, sysconfig):
+    """
+    tar -xzvf archive && get the only one folder in the archive folder
+    archive_path should be the only file in the directory.
+    
+    :param archive: 
+    :return: 
+    """
+    basedir = os.path.dirname(archive_path)
+    cmd = 'tar -xzf %s' % archive_path
+    ret, out, err = sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
+    if ret != 0:
+        raise errors.SetupError('Could not extract the archive')
+
+    folders = [f for f in os.listdir(basedir) if not os.path.isfile(os.path.join(basedir, f))
+               and f != '.' and f != '..']
+
+    if len(folders) != 1:
+        raise errors.SetupError('Invalid folder structure after update extraction')
+
+    archive_dir = os.path.join(basedir, folders[0])
+    return archive_dir
+
