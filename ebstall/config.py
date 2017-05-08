@@ -267,6 +267,15 @@ class Config(object):
     def domains(self, val):
         self.set_config('domains', val)
 
+    # DNS subdomains registered as a CNAME to the master domain
+    @property
+    def subdomains(self):
+        return self.get_config('subdomains')
+
+    @subdomains.setter
+    def subdomains(self, val):
+        self.set_config('subdomains', val)
+
     # DNS service domains - e.g. cloud.hs1.umph, photos.hs1.umph, ...
     @property
     def domains_svc(self):

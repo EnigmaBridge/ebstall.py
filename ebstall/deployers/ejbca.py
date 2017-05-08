@@ -1014,74 +1014,15 @@ class Ejbca(object):
         """
         return self.jboss.get_keystore_path()
 
-    def le_dns(self, domain=None, token=None, mdns=None, p=None, done=None, abort=None, *args, **kwargs):
-        """
-        DNS challenge solver for LE DNS verification
-        :param domain:
-        :param token:
-        :param mdns:
-        :param p:
-        :param abort:
-        :param args:
-        :param kwargs:
-        :return:
-        """
-        if domain is None or token is None:
-            raise ValueError('Domain or token is none')
-        if done is None:
-            raise ValueError('Cannot signalize done - its None')
-
-        # Prepare DNS TXT data for LE
-        domain_parts = domain.split('.', 1)
-        dns_data = self.reg_svc.txt_le_validation_dns_data((domain_parts[1], token))
-
-        # Update domain DNS settings
-        self.reg_svc.refresh_domain_call(dns_data=dns_data)
-
-        # Call done callback
-        done()
-
-    def get_le_method(self, le_method=None):
-        """
-        Decides which method to use.
-        :param le_method:
-        :return:
-        """
-        return self.config.get_le_method(le_method=le_method)
-
     def le_enroll(self, le_method=None):
         """
         Enrolls to LetsEncrypt with specified domains
+        :param le_method:
         :return:
         """
 
         # Password need to be stored anyway for future renewal / regeneration
         self.config.ejbca_jks_password = self.http_pass
-
-        # If hostname is none/localhost, there is no point for lets encrypt here. Maybe later.
-        if self.hostname is None or self.hostname == 'localhost':
-            logger.info("Hostname is none/localhost, no letsencrypt operation will be performed")
-            return 1
-
-        if not self.check_hostname_domains_consistency():
-            raise ValueError('Hostname not in domains, should not happen')
-
-        self.lets_encrypt = letsencrypt.LetsEncrypt(email=self.config.email, domains=self.domains,
-                                                    print_output=self.print_output, staging=self.staging,
-                                                    audit=self.audit, sysconfig=self.sysconfig)
-
-        le_method = self.get_le_method(le_method=le_method)
-
-        # noinspection PyUnusedLocal
-        ret, out, err = -1, None, None
-        if le_method == LE_VERIFY_DNS:
-            mdns = self.lets_encrypt.manual_dns(expand=True, on_domain_challenge=self.le_dns)
-            ret, out, err = mdns.start()
-        else:
-            ret, out, err = self.lets_encrypt.certonly()
-
-        if ret != 0:
-            return 2
 
         # LetsEncrypt certificate is OK. Create JKS.
         # Backup previous JKS, delete the old one
@@ -1091,7 +1032,6 @@ class Ejbca(object):
 
         # Create new JKS
         self.audit.add_secrets(self.http_pass)
-        self.cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
         self.lets_encrypt_jks = letsencrypt.LetsEncryptToJks(
             cert_dir=self.cert_dir,
             jks_path=jks_path,
@@ -1109,49 +1049,19 @@ class Ejbca(object):
         self.config.ejbca_hostname = self.hostname
         return 0
 
-    def le_renew(self, le_method=None):
+    def le_renew(self, cert_dir=None, le_method=None):
         """
         Renews LetsEncrypt certificate, updates JKS containing the certificate.
         :return: 0 if certificate was renewed and JKS recreated, 1 if OK but no renewal was needed, error otherwise
         """
-        self.lets_encrypt = letsencrypt.LetsEncrypt(email=self.config.email, domains=self.domains,
-                                                    print_output=self.print_output, staging=self.staging,
-                                                    audit=self.audit, sysconfig=self.sysconfig)
+        if cert_dir is not None:
+            self.cert_dir = cert_dir
 
-        if self.lets_encrypt.is_certificate_ready(domain=self.hostname) != 0:
-            logger.info('Certificate does not exist, could not renew')
-            return 2
-
-        priv_file, cert_file, ca_file = self.lets_encrypt.get_cert_paths(domain=self.hostname)
-        cert_time_before = util.get_file_mtime(cert_file)
-
-        # Call letsencrypt renewal
-        le_method = self.get_le_method(le_method=le_method)
-
-        # noinspection PyUnusedLocal
-        ret, out, err = -1, None, None
-        if le_method == LE_VERIFY_DNS:
-            mdns = self.lets_encrypt.manual_dns(expand=True, on_domain_challenge=self.le_dns)
-            ret, out, err = mdns.start()
-        else:
-            ret, out, err = self.lets_encrypt.renew()
-
-        if ret != 0:
-            logger.info('LE renewal failed with code: %s' % ret)
-            return 3
-
-        cert_time_after = util.get_file_mtime(cert_file)
-        if cert_time_before >= cert_time_after:
-            logger.debug('LE certificate did not renew')
-            return 1
-
-        # LetsEncrypt certificate is OK. Create JKS.
         jks_path = self.get_keystore_path()
         util.delete_file_backup(jks_path, chmod=0o600, backup_dir=self.DB_BACKUPS)
 
         # Create new JKS
         self.audit.add_secrets(self.http_pass)
-        self.cert_dir = self.lets_encrypt.get_certificate_dir(self.hostname)
         self.lets_encrypt_jks = letsencrypt.LetsEncryptToJks(
             cert_dir=self.cert_dir,
             jks_path=jks_path,

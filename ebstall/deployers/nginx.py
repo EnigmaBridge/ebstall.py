@@ -39,6 +39,7 @@ class Nginx(object):
 
         self.hostname = 'private-space'
         self.domains = []
+        self.le_domains = []
 
         self.nginx_user = 'nginx'
         self.html_root = '/var/www/html'
@@ -61,6 +62,16 @@ class Nginx(object):
         :return: server config file path
         """
         return self.SETTINGS_FILE
+
+    def add_le_subdomains(self, subdomains):
+        """
+        Adds LE verification subdomains
+        :param subdomains: 
+        :return: 
+        """
+        if not isinstance(subdomains, types.ListType):
+            subdomains = [subdomains]
+        self.le_domains += subdomains
 
     def _load_nginx_config(self):
         """
@@ -169,9 +180,11 @@ class Nginx(object):
 
         self.flush_config()
 
-    def _get_default_server_hostnames(self, include_local=True):
+    def _get_default_server_hostnames(self, include_local=True, le_domains=False):
         """
         Default server hostnames
+        :param include_local if to include local domains - not valid ones
+        :param le_domains domains for TLS SNI letsencrypt domain validation - used for default http server host
         :return: 
         """
         hostnames = ['private.space'] if include_local else []
@@ -179,6 +192,10 @@ class Nginx(object):
         tmp = list(self.domains)
         if self.hostname is not None:
             tmp += [self.hostname]
+
+        if le_domains:
+            tmp += self.le_domains
+
         return hostnames + sorted(list(set(tmp)))
 
     def _get_tls_paths(self):
@@ -246,7 +263,7 @@ class Nginx(object):
         path = os.path.join(self.http_include, 'default.conf')
         util.safely_remove(path)
 
-        hostnames = self._get_default_server_hostnames(True)
+        hostnames = self._get_default_server_hostnames(include_local=True, le_domains=True)
         with util.safe_open(path, mode='w', chmod=0o644) as fh:
             fh.write('server { \n')
             fh.write('  listen 80 default_server;\n')
@@ -296,7 +313,7 @@ class Nginx(object):
         path = os.path.join(self.http_include, 'default-tls.conf')
         util.safely_remove(path)
 
-        hostnames = self._get_default_server_hostnames(False)
+        hostnames = self._get_default_server_hostnames(include_local=False)
         cert_path, key_path = self._get_tls_paths()
         with util.safe_open(path, mode='w', chmod=0o644) as fh:
             fh.write('server { \n')

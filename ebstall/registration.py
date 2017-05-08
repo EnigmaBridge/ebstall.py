@@ -538,6 +538,30 @@ class Registration(object):
         self.config.last_ipv4_private = self.info_loader.ami_local_ip
         return self.config
 
+    def register_subdomains(self, subdomains):
+        """
+        Registers CNAME subdomains with refresh domain call
+        :param subdomains: list of strings
+        :return: 
+        """
+        # full subdomains
+        dns_data = []
+        subdomains = list(subdomains)
+        for sub in subdomains:
+            rec = {}
+            rec['type'] = 'cname'
+            rec['name'], rec['domain'] = sub.split('.', 1)
+            dns_data.append(rec)
+
+        logger.debug('Registering subdomains request: %s' % json.dumps(dns_data))
+        resp_update = self.refresh_domain_call(ip_to_use=None, dns_data=dns_data)
+
+        subdomains.sort()
+        subdomains.sort(key=len, reverse=True)
+
+        self.config.subdomains = subdomains
+        return self.config
+
     def refresh_domain_call(self, ip_to_use=None, dns_data=None):
         """
         Basic DNS call - request for a new DNS name allocation or the refresh.

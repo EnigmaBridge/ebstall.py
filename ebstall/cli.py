@@ -22,6 +22,7 @@ from ebstall.deployers.mysql import MySQL
 from ebstall.deployers.ejbca import Ejbca
 from ebstall.deployers.jboss import Jboss
 from ebstall.deployers.certbot import Certbot
+from ebstall.deployers.certificates import Certificates
 from ebstall.deployers.letsencrypt import LetsEncrypt
 from ebstall.deployers.softhsm import SoftHsmV1Config
 
@@ -61,6 +62,7 @@ class Installer(InstallerBase):
         self.ejbca = None
         self.mysql = None
         self.certbot = None
+        self.certificates = None
         self.eb_cfg = None
         self.updater = None
 
@@ -315,7 +317,10 @@ class Installer(InstallerBase):
         self.ejbca = Ejbca(print_output=True, staging=self.args.le_staging,
                            config=self.config, eb_config=self.eb_settings,
                            sysconfig=self.syscfg, audit=self.audit, jboss=self.jboss, mysql=self.mysql)
-        self.updater = Updater(sysconfig=self.syscfg, audit=self.audit, config=self.config, ebstall_version=self.version)
+        self.updater = Updater(sysconfig=self.syscfg, audit=self.audit,
+                               config=self.config, ebstall_version=self.version)
+        self.certificates = Certificates(sysconfig=self.syscfg, audit=self.audit,
+                                         config=self.config, reg_svc=self.reg_svc)
         return 0
 
     def init_prompt_user(self):
@@ -630,16 +635,19 @@ class Installer(InstallerBase):
 
         return 0
 
-    def init_le_install(self, ejbca=None):
+    def init_le_subdomains(self):
+        """
+        Modules can register subdomains here to create certificates for / include in the certificate.
+        :return: 
+        """
+
+    def init_le_install(self):
         """
         Installs LetsEncrypt certificate to the EJBCA.
         :param ejbca:
         :return: result
         """
-        if ejbca is None:
-            ejbca = self.ejbca
-
-        le_certificate_installed = self.le_install(ejbca)
+        le_certificate_installed = self.le_install()
 
         self.tprint('\n')
         self.cli_separator()
@@ -996,6 +1004,7 @@ class Installer(InstallerBase):
             return self.return_code(res)
 
         # LetsEncrypt enrollment
+        self.init_le_subdomains()
         res = self.init_le_install()
         if res != 0:
             return self.return_code(res)
@@ -1254,8 +1263,8 @@ class Installer(InstallerBase):
         """
         domain_is_ok = False
         domain_ignore = False
-        domain_ctr = 0
-        while not domain_is_ok and domain_ctr < 3:
+        domain_attempt_ctr = 0
+        while not domain_is_ok and domain_attempt_ctr < 3:
             try:
                 new_config = reg_svc.new_domain()
                 new_config = reg_svc.refresh_domain()
@@ -1267,13 +1276,16 @@ class Installer(InstallerBase):
                         self.tprint('  - %s' % domain)
                     self.tprint('')
 
+                self.certificates.config = new_config
+                self.certificates.set_domains(new_config.domains)
+
             except Exception as e:
-                domain_ctr += 1
+                domain_attempt_ctr += 1
                 logger.debug(traceback.format_exc())
 
                 self.audit.audit_exception(e)
                 if self.noninteractive:
-                    if domain_ctr >= self.args.attempts:
+                    if domain_attempt_ctr >= self.args.attempts:
                         break
                 else:
                     self.tprint(self.t.red('\nError during domain registration, no dynamic domain will be assigned'))
@@ -1451,22 +1463,22 @@ class Installer(InstallerBase):
                 self.tprint('\nError! Could not load identity (key-pair is missing)')
                 return self.return_code(3)
 
-        # EJBCA
-        mysql = MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
-                      write_dots=True, root_passwd=self.get_db_root_password())
-        jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
-        ejbca = Ejbca(print_output=True, jks_pass=config.ejbca_jks_password, config=config, eb_config=self.eb_settings,
-                      staging=self.args.le_staging, sysconfig=self.syscfg, audit=self.audit, jboss=jboss, mysql=mysql)
-        ejbca.set_domains(config.ejbca_domains)
-        ejbca.reg_svc = reg_svc
+        # services init
+        self.config = config
+        self.init_services()
 
-        ejbca_host = ejbca.hostname
+        self.certificates.load_domains_config()
+        self.ejbca.set_domains(config.ejbca_domains)
+        self.ejbca.reg_svc = reg_svc
+
+        ejbca_host = self.certificates.hostname
 
         le_test = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
         enroll_new_cert = ejbca_host is None or len(ejbca_host) == 0 or ejbca_host == 'localhost'
         if enroll_new_cert:
-            ejbca.set_domains(domains)
-            ejbca_host = ejbca.hostname
+            self.certificates.set_domains(domains)
+            self.ejbca.set_domains(domains)
+            ejbca_host = self.ejbca.hostname
 
         if not enroll_new_cert:
             enroll_new_cert = le_test.is_certificate_ready(domain=ejbca_host) != 0
@@ -1489,10 +1501,10 @@ class Installer(InstallerBase):
         ret = 0
         if enroll_new_cert:
             # Enroll a new certificate
-            ret = self.le_install(ejbca)
+            ret = self.le_install()
         else:
             # Renew the certs
-            ret = self.le_renew(ejbca)
+            ret = self.le_renew()
         return self.return_code(ret)
 
     def do_onboot(self, line):
@@ -1733,37 +1745,61 @@ class Installer(InstallerBase):
             pass
         pass
 
-    def le_install(self, ejbca):
-        self.tprint('\nInstalling LetsEncrypt certificate for: %s' % (', '.join(ejbca.domains)))
-        ret = ejbca.le_enroll()
+    def le_install(self, certificates=None, ejbca=None):
+        """
+        Installs lets encrypt certificate
+        :param certificates: 
+        :return: 
+        """
+        if certificates is None:
+            certificates = self.certificates
+        if ejbca is None:
+            ejbca = self.ejbca
+
+        self.tprint('\nInstalling LetsEncrypt certificate for: %s' % (', '.join(certificates.domains)))
+        self.tprint('\n .. subdomains: %s' % (', '.join(certificates.subdomains)))
+        ret = certificates.le_enroll()
+
+        if ret == 0:
+            ejbca.cert_dir = certificates.get_cert_dir()
+            ret = ejbca.le_enroll()
+
         if ret == 0:
             Core.write_configuration(ejbca.config)
             ejbca.jboss_reload()
             self.tprint('\nPublicly trusted certificate installed (issued by LetsEncrypt)')
 
-        else:
+        if ret != 0:
             self.tprint('\nFailed to install publicly trusted certificate, self-signed certificate will be '
                         'used instead, code=%s.' % ret)
             self.tprint('You can try it again later with command renew\n')
         return ret
 
-    def le_renew(self, ejbca):
+    def le_renew(self, certificates=None, ejbca=None):
         """
         Performs LetsEncrypt certificate renewal.
         Installs the new certificate to the EJBCA.
+        :param certificates: 
         :param ejbca: 
         :return: 
         """
-        le_test = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
+        if certificates is None:
+            certificates = self.certificates
+        if ejbca is None:
+            ejbca = self.ejbca
 
-        renew_needed = self.args.force or le_test.test_certificate_for_renew(domain=ejbca.hostname,
-                                                                             renewal_before=60*60*24*20) != 0
+        renew_needed = self.args.force or certificates.renew_needed()
         if not renew_needed:
-            self.tprint('\nRenewal for %s is not needed now. Run with --force to override this' % ejbca.hostname)
+            self.tprint('\nRenewal for %s is not needed now. Run with --force to override this' % certificates.hostname)
             return 0
 
-        self.tprint('\nRenewing LetsEncrypt certificate for: %s' % ejbca.hostname)
-        ret = ejbca.le_renew()
+        self.tprint('\nRenewing LetsEncrypt certificate for: %s' % certificates.hostname)
+        ret = certificates.le_renew()
+
+        if ret == 0:
+            ejbca.cert_dir = certificates.get_cert_dir()
+            ret = ejbca.le_renew()
+
         if ret == 0:
             Core.write_configuration(ejbca.config)
             ejbca.jboss_reload()
@@ -1914,6 +1950,9 @@ class Installer(InstallerBase):
 
         parser.add_argument('--db-type', dest='db_type', default=None,
                             help='Database type to use (e.g., mysql)')
+
+        parser.add_argument('--cloud', dest='cloud', action='store_const', const=True, default=False,
+                            help='Installs NextCloud and related tools')
 
         parser.add_argument('--vpc', dest='is_vpc', default=None, type=int,
                             help='Sets whether the installation is in Virtual Private Cloud (VPC, public IP is not '

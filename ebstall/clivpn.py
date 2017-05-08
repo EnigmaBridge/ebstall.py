@@ -363,6 +363,7 @@ class VpnInstaller(Installer):
         self.init_ejbca_vpn()
 
         # LetsEncrypt enrollment
+        self.init_le_subdomains()
         res = self.init_le_install()
         if res != 0:
             return self.return_code(res)
@@ -509,7 +510,7 @@ class VpnInstaller(Installer):
         Throws an exception if something goes wrong.
         :return:
         """
-        self.dnsmasq.hostname = self.ejbca.hostname
+        self.dnsmasq.hostname = self.certificates.hostname
         self.dnsmasq.vpn_server_ip = self.ovpn.get_ip_vpn_server()
 
         ret = self.dnsmasq.install()
@@ -532,11 +533,12 @@ class VpnInstaller(Installer):
         Throws an exception if something goes wrong.
         :return:
         """
-        self.nginx.hostname = self.ejbca.hostname
+        self.nginx.hostname = self.certificates.hostname
         self.nginx.domains = self.config.domains
         self.nginx.internal_addresses = ['%s/%s' % (self.ovpn.get_ip_net(), self.ovpn.get_ip_net_size())]
         self.nginx.cert_dir = self.ejbca.cert_dir
         self.nginx.html_root = self.pspace_web.get_public_dir()  # Laravel based private space landing page
+        self.nginx.add_le_subdomains(self.certificates.subdomains)
 
         ret = self.nginx.install()
         if ret != 0:
