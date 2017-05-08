@@ -12,6 +12,7 @@ import ebstall.util as util
 import types
 import ebstall.osutil as osutil
 import shutil
+import time
 import pkg_resources
 
 from ebstall.consts import PROVISIONING_SERVERS
@@ -40,6 +41,10 @@ class NextCloud(object):
         self.stats_file_path = None
         self.user = 'nginx'
         self.hostname = None
+
+        self.file_nextcloud = 'nextcloud-11.0.3.zip'
+        self.file_ojsxc = 'https://github.com/EnigmaBridge/jsxc-nc/archive/v3.2.0-2.tar.gz'
+        self.file_vpnauth = 'https://github.com/EnigmaBridge/user_vpnauth/archive/v1.0.0.tar.gz'
 
     def get_subdomains(self):
         """
@@ -130,18 +135,28 @@ class NextCloud(object):
     # Installation
     #
 
-    def _download_file(self, url, filename):
+    def _download_file(self, url, filename, attempts=1):
         """
         Downloads binary file, saves to the file
         :param url:
         :param filename:
         :return:
         """
-        r = requests.get(url, stream=True, timeout=15)
-        with open(filename, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
+        for attempt in range(attempts):
+            try:
+                r = requests.get(url, stream=True, timeout=15)
+                with open(filename, 'wb') as f:
+                    shutil.copyfileobj(r.raw, f)
 
-        return filename
+                return filename
+
+            except Exception as e:
+                logger.debug('Exception when downloading: %s' % e)
+                if attempt + 1 >= attempts:
+                    logger.error('Could not download %s' % url)
+                    raise
+                else:
+                    time.sleep(1)
 
     def _fix_privileges(self):
         """
@@ -199,43 +214,55 @@ class NextCloud(object):
         Downloads a new revision of the EJBCA from the provisioning server, if possible
         :return:
         """
-        base_file = 'nextcloud-11.0.3.zip'
+        base_file = self.file_nextcloud
         try:
-            logger.debug('Going to download specs from the provisioning servers')
+            logger.debug('Going to download nextcloud from the provisioning servers')
             for provserver in PROVISIONING_SERVERS:
                 url = 'https://%s/nextcloud/%s' % (provserver, base_file)
                 tmpdir = util.safe_new_dir('/tmp/nextcloud-install')
 
-                for attempt in range(attempts):
-                    try:
-                        self.audit.audit_evt('prov-nextcloud', url=url)
+                try:
+                    self.audit.audit_evt('prov-nextcloud', url=url)
 
-                        # Download archive.
-                        archive_path = os.path.join(tmpdir, base_file)
-                        self._download_file(url, archive_path)
+                    # Download archive.
+                    archive_path = os.path.join(tmpdir, base_file)
+                    self._download_file(url, archive_path, attempts=3)
 
-                        # Update
-                        self._deploy_downloaded(archive_path, tmpdir)
-                        return 0
+                    # Update
+                    self._deploy_downloaded(archive_path, tmpdir)
+                    return 0
 
-                    except errors.SetupError as e:
-                        logger.debug('SetupException in fetching NextCloud from the provisioning server: %s' % e)
-                        self.audit.audit_exception(e, process='prov-nextcloud')
+                except errors.SetupError as e:
+                    logger.debug('SetupException in fetching NextCloud from the provisioning server: %s' % e)
+                    self.audit.audit_exception(e, process='prov-nextcloud')
 
-                    except Exception as e:
-                        logger.debug('Exception in fetching NextCloud from the provisioning server: %s' % e)
-                        self.audit.audit_exception(e, process='prov-nextcloud')
+                except Exception as e:
+                    logger.debug('Exception in fetching NextCloud from the provisioning server: %s' % e)
+                    self.audit.audit_exception(e, process='prov-nextcloud')
 
-                    finally:
-                        if os.path.exists(tmpdir):
-                            shutil.rmtree(tmpdir)
+                finally:
+                    if os.path.exists(tmpdir):
+                        shutil.rmtree(tmpdir)
 
                 return 0
 
         except Exception as e:
             logger.debug('Exception when fetching NextCloud')
             self.audit.audit_exception(e)
-        return -1
+            raise errors.SetupError('Could not install NextCloud', cause=e)
+
+    def _occ_cmd(self, cmd):
+        """
+        Calls OCC command, returns ret, out, err
+        :param cmd: 
+        :return: 
+        """
+        cmd = 'sudo -u %s php occ %s ' % (self.user, cmd)
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, cwd=self.webroot)
+        if ret != 0:
+            raise errors.SetupError('OCC call failed')
+
+        return ret, out, err
 
     def _occ_install(self):
         """
@@ -246,13 +273,10 @@ class NextCloud(object):
         self.config.nextcloud_admin_pass = admin_pass
         self.audit.add_secrets(admin_pass)
 
-        cmd = 'sudo -u %s php occ maintenance:install ' \
+        cmd = 'maintenance:install ' \
               ' --database mysql --database-name owncloud  --database-user root --database-pass %s  ' \
-              ' --admin-user admin --admin-pass %s' % (self.user, self.mysql.get_root_password(), admin_pass)
-
-        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, cwd=self.webroot)
-        if ret != 0:
-            raise errors.SetupError('Owner change failed for private space web')
+              ' --admin-user admin --admin-pass %s' % (self.mysql.get_root_password(), admin_pass)
+        self._occ_cmd(cmd)
 
     def _trusted_domains(self):
         """
@@ -290,15 +314,74 @@ class NextCloud(object):
         Installs chat plugin app
         :return: 
         """
+        url = self.file_ojsxc
+        base_file = 'jsxc-nc.tgz'
+        try:
+            logger.debug('Going to download NextCloud/ojsxc')
+            tmpdir = util.safe_new_dir('/tmp/nextcloud-jsxc-install')
+            archive_path = os.path.join(tmpdir, base_file)
+            app_dir = os.path.join(self.webroot, 'apps', 'ojsxc')
 
+            try:
+                self.audit.audit_evt('prov-jsxc', url=url)
+                self._download_file(url, archive_path, attempts=3)
+                unpacked_dir = util.untar_get_single_dir(archive_path, self.sysconfig)
+                shutil.move(unpacked_dir, app_dir)
+
+                self._fix_privileges()
+                self._occ_cmd('app:enable ojsxc')
+
+            except Exception as e:
+                logger.debug('Exception in fetching NextCloud/ojsxc: %s' % e)
+                self.audit.audit_exception(e, process='prov-jsxc')
+
+            finally:
+                if os.path.exists(tmpdir):
+                    shutil.rmtree(tmpdir)
+
+            return 0
+
+        except Exception as e:
+            logger.debug('Exception when fetching NextCloud/ojsxc')
+            self.audit.audit_exception(e)
+            raise errors.SetupError('Could not install NextCloud/ojsxc', cause=e)
 
     def _install_vpnauth(self):
         """
         Installs vpnauth app
         :return: 
         """
+        url = self.file_vpnauth
+        base_file = 'vpnauth-nc.tgz'
+        try:
+            logger.debug('Going to download NextCloud/vpnauth')
+            tmpdir = util.safe_new_dir('/tmp/nextcloud-vpnauth-install')
+            archive_path = os.path.join(tmpdir, base_file)
+            app_dir = os.path.join(self.webroot, 'apps', 'user_vpnauth')
 
+            try:
+                self.audit.audit_evt('prov-vpnauth', url=url)
+                self._download_file(url, archive_path, attempts=3)
+                unpacked_dir = util.untar_get_single_dir(archive_path, self.sysconfig)
+                shutil.move(unpacked_dir, app_dir)
 
+                self._fix_privileges()
+                self._occ_cmd('app:enable user_vpnauth')
+
+            except Exception as e:
+                logger.debug('Exception in fetching NextCloud/vpnauth: %s' % e)
+                self.audit.audit_exception(e, process='prov-vpnauth')
+
+            finally:
+                if os.path.exists(tmpdir):
+                    shutil.rmtree(tmpdir)
+
+            return 0
+
+        except Exception as e:
+            logger.debug('Exception when fetching NextCloud/vpnauth')
+            self.audit.audit_exception(e)
+            raise errors.SetupError('Could not install NextCloud/user_vpnauth', cause=e)
 
     def install(self):
         """
