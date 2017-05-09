@@ -96,6 +96,14 @@ class Ejabberd(object):
         :return: 
         """
         config_file = os.path.join(self._config_dir, 'ejabberd.yml')
+        config_file_backup = os.path.join(self._config_dir, 'ejabberd.yml.backup')
+
+        # Backup the config file. If config is present, use that one
+        if os.path.exists(config_file_backup):
+            shutil.copy(config_file_backup, config_file)
+        else:
+            shutil.copy(config_file, config_file_backup)
+
         config_data = open(config_file).read()
         config_yml = ruamel.yaml.round_trip_load(config_data)
 
