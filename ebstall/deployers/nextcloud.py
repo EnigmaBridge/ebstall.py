@@ -332,6 +332,9 @@ class NextCloud(object):
         if ret != 0:
             raise errors.SetupError('Owner change failed for private space web')
 
+        if isinstance(out, types.ListType):
+            out = ''.join(out)
+
         new_cfg = '<?php\n $CONFIG = %s; \n' % out
         with open(cfg_path, 'w') as fw:
             fw.write(new_cfg)
