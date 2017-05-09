@@ -38,13 +38,12 @@ class NextCloud(object):
         self.nginx = nginx
 
         self.webroot = self.WEBROOT
-        self.stats_file_path = None
         self.user = 'nginx'
         self.hostname = None
 
-        self.file_nextcloud = 'nextcloud-11.0.3.zip'
-        self.file_ojsxc = 'https://github.com/EnigmaBridge/jsxc-nc/archive/v3.2.0-2.tar.gz'
-        self.file_vpnauth = 'https://github.com/EnigmaBridge/user_vpnauth/archive/v1.0.0.tar.gz'
+        self._file_nextcloud = 'nextcloud-11.0.3.zip'
+        self._file_ojsxc = 'https://github.com/EnigmaBridge/jsxc-nc/archive/v3.2.0-2.tar.gz'
+        self._file_vpnauth = 'https://github.com/EnigmaBridge/user_vpnauth/archive/v1.0.0.tar.gz'
 
     def get_subdomains(self):
         """
@@ -208,7 +207,7 @@ class NextCloud(object):
         Downloads NextCloud installation file from provisioning server.
         :return:
         """
-        base_file = self.file_nextcloud
+        base_file = self._file_nextcloud
         try:
             logger.debug('Going to download nextcloud from the provisioning servers')
             for provserver in PROVISIONING_SERVERS:
@@ -331,7 +330,7 @@ class NextCloud(object):
         Installs chat plugin app
         :return: 
         """
-        url = self.file_ojsxc
+        url = self._file_ojsxc
         base_file = 'jsxc-nc.tgz'
         try:
             logger.debug('Going to download NextCloud/ojsxc')
@@ -377,7 +376,7 @@ class NextCloud(object):
         Installs vpnauth app
         :return: 
         """
-        url = self.file_vpnauth
+        url = self._file_vpnauth
         base_file = 'vpnauth-nc.tgz'
         try:
             logger.debug('Going to download NextCloud/vpnauth')
