@@ -12,6 +12,7 @@ import ebstall.util as util
 import types
 import ebstall.osutil as osutil
 import shutil
+import ruamel.yaml
 import time
 import pkg_resources
 
@@ -79,6 +80,25 @@ class Ejabberd(object):
 
         raise errors.SetupError('Could not find Ejabberd folders')
 
+    def _config(self):
+        """
+        Configures ejabberd server
+        :return: 
+        """
+        config_file = os.path.join(self.config_dir, 'ejabberd.yml')
+        config_data = open(config_file).read()
+        config_yml = ruamel.yaml.round_trip_load(config_data)
+
+        # virtual host setup
+        config_yml['hosts'] = [self.hostname]
+
+        # TODO: external authentication setup
+        # '/opt/xmpp-cloud-auth/external_cloud.py -t ejabberd -u https://cloud.tunbridge1.umph.io/index.php/apps/ojsxc/ajax/externalApi.php -s i0GBR5ZD0BDexaXpo7Pta58
+
+        with open(config_file, 'w') as fh:
+            new_config = ruamel.yaml.round_trip_dump(config_yml)
+            fh.write(new_config)
+
     def configure(self):
         """
         Configures ejabberd server
@@ -94,7 +114,7 @@ class Ejabberd(object):
         else:
             raise errors.EnvError('Unknown start system, could not setup ')
 
-        pass
+        self._config()
 
     def get_svc_map(self):
         """

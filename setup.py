@@ -29,7 +29,8 @@ install_requires = [
     'shellescape',
     'jbossply',
     'nginxparser_eb',
-    'yaql'
+    'yaql',
+    'ruamel.yaml'
 ]
 
 # env markers in extras_require cause problems with older pip: #517
