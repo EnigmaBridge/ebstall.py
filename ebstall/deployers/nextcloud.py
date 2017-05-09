@@ -59,6 +59,13 @@ class NextCloud(object):
         """
         return ['%s.%s' % (x, self.hostname) for x in self.get_subdomains()]
 
+    def get_link(self):
+        """
+        Returns the link to the main page
+        :return: 
+        """
+        return 'https://%s/' % self.get_domains()[0]
+
     def get_extauth_endpoint(self):
         """
         Returns endpoint for extauth plugin for ejabberd

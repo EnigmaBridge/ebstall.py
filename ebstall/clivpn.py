@@ -729,6 +729,8 @@ class VpnInstaller(Installer):
 
         self.nextcloud.install()
         self.nextcloud.configure()
+
+        self.pspace_web.add_tile('NextCloud', 'fa-cloud', self.nextcloud.get_link())
         Core.write_configuration(self.config)
 
     def is_cloud_enabled(self):
