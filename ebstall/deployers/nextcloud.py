@@ -60,6 +60,14 @@ class NextCloud(object):
         """
         return ['%s.%s' % (x, self.hostname) for x in self.get_subdomains()]
 
+    def get_extauth_ednpoint(self):
+        """
+        Returns endpoint for extauth plugin for ejabberd
+        :return: 
+        """
+        domain = self.get_domains()[0]
+        return 'https://%s/index.php/apps/ojsxc/ajax/externalApi.php' % domain
+
     #
     # Configuration
     #
@@ -399,7 +407,7 @@ class NextCloud(object):
         except Exception as e:
             logger.debug('Exception when fetching NextCloud/vpnauth')
             self.audit.audit_exception(e)
-            raise errors.SetupError('Could not install NextCloud/user_vpnauth', cause=e)
+            raise errors.SetupError('Could not install NextCloud/vpnauth', cause=e)
 
     def install(self):
         """
