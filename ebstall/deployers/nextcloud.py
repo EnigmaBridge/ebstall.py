@@ -371,6 +371,7 @@ class NextCloud(object):
                 self._occ_set_config('ojsxc', 'externalServices', '|'.join(self.get_domains() + [self.hostname]))
                 self._occ_set_config('ojsxc', 'xmppDomain', self.hostname)
                 self._occ_set_config('ojsxc', 'xmppOverwrite', 'true')
+                self._occ_set_config('ojsxc', 'xmppStartMinimized', 'false')
 
             except Exception as e:
                 logger.debug('Exception in fetching NextCloud/ojsxc: %s' % e)
