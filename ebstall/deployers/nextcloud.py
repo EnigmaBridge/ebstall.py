@@ -142,21 +142,7 @@ class NextCloud(object):
         :param filename:
         :return:
         """
-        for attempt in range(attempts):
-            try:
-                r = requests.get(url, stream=True, timeout=15)
-                with open(filename, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f)
-
-                return filename
-
-            except Exception as e:
-                logger.debug('Exception when downloading: %s' % e)
-                if attempt + 1 >= attempts:
-                    logger.error('Could not download %s' % url)
-                    raise
-                else:
-                    time.sleep(1)
+        return util.download_file(url, filename, attempts)
 
     def _fix_privileges(self):
         """
@@ -211,7 +197,7 @@ class NextCloud(object):
 
     def _install(self, attempts=3):
         """
-        Downloads a new revision of the EJBCA from the provisioning server, if possible
+        Downloads NextCloud installation file from provisioning server.
         :return:
         """
         base_file = self.file_nextcloud
@@ -226,9 +212,9 @@ class NextCloud(object):
 
                     # Download archive.
                     archive_path = os.path.join(tmpdir, base_file)
-                    self._download_file(url, archive_path, attempts=3)
+                    self._download_file(url, archive_path, attempts=attempts)
 
-                    # Update
+                    # Install
                     self._deploy_downloaded(archive_path, tmpdir)
                     return 0
 
