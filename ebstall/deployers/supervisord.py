@@ -70,21 +70,7 @@ class Supervisord(object):
         :return:
         """
         # Write simple init script
-        initd_path = '/etc/systemd/system/supervisor.service'
-        if os.path.exists(initd_path):
-            os.remove(initd_path)
-            self.audit.audit_delete(initd_path)
-
-        with util.safe_open(initd_path, mode='w', chmod=0o664) as handle:
-            data = self._get_systemd_script()
-            handle.write(data)
-            handle.write('\n')
-        self.audit.audit_file_write(initd_path)
-
-        ret = self.sysconfig.exec_shell('sudo systemctl daemon-reload')
-        if ret != 0:
-            raise errors.SetupError('Error: Could not reload systemctl, code: %s\n' % ret)
-
+        self.sysconfig.install_systemd_svc('supervisor.service', script_data=self._get_systemd_script())
         return 0
 
     def _install_initd(self):
@@ -92,22 +78,7 @@ class Supervisord(object):
         Installs stat script in initd system
         :return:
         """
-        # Write simple init script
-        initd_path = '/etc/init.d/supervisor'
-        if os.path.exists(initd_path):
-            os.remove(initd_path)
-            self.audit.audit_delete(initd_path)
-
-        with util.safe_open(initd_path, mode='w', chmod=0o755) as handle:
-            data = self._get_init_script()
-            handle.write(data)
-            handle.write('\n')
-        self.audit.audit_file_write(initd_path)
-
-        ret = self.sysconfig.exec_shell('sudo chkconfig --add supervisor')
-        if ret != 0:
-            raise errors.SetupError('Error: Could not reload systemctl, code: %s\n' % ret)
-
+        self.sysconfig.install_initd_svc('supervisor', script_data=self._get_init_script())
         return 0
 
     def _install_startup(self):
