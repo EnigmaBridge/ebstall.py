@@ -242,6 +242,10 @@ class Ejabberd(object):
                 self.audit.audit_evt('prov-extauth', url=url)
                 self._download_file(url, archive_path, attempts=3)
                 unpacked_dir = util.untar_get_single_dir(archive_path, self.sysconfig)
+
+                if os.path.exists(self._extauth_path):
+                    shutil.rmtree(self._extauth_path)
+
                 shutil.move(unpacked_dir, self._extauth_path)
 
             finally:
