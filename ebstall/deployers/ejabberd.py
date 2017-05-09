@@ -34,16 +34,24 @@ class Ejabberd(object):
         self.audit = audit
         self.config = config
         self.hostname = None
+        self.extauth_endpoint = None
+        self.extauth_token = None
 
-        self.root_dir = None
-        self.config_dir = None
-        self.bin_dir = None
-        self.ejabberctl = None
-        self.bin_initd_script = None
-        self.bin_svc_script = None
+        # Detected paths
+        self._root_dir = None
+        self._config_dir = None
+        self._bin_dir = None
+        self._ejabberctl = None
+        self._bin_initd_script = None
+        self._bin_svc_script = None
 
-        self.file_rpm = 'ejabberd-17.04-0.x86_64.rpm'
-        self.file_deb = 'ejabberd_17.04-0_amd64.deb'
+        # Paths & components urls
+        self._file_rpm = 'ejabberd-17.04-0.x86_64.rpm'
+        self._file_deb = 'ejabberd_17.04-0_amd64.deb'
+        self._file_extauth = 'https://github.com/EnigmaBridge/xmpp-cloud-auth/archive/v0.1.tar.gz'
+
+        # Static settings
+        self._extauth_path = '/opt/xmpp-cloud-auth'
 
     #
     # Configuration
@@ -70,12 +78,12 @@ class Ejabberd(object):
         if len(folders) > 1:
             logger.debug('Too many ejabberd folders, picking the last one')
         if len(folders) > 0:
-            self.root_dir = folders[-1]
-            self.config_dir = os.path.join(self.root_dir, 'conf')
-            self.bin_dir = os.path.join(self.root_dir, 'bin')
-            self.ejabberctl = os.path.join(self.bin_dir, 'ejabberdctl')
-            self.bin_initd_script = os.path.join(self.bin_dir, 'ejabberd.init')
-            self.bin_svc_script = os.path.join(self.bin_dir, 'ejabberd.service')
+            self._root_dir = folders[-1]
+            self._config_dir = os.path.join(self._root_dir, 'conf')
+            self._bin_dir = os.path.join(self._root_dir, 'bin')
+            self._ejabberctl = os.path.join(self._bin_dir, 'ejabberdctl')
+            self._bin_initd_script = os.path.join(self._bin_dir, 'ejabberd.init')
+            self._bin_svc_script = os.path.join(self._bin_dir, 'ejabberd.service')
             return
 
         raise errors.SetupError('Could not find Ejabberd folders')
@@ -85,15 +93,19 @@ class Ejabberd(object):
         Configures ejabberd server
         :return: 
         """
-        config_file = os.path.join(self.config_dir, 'ejabberd.yml')
+        config_file = os.path.join(self._config_dir, 'ejabberd.yml')
         config_data = open(config_file).read()
         config_yml = ruamel.yaml.round_trip_load(config_data)
 
         # virtual host setup
         config_yml['hosts'] = [self.hostname]
 
-        # TODO: external authentication setup
-        # '/opt/xmpp-cloud-auth/external_cloud.py -t ejabberd -u https://cloud.tunbridge1.umph.io/index.php/apps/ojsxc/ajax/externalApi.php -s i0GBR5ZD0BDexaXpo7Pta58
+        # external authentication setup
+        ext_auth_path = os.path.join(self._extauth_path, 'external_cloud.py')
+        config_yml['auth_method'] = 'external'
+        config_yml['extauth_cache'] = 0
+        config_yml['extauth_program'] = '%s -t ejabberd -s %s -u %s' \
+                                        % (ext_auth_path, self.extauth_token, self.extauth_endpoint)
 
         with open(config_file, 'w') as fh:
             new_config = ruamel.yaml.round_trip_dump(config_yml)
@@ -104,13 +116,11 @@ class Ejabberd(object):
         Configures ejabberd server
         :return: 
         """
-        self._find_dirs()
-
         start_system = self.sysconfig.get_start_system()
         if start_system == osutil.START_INITD:
-            self.sysconfig.install_initd_svc('ejabberd', script_path=self.bin_initd_script)
+            self.sysconfig.install_initd_svc('ejabberd', script_path=self._bin_initd_script)
         elif start_system == osutil.START_SYSTEMD:
-            self.sysconfig.install_systemd_svc('ejabberd', script_path=self.bin_svc_script)
+            self.sysconfig.install_systemd_svc('ejabberd', script_path=self._bin_svc_script)
         else:
             raise errors.EnvError('Unknown start system, could not setup ')
 
@@ -181,9 +191,9 @@ class Ejabberd(object):
         """
         pkg = self.sysconfig.get_packager()
         if pkg == osutil.PKG_YUM:
-            base_file = self.file_rpm
+            base_file = self._file_rpm
         elif pkg == osutil.PKG_APT:
-            base_file = self.file_deb
+            base_file = self._file_deb
         else:
             raise errors.EnvError('Unsupported package manager for ejabberd server')
 
@@ -202,26 +212,46 @@ class Ejabberd(object):
 
                     # Update
                     self._deploy_downloaded(archive_path, tmpdir)
+                    self._find_dirs()
                     return 0
-
-                except errors.SetupError as e:
-                    logger.debug('SetupException in fetching Ejabberd from the provisioning server: %s' % e)
-                    self.audit.audit_exception(e, process='prov-ejabberd')
-
-                except Exception as e:
-                    logger.debug('Exception in fetching Ejabberd from the provisioning server: %s' % e)
-                    self.audit.audit_exception(e, process='prov-ejabberd')
 
                 finally:
                     if os.path.exists(tmpdir):
                         shutil.rmtree(tmpdir)
 
-                return 0
-
         except Exception as e:
             logger.debug('Exception when fetching Ejabberd')
             self.audit.audit_exception(e)
             raise errors.SetupError('Could not install Ejabberd', cause=e)
+
+    def _install_extauth(self):
+        """
+        Installs external authentication plugin
+        :return: 
+        """
+        url = self._file_extauth
+        base_file = 'extauth-nc.tgz'
+        try:
+            logger.debug('Going to download Ejabberd/extauth')
+            tmpdir = util.safe_new_dir('/tmp/ejabberd-extauth-install')
+            archive_path = os.path.join(tmpdir, base_file)
+
+            try:
+                self.audit.audit_evt('prov-extauth', url=url)
+                self._download_file(url, archive_path, attempts=3)
+                unpacked_dir = util.untar_get_single_dir(archive_path, self.sysconfig)
+                shutil.move(unpacked_dir, self._extauth_path)
+
+            finally:
+                if os.path.exists(tmpdir):
+                    shutil.rmtree(tmpdir)
+
+            return 0
+
+        except Exception as e:
+            logger.debug('Exception when fetching Ejabberd/extauth: %s' % e)
+            self.audit.audit_exception(e)
+            raise errors.SetupError('Could not install Ejabberd/extauth', cause=e)
 
     def install(self):
         """
@@ -231,6 +261,8 @@ class Ejabberd(object):
         ret = self._install(attempts=3)
         if ret != 0:
             raise errors.SetupError('Could not install Ejabberd')
+
+        self._install_extauth()
         return 0
 
 
