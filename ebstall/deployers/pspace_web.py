@@ -246,6 +246,28 @@ class PrivSpaceWeb(object):
         """
         return 0
 
+    #
+    # App config
+    #
+
+    def add_tile(self, name, icon, link):
+        """
+        Adds a new tile to the page
+        :param name: 
+        :param icon: 
+        :param link: 
+        :return: 
+        """
+        cmd = 'sudo -u %s php artisan tiles:add %s %s %s' \
+              % (self.user,
+                 util.escape_shell(name),
+                 util.escape_shell(icon),
+                 util.escape_shell(link))
+
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, cwd=self.webroot)
+        if ret != 0:
+            raise errors.SetupError('Could not add an application tile')
+
 
 
 
