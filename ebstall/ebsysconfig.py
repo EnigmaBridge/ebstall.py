@@ -567,6 +567,76 @@ class SysConfig(object):
         loaded, active = self.svc_status(svcmap=svcmap)
         return (loaded and active) == True
 
+    def install_systemd_svc(self, name, script_path=None, script_data=None):
+        """
+        Installs a systemd service desc to the system
+        :param name: 
+        :param script_path: 
+        :param script_data: 
+        :return: 
+        """
+        if self.get_start_system() != osutil.START_SYSTEMD:
+            raise errors.EnvError('Cannot install systemd service in non-systemd environment')
+
+        if script_data is None and script_path is None:
+            raise ValueError('Bot script path and data are None')
+
+        if script_data is None:
+            with open(script_path, 'r') as fh:
+                script_data = fh.read()
+
+        svc_path = os.path.join('/etc/systemd/system', name)
+        if os.path.exists(svc_path):
+            os.remove(svc_path)
+            self.audit.audit_delete(svc_path)
+
+        with util.safe_open(svc_path, mode='w', chmod=0o664) as handle:
+            handle.write(script_data)
+        self.audit.audit_file_write(svc_path)
+
+        # Set service to start after boot
+        ret = self.exec_shell('sudo systemctl daemon-reload')
+        if ret != 0:
+            raise errors.SetupError('Error: Could not reload systemctl, code: %s\n' % ret)
+        return 0
+
+    def install_initd_svc(self, name, script_path=None, script_data=None):
+        """
+        Installs service initd script to the system
+        :param name: 
+        :param script_path: 
+        :param script_data: 
+        :return: 
+        """
+        if self.get_start_system() != osutil.START_INITD:
+            raise errors.EnvError('Cannot install init.d service in non-init.d environment')
+
+        if script_data is None and script_path is None:
+            raise ValueError('Bot script path and data are None')
+
+        if script_data is None:
+            with open(script_path, 'r') as fh:
+                script_data = fh.read()
+
+        initd_path = os.path.join('/etc/init.d', name)
+        if os.path.exists(initd_path):
+            os.remove(initd_path)
+            self.audit.audit_delete(initd_path)
+
+        with util.safe_open(initd_path, mode='w', chmod=0o755) as handle:
+            handle.write(script_data)
+        self.audit.audit_file_write(initd_path)
+
+        ret = self.exec_shell('sudo chkconfig --add %s' % util.escape_shell(name))
+        if ret != 0:
+            raise errors.SetupError('Error: Could not reload systemctl, code: %s\n' % ret)
+
+        return 0
+
+    #
+    # On boot script
+    #
+
     def install_onboot_check(self, install_type=None):
         """
         Installs a service invocation after boot to reclaim domain again
@@ -585,23 +655,12 @@ class SysConfig(object):
         """
         # Write simple init script
         wrapper_path = self.get_wrapper_script(install_type=install_type)
-        initd_path = '/etc/systemd/system/enigmabridge-onboot.service'
-        if os.path.exists(initd_path):
-            os.remove(initd_path)
-            self.audit.audit_delete(initd_path)
+        data = self.get_onboot_init_systemd_script()
+        data = data.replace('{{ wrapper_path }}', wrapper_path)
 
-        with util.safe_open(initd_path, mode='w', chmod=0o664) as handle:
-            data = self.get_onboot_init_systemd_script()
-            data = data.replace('{{ wrapper_path }}', wrapper_path)
-            handle.write(data)
-            handle.write('\n')
-        self.audit.audit_file_write(initd_path)
-
-        # Set service to start after boot
-        ret = self.exec_shell('sudo systemctl daemon-reload')
+        ret = self.install_systemd_svc('enigmabridge-onboot.service', script_data=data)
         if ret != 0:
-            self.print_error('Error: Could not reload systemctl, code: %s\n' % ret)
-            return 2
+            return ret
 
         ret = self.exec_shell('sudo systemctl enable enigmabridge-onboot', shell=True)
         if ret != 0:
@@ -617,17 +676,9 @@ class SysConfig(object):
         """
         # Write simple init script
         wrapper_path = self.get_wrapper_script(install_type=install_type)
-        initd_path = '/etc/init.d/enigmabridge-onboot'
-        if os.path.exists(initd_path):
-            os.remove(initd_path)
-            self.audit.audit_delete(initd_path)
-
-        with util.safe_open(initd_path, mode='w', chmod=0o755) as handle:
-            data = self.get_onboot_init_script()
-            data = data.replace('{{ wrapper_path }}', wrapper_path)
-            handle.write(data)
-            handle.write('\n')
-        self.audit.audit_file_write(initd_path)
+        data = self.get_onboot_init_script()
+        data = data.replace('{{ wrapper_path }}', wrapper_path)
+        self.install_initd_svc('enigmabridge-onboot', script_data=data)
 
         # Set service to start after boot
         ret = self.exec_shell('sudo chkconfig --level=345 enigmabridge-onboot on', shell=True)
@@ -656,6 +707,10 @@ class SysConfig(object):
         resource_package = __name__
         resource_path = '/'.join(('consts', 'eb-systemd.sh'))
         return pkg_resources.resource_string(resource_package, resource_path)
+
+    #
+    # Packages
+    #
 
     def get_installed_packages(self):
         """
