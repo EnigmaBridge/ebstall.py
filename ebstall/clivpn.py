@@ -259,7 +259,7 @@ class VpnInstaller(Installer):
                                                   mysql=self.mysql, nginx=self.nginx, config=self.config)
         self.nextcloud = nextcloud.NextCloud(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
                                                   mysql=self.mysql, nginx=self.nginx, config=self.config)
-        self.ejabberd = None
+        self.ejabberd = ejabberd.Ejabberd(sysconfig=self.syscfg, audit=self.audit, write_dots=True, config=self.config)
 
         self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
@@ -383,8 +383,8 @@ class VpnInstaller(Installer):
         self.init_nginx()
         self.init_vpnauth()
         self.init_privatespace_web()
-        self.init_ejabberd()
         self.init_nextcloud()
+        self.init_ejabberd()
 
         self.init_nginx_start()
         self.init_vpn_start()
@@ -708,7 +708,15 @@ class VpnInstaller(Installer):
         Installs ejabberd
         :return: 
         """
-        pass
+        self.ejabberd.config = self.config
+        self.ejabberd.hostname = self.certificates.hostname
+        self.ejabberd.extauth_token = self.config.nextcloud_jsxc_token
+        self.ejabberd.extauth_endpoint = self.nextcloud.get_extauth_endpoint()
+
+        self.ejabberd.install()
+        self.ejabberd.configure()
+        self.ejabberd.enable()
+        self.ejabberd.switch(start=True)
 
     def init_nextcloud(self):
         """
