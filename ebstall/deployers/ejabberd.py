@@ -72,8 +72,10 @@ class Ejabberd(object):
         Finds the ejabberd root dir
         :return: 
         """
-        folders = [f for f in os.listdir('/opt') if not os.path.isfile(os.path.join('/opt', f))
-                   and f != '.' and f != '..' and f.startswith('ejabberd')]
+        base = '/opt'
+        folders = [os.path.join(base, f) for f in os.listdir(base)
+                   if not os.path.isfile(os.path.join(base, f)) and
+                   f != '.' and f != '..' and f.startswith('ejabberd')]
 
         if len(folders) > 1:
             logger.debug('Too many ejabberd folders, picking the last one')
