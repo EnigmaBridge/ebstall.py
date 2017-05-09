@@ -59,7 +59,7 @@ class NextCloud(object):
         """
         return ['%s.%s' % (x, self.hostname) for x in self.get_subdomains()]
 
-    def get_extauth_ednpoint(self):
+    def get_extauth_endpoint(self):
         """
         Returns endpoint for extauth plugin for ejabberd
         :return: 
