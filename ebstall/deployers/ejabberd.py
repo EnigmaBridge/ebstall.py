@@ -34,6 +34,13 @@ class Ejabberd(object):
         self.config = config
         self.hostname = None
 
+        self.root_dir = None
+        self.config_dir = None
+        self.bin_dir = None
+        self.ejabberctl = None
+        self.bin_initd_script = None
+        self.bin_svc_script = None
+
         self.file_rpm = 'ejabberd-17.04-0.x86_64.rpm'
         self.file_deb = 'ejabberd_17.04-0_amd64.deb'
 
@@ -51,19 +58,70 @@ class Ejabberd(object):
         key_path = os.path.join(cert_dir, letsencrypt.LE_PRIVATE_KEY)
         return cert_path, key_path
 
-    def _find_root(self):
+    def _find_dirs(self):
         """
         Finds the ejabberd root dir
         :return: 
         """
+        folders = [f for f in os.listdir('/opt') if not os.path.isfile(os.path.join('/opt', f))
+                   and f != '.' and f != '..' and f.startswith('ejabberd')]
+
+        if len(folders) > 1:
+            logger.debug('Too many ejabberd folders, picking the last one')
+        if len(folders) > 0:
+            self.root_dir = folders[-1]
+            self.config_dir = os.path.join(self.root_dir, 'conf')
+            self.bin_dir = os.path.join(self.root_dir, 'bin')
+            self.ejabberctl = os.path.join(self.bin_dir, 'ejabberdctl')
+            self.bin_initd_script = os.path.join(self.bin_dir, 'ejabberd.init')
+            self.bin_svc_script = os.path.join(self.bin_dir, 'ejabberd.service')
+            return
+
+        raise errors.SetupError('Could not find Ejabberd folders')
 
     def configure(self):
         """
         Configures ejabberd server
         :return: 
         """
+        self._find_dirs()
+
+        start_system = self.sysconfig.get_start_system()
+        if start_system == osutil.START_INITD:
+            self.sysconfig.install_initd_svc('ejabberd', script_path=self.bin_initd_script)
+        elif start_system == osutil.START_SYSTEMD:
+            self.sysconfig.install_systemd_svc('ejabberd', script_path=self.bin_svc_script)
+        else:
+            raise errors.EnvError('Unknown start system, could not setup ')
 
         pass
+
+    def get_svc_map(self):
+        """
+        Returns service naming for different start systems
+        :return:
+        """
+        return {
+            osutil.START_SYSTEMD: 'ejabberd.service',
+            osutil.START_INITD: 'ejabberd'
+        }
+
+    def enable(self):
+        """
+        Enables service after OS start
+        :return:
+        """
+        return self.sysconfig.enable_svc(self.get_svc_map())
+
+    def switch(self, start=None, stop=None, restart=None):
+        """
+        Starts/stops/restarts the service
+        :param start:
+        :param stop:
+        :param restart:
+        :return:
+        """
+        return self.sysconfig.switch_svc(self.get_svc_map(), start=start, stop=stop, restart=restart)
 
     #
     # Installation
