@@ -338,6 +338,8 @@ class NextCloud(object):
         new_cfg = '<?php\n $CONFIG = %s; \n' % out
         with open(cfg_path, 'w') as fw:
             fw.write(new_cfg)
+            
+        util.safely_remove(php_file)
 
     def _install_ojsxc(self):
         """
