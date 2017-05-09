@@ -273,6 +273,10 @@ class NextCloud(object):
         self.config.nextcloud_admin_pass = admin_pass
         self.audit.add_secrets(admin_pass)
 
+        # drop previous database before installation
+        self.mysql.drop_database('owncloud')
+
+        # install with OCC cmd
         cmd = 'maintenance:install ' \
               ' --database mysql --database-name owncloud  --database-user root --database-pass %s  ' \
               ' --admin-user admin --admin-pass %s' % (self.mysql.get_root_password(), admin_pass)
