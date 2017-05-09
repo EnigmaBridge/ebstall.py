@@ -166,7 +166,7 @@ class Ejabberd(object):
         cmd_exec = None
         pkg = self.sysconfig.get_packager()
         if pkg == osutil.PKG_YUM:
-            cmd_exec = 'sudo yum localinstall -y %s' % util.escape_shell(archive_path)
+            cmd_exec = 'sudo yum localinstall enablerepo=epel -y %s' % util.escape_shell(archive_path)
         elif pkg == osutil.PKG_APT:
             cmd_exec = 'sudo dpkg -i %s' % util.escape_shell(archive_path)
 
