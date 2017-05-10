@@ -1053,11 +1053,11 @@ def test_port_open_with_server(bind='0.0.0.0', host='127.0.0.1', port=80, timeou
 def test_port_routable(host='127.0.0.1', port=80, tcp=True, with_server=True, bind='0.0.0.0',
                        timeout=7, attempts=3, audit=None):
     """
-    Testing if EJBCA port is routable from the public IP address.
+    Testing if TCP/UDP port is routable from the public IP address.
     If server is True the echo server is spawned on the local server
     :param host:
     :param port:
-    :param tcp:
+    :param tcp: if True, TCP port is checked, UDP otherwise
     :param with_server: if true, the local server is bound to the socket to test the routability
     :param bind: address to bind local server to
     :param timeout:

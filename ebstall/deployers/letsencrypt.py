@@ -499,11 +499,7 @@ class LetsEncrypt(object):
         :param attempts:
         :return:
         """
-        server = util.EchoUpTCPServer(('0.0.0.0', self.PORT))
-        with server.start():
-            time.sleep(1.5)
-            return util.test_port_open(ip, self.PORT, timeout=timeout, attempts=attempts)
-        pass
+        return util.test_port_routable(ip, port=self.PORT, timeout=timeout, attempts=attempts)
 
     def print_error(self, msg):
         if self.print_output:
