@@ -55,6 +55,7 @@ class Ejabberd(object):
 
         # Static settings
         self._extauth_path = '/opt/xmpp-cloud-auth'
+        self._shared_group = 'Everybody'
 
     #
     # Configuration
@@ -169,6 +170,34 @@ class Ejabberd(object):
 
         os.chown(self._server_cert_path, self._user, self._group)
 
+    def _ctl_cmd(self, cmd, require_zero_result=True):
+        """
+        Calls ejabberctl command, returns ret, out, err
+        :param cmd: 
+        :return: 
+        """
+        self._find_dirs_if_needed()
+        cmd = '%s %s' % (self._ejabberctl, cmd)
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, cwd=self._root_dir)
+        if require_zero_result and ret != 0:
+            raise errors.SetupError('Ejabberctl call failed')
+
+        return ret, out, err
+
+    def _config_server(self):
+        """
+        Server configuration - rosters, groups.
+        :return: 
+        """
+        # Create shared roster group via ejabberctl.
+        cmd = 'srg_create %s %s %s %s %s' % (
+            util.escape_shell(self._shared_group),
+            util.escape_shell(self.hostname),
+            util.escape_shell(self._shared_group),
+            util.escape_shell(self._shared_group),
+            util.escape_shell(self._shared_group))
+        self._ctl_cmd(cmd, False)
+
     def configure(self):
         """
         Configures ejabberd server
@@ -183,6 +212,7 @@ class Ejabberd(object):
             raise errors.EnvError('Unknown start system, could not setup ')
 
         self._config()
+        self._config_server()
 
     def get_svc_map(self):
         """
