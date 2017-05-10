@@ -196,19 +196,34 @@ def check_permissions(filepath, mode, uid=0):
     return stat.S_IMODE(file_stat.st_mode) == mode and file_stat.st_uid == uid
 
 
-def chown(path, user, group=None, follow_symlinks=False):
+def chown(path, user=None, group=None, follow_symlinks=False):
     """
     Changes the ownership of the path.
+    https://docs.python.org/2/library/os.html
+    
     :param path:
-    :param user:
-    :param group:
+    :param user: string user name / numerical user id / None to leave as is
+    :param group: string group name / numerical group id / None to leave as is
     :return:
     """
-    if group is None:
-        group = user
+    if user is None and group is None:
+        return
 
-    uid = pwd.getpwnam(user).pw_uid
-    gid = grp.getgrnam(group).gr_gid
+    # User resolve
+    if user is None:
+        uid = -1
+    if isinstance(user, types.IntType):
+        uid = user
+    else:
+        uid = pwd.getpwnam(user).pw_uid
+
+    # Group resolve
+    if group is None:
+        gid = -1
+    if isinstance(group, types.IntType):
+        gid = group
+    else:
+        gid = grp.getgrnam(group).gr_gid
     os.chown(path, uid, gid)
 
 
