@@ -265,9 +265,50 @@ class SysConfig(object):
         if self.print_output:
             sys.stderr.write(msg)
 
+    def chown(self, path, user, group):
+        """
+        Simple chown
+        :param path: 
+        :param user: string user name / numerical user id / None to leave as is
+        :param group: string group name / numerical group id / None to leave as is
+        :return: 
+        """
+        util.chown(path, user, group)
+        self.audit.audit_chown(path, user, group, False)
+
+    def chown_recursive(self, path, user, group=None, throw_on_error=False):
+        """
+        Recursive owner change
+        Allows both numerical and string user / groups
+        :param path: 
+        :param user: string user name / numerical user id / None to leave as is
+        :param group: string group name / numerical group id / None to leave as is
+        :param throw_on_error: 
+        :return: 
+        """
+        def esc_user(x):
+            if isinstance(x, types.IntType):
+                return x
+            return util.escape_shell(x)
+
+        if group is None:
+            user_str = '%s' % esc_user(user)
+        else:
+            user_str = '%s:%s' % (esc_user(user), esc_user(group))
+
+        cmd = 'sudo chown %s -R %s' % (user_str, util.escape_shell(path))
+        ret, out, err = self.cli_cmd_sync(cmd)
+
+        self.audit.audit_chown(path, user, group, True)
+
+        if throw_on_error and ret != 0:
+            raise errors.SetupError('Owner change failed')
+        return ret
+
     #
     # Wrapper scripts
     #
+
     def get_wrapper_script(self, install_type=None):
         """
         Returns a wrapper script full path for the given install type
@@ -383,6 +424,7 @@ class SysConfig(object):
     #
     # OR detection / specific settings
     #
+
     def get_os(self):
         """
         Returns the OS detection result
