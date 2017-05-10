@@ -123,6 +123,7 @@ class Certificates(object):
             hostname = 'localhost'
 
         self.hostname = hostname
+        self.config.hostname = hostname
         if not self.check_hostname_domains_consistency():
             raise ValueError('Hostname is not consistent with domains, please, rather use set_domains()')
 

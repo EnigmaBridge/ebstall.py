@@ -285,6 +285,15 @@ class Config(object):
     def domains_svc(self, val):
         self.set_config('domains_svc', val)
 
+    # Primary hostname
+    @property
+    def hostname(self):
+        return self.get_config('hostname')
+
+    @hostname.setter
+    def hostname(self, val):
+        self.set_config('hostname', val)
+
     # EJBCA hostname
     @property
     def ejbca_hostname(self):

@@ -753,7 +753,7 @@ class Installer(InstallerBase):
                                      'key management system:'))
         time.sleep(0.5)
 
-        public_hostname = self.ejbca.hostname if self.domain_is_ok else self.cfg_get_raw_hostname()
+        public_hostname = self.certificates.hostname if self.domain_is_ok else self.cfg_get_raw_hostname()
         self.tprint('\nDownload p12 file: %s' % new_p12)
         self.tprint('  scp -i <your_Amazon_PEM_key> ec2-user@%s:%s .' % (public_hostname, new_p12))
         self.tprint_sensitive('  Key import password is: %s' % self.ejbca.superadmin_pass)
@@ -1802,6 +1802,7 @@ class Installer(InstallerBase):
 
         if ret == 0:
             Core.write_configuration(ejbca.config)
+
             ejbca.jboss_reload()
             self.le_renewed()
 
