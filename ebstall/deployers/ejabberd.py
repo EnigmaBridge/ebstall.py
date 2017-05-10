@@ -5,15 +5,12 @@ from __future__ import print_function
 import os
 import logging
 import ebstall.errors as errors
-import collections
-import re
-import requests
+import os
 import ebstall.util as util
 import types
 import ebstall.osutil as osutil
 import shutil
 import time
-import pkg_resources
 
 import ruamel.yaml
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
@@ -30,22 +27,26 @@ class Ejabberd(object):
     Nextcloud module
     """
 
-    def __init__(self, sysconfig=None, audit=None, write_dots=False, config=None,  *args, **kwargs):
+    def __init__(self, sysconfig=None, audit=None, write_dots=False, config=None, certificates=None, *args, **kwargs):
         self.sysconfig = sysconfig
         self.write_dots = write_dots
         self.audit = audit
         self.config = config
+        self.certificates = certificates
         self.hostname = None
         self.extauth_endpoint = None
         self.extauth_token = None
 
-        # Detected paths
+        # Detected paths & env
         self._root_dir = None
         self._config_dir = None
         self._bin_dir = None
         self._ejabberctl = None
         self._bin_initd_script = None
         self._bin_svc_script = None
+        self._server_cert_path = None
+        self._user = None
+        self._group = None
 
         # Paths & components urls
         self._file_rpm = 'ejabberd-17.04-0.x86_64.rpm'
@@ -64,6 +65,10 @@ class Ejabberd(object):
         Returns chain & key path for TLS or None, None
         :return: keychain path, privkey path
         """
+        hostname = self.hostname
+        if hostname is None and self.config is not None:
+            hostname = self.config.hostname
+
         cert_dir = os.path.join(letsencrypt.LE_CERT_PATH, self.hostname)
         cert_path = os.path.join(cert_dir, letsencrypt.LE_CA)
         key_path = os.path.join(cert_dir, letsencrypt.LE_PRIVATE_KEY)
@@ -88,9 +93,22 @@ class Ejabberd(object):
             self._ejabberctl = os.path.join(self._bin_dir, 'ejabberdctl')
             self._bin_initd_script = os.path.join(self._bin_dir, 'ejabberd.init')
             self._bin_svc_script = os.path.join(self._bin_dir, 'ejabberd.service')
+            self._server_cert_path = os.path.join(self._config_dir, 'server.pem')
+
+            cfg_stat = os.stat(self._config_dir)
+            self._user = cfg_stat.st_uid
+            self._group = cfg_stat.st_uid
             return
 
         raise errors.SetupError('Could not find Ejabberd folders')
+
+    def _find_dirs_if_needed(self):
+        """
+        If dirs not found yet - do it
+        :return: 
+        """
+        if self._root_dir is None:
+            self._find_dirs()
 
     def _config(self):
         """
@@ -116,12 +134,34 @@ class Ejabberd(object):
         ext_auth_path = os.path.join(self._extauth_path, 'external_cloud.py')
         config_yml['auth_method'] = DoubleQuotedScalarString('external')
         config_yml['extauth_cache'] = 0
-        config_yml['extauth_program'] = DoubleQuotedScalarString('%s -t ejabberd -s %s -u %s' \
-                                        % (ext_auth_path, self.extauth_token, self.extauth_endpoint))
+        config_yml['extauth_program'] = DoubleQuotedScalarString(
+            '%s -t ejabberd -s %s -u %s' % (ext_auth_path, self.extauth_token, self.extauth_endpoint))
 
         with open(config_file, 'w') as fh:
             new_config = ruamel.yaml.round_trip_dump(config_yml)
             fh.write(new_config)
+
+        self._create_cert_files()
+
+    def _create_cert_files(self):
+        """
+        Creates certificate for the XMPP server - using the certificate object, global letsencrypt certificate.
+        :return: 
+        """
+        self._find_dirs_if_needed()
+
+        cert_path, key_path = self._get_tls_paths()
+        cert_data = open(cert_path).read().strip()
+        key_data = open(key_path).read().strip()
+
+        util.safely_remove(self._server_cert_path)
+        with util.safe_open(self._server_cert_path, 'w', 0o600) as fh:
+            fh.write('%s\n%s\n' % (cert_data, key_data))
+
+        if self._user is None:
+            raise errors.InvalidState('Unknown user / group')
+
+        os.chown(self._server_cert_path, self._user, self._group)
 
     def configure(self):
         """
@@ -164,6 +204,16 @@ class Ejabberd(object):
         :return:
         """
         return self.sysconfig.switch_svc(self.get_svc_map(), start=start, stop=stop, restart=restart)
+
+    def on_cert_renewed(self):
+        """
+        Handles certificate renewal
+        :return: 
+        """
+        self.hostname = self.config.hostname
+        self.switch(stop=True)
+        self._create_cert_files()
+        self.switch(start=True)
 
     #
     # Installation

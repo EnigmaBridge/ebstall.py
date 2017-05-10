@@ -707,8 +707,9 @@ class VpnInstaller(Installer):
         :return: 
         """
         Installer.le_renewed(self)
-        self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
+
         self.nginx.switch(restart=True)
+        self.ejabberd.on_cert_renewed()
 
     def init_ejabberd(self):
         """
