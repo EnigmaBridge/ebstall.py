@@ -565,6 +565,15 @@ class Config(object):
     def nextcloud_jsxc_token(self, val):
         self.set_config('nextcloud_jsxc_token', val)
 
+    # Was Nextcloud installed
+    @property
+    def nextcloud_installed(self):
+        return self.get_config('nextcloud_installed')
+
+    @nextcloud_installed.setter
+    def nextcloud_installed(self, val):
+        self.set_config('nextcloud_installed', val)
+
 
 class EBSettings(object):
     """

@@ -390,8 +390,10 @@ class VpnInstaller(Installer):
         self.init_nginx()
         self.init_vpnauth()
         self.init_privatespace_web()
-        self.init_nextcloud()
-        self.init_ejabberd()
+
+        if self.is_cloud_enabled():
+            self.init_nextcloud()
+            self.init_ejabberd()
 
         self.init_nginx_start()
         self.init_vpn_start()
@@ -737,6 +739,7 @@ class VpnInstaller(Installer):
 
         self.nextcloud.install()
         self.nextcloud.configure()
+        self.config.nextcloud_installed = True
 
         self.pspace_web.add_tile('Cloud', 'fa-cloud', self.nextcloud.get_link())
         Core.write_configuration(self.config)
@@ -746,7 +749,10 @@ class VpnInstaller(Installer):
         Clud installation enabled
         :return: 
         """
-        return self.args.cloud
+        if self.args.cloud:
+            return True
+        if self.config is not None:
+            return self.config.nextcloud_installed
 
     def init_le_subdomains(self):
         """
@@ -755,12 +761,13 @@ class VpnInstaller(Installer):
         """
         Installer.init_le_subdomains(self)
 
-        self.nextcloud.config = self.config
-        self.nextcloud.hostname = self.certificates.hostname
+        if self.is_cloud_enabled():
+            self.nextcloud.config = self.config
+            self.nextcloud.hostname = self.certificates.hostname
 
-        subs = self.nextcloud.get_domains()
-        self.certificates.add_subdomains(subs)
-        self.certificates.register_subdomains()
+            subs = self.nextcloud.get_domains()
+            self.certificates.add_subdomains(subs)
+            self.certificates.register_subdomains()
 
 
 def main():
