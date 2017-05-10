@@ -726,7 +726,6 @@ class VpnInstaller(Installer):
         self.ejabberd.install()
         self.ejabberd.configure()
         self.ejabberd.enable()
-        self.ejabberd.switch(start=True)
 
     def init_nextcloud(self):
         """

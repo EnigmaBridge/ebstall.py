@@ -216,6 +216,11 @@ class Ejabberd(object):
             raise errors.EnvError('Unknown start system, could not setup ')
 
         self._config()
+
+        # Configuring via cmdline - we need it running
+        self.switch(start=True)
+
+        time.sleep(1)
         self._config_server()
 
     def get_svc_map(self):
