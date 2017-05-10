@@ -90,6 +90,13 @@ To keep the installer and packages up to date we employ several mechanisms for u
 
 - Updating EJBCA via our `deployment server <https://privatespace-deploy.enigmabridge.com/ejbca/index.json>`__
 
+System packages
+===============
+
+Ejabberd not in repos, using RPMs:
+https://www.process-one.net/downloads/downloads-action.php?file=/ejabberd/17.04/ejabberd-17.04-0.x86_64.rpm
+
+
 Troubleshooting
 ===============
 
