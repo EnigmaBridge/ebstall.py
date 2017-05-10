@@ -13,7 +13,7 @@ import shutil
 import time
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString, SingleQuotedScalarString
 
 from ebstall.consts import PROVISIONING_SERVERS
 from ebstall.deployers import letsencrypt
@@ -134,7 +134,7 @@ class Ejabberd(object):
 
         # external authentication setup
         ext_auth_path = os.path.join(self._extauth_path, 'external_cloud.py')
-        config_yml['auth_method'] = DoubleQuotedScalarString('external')
+        config_yml['auth_method'] = SingleQuotedScalarString('external')
         config_yml['extauth_cache'] = 0
         config_yml['extauth_program'] = DoubleQuotedScalarString(
             '%s -t ejabberd -s %s -u %s' % (ext_auth_path, self.extauth_token, self.extauth_endpoint))
