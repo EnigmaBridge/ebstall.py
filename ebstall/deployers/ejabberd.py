@@ -115,6 +115,7 @@ class Ejabberd(object):
         Configures ejabberd server
         :return: 
         """
+        self._find_dirs_if_needed()
         config_file = os.path.join(self._config_dir, 'ejabberd.yml')
         config_file_backup = os.path.join(self._config_dir, 'ejabberd.yml.backup')
 
@@ -136,6 +137,11 @@ class Ejabberd(object):
         config_yml['extauth_cache'] = 0
         config_yml['extauth_program'] = DoubleQuotedScalarString(
             '%s -t ejabberd -s %s -u %s' % (ext_auth_path, self.extauth_token, self.extauth_endpoint))
+
+        # add admin user - from NextCloud
+        if self.hostname is None and self.config is not None:
+            self.hostname = self.config.hostname
+        util.setpath(config_yml, ['acl', 'admin', 'user'], [DoubleQuotedScalarString('admin@%s' % self.hostname)])
 
         with open(config_file, 'w') as fh:
             new_config = ruamel.yaml.round_trip_dump(config_yml)
