@@ -198,6 +198,9 @@ class Ejabberd(object):
             util.escape_shell(self._shared_group))
         self._ctl_cmd(cmd, False)
 
+        cmd = 'srg_user_add \'@all@\' '' %s %s' % (self._shared_group, self.hostname)
+        self._ctl_cmd(cmd, False)
+
     def configure(self):
         """
         Configures ejabberd server
