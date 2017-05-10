@@ -819,6 +819,36 @@ def defvalkey(js, key, default=None, take_none=True):
     return js[key]
 
 
+def setpath(js, path, val, new_dict=lambda: dict()):
+    """
+    Sets value to the map JS according to arbitrarily deep kep  
+    :param js: object settings to set value to
+    :param path: simple key or array of keys 
+    :param val: value to set to the key path 
+    :param new_dict: lambda returning a new dictionary when needed to create a new sub-key
+    :return: 
+    """
+    if js is None:
+        js = new_dict()
+
+    if not isinstance(path, types.ListType):
+        path = [path]
+
+    path_len = len(path)
+    fdict = js
+
+    for idx,key in enumerate(path):
+        if idx + 1 == path_len:
+            break
+
+        if key not in fdict:
+            fdict[key] = new_dict()
+        fdict = fdict[key]
+
+    fdict[path[-1]] = val
+    return js
+
+
 def strip(x):
     """
     Strips string x (if non empty) or each string in x if it is a list
