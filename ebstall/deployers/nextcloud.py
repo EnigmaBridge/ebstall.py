@@ -42,7 +42,7 @@ class NextCloud(object):
         self.hostname = None
 
         self._file_nextcloud = 'nextcloud-11.0.3.zip'
-        self._file_ojsxc = 'https://github.com/EnigmaBridge/jsxc-nc/archive/v3.2.0-2.tar.gz'
+        self._file_ojsxc = 'https://github.com/EnigmaBridge/jsxc-nc/archive/v3.2.0-2a.tar.gz'
         self._file_vpnauth = 'https://github.com/EnigmaBridge/user_vpnauth/archive/v1.0.0.tar.gz'
 
     def get_subdomains(self):
