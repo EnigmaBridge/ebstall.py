@@ -130,7 +130,6 @@ class VpnInstaller(Installer):
         self.load_base_settings()
         self.init_load_settings()
         self.init_services()
-        self.init_services()
         self.ejbca.update_installation()
 
     def init_test_ports_pre_install_res(self, host=None, *args, **kwargs):
@@ -241,13 +240,13 @@ class VpnInstaller(Installer):
         self.tprint('\n\nPlease contact us at support@enigmabridge.com or '
                     'https://enigmabridge.freshdesk.com/helpdesk/tickets/new if you need assistance.')
 
-    def init_main_try(self):
+    def init_services(self):
         """
-        Main installer block, called from the global try:
-        :return:
+        Services initialization - instantiates basic services
+        :return: 
         """
-        self.init_config_new_install()
-        self.init_services()
+        Installer.init_services(self)
+
         self.ovpn = openvpn.OpenVpn(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.dnsmasq = dnsmasq.DnsMasq(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
         self.nginx = nginx.Nginx(sysconfig=self.syscfg, audit=self.audit, write_dots=True)
@@ -258,11 +257,19 @@ class VpnInstaller(Installer):
         self.pspace_web = pspace_web.PrivSpaceWeb(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
                                                   mysql=self.mysql, nginx=self.nginx, config=self.config)
         self.nextcloud = nextcloud.NextCloud(sysconfig=self.syscfg, audit=self.audit, write_dots=True,
-                                                  mysql=self.mysql, nginx=self.nginx, config=self.config)
+                                             mysql=self.mysql, nginx=self.nginx, config=self.config)
         self.ejabberd = ejabberd.Ejabberd(sysconfig=self.syscfg, audit=self.audit, write_dots=True, config=self.config)
 
-        self.ejbca.do_vpn = True
         self.ejbca.openvpn = self.ovpn
+
+    def init_main_try(self):
+        """
+        Main installer block, called from the global try:
+        :return:
+        """
+        self.init_config_new_install()
+        self.init_services()
+        self.ejbca.do_vpn = True
 
         # Get registration options and choose one - network call.
         self.reg_svc.load_auth_types()
