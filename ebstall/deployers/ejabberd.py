@@ -12,9 +12,11 @@ import ebstall.util as util
 import types
 import ebstall.osutil as osutil
 import shutil
-import ruamel.yaml
 import time
 import pkg_resources
+
+import ruamel.yaml
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from ebstall.consts import PROVISIONING_SERVERS
 from ebstall.deployers import letsencrypt
@@ -105,17 +107,17 @@ class Ejabberd(object):
             shutil.copy(config_file, config_file_backup)
 
         config_data = open(config_file).read()
-        config_yml = ruamel.yaml.round_trip_load(config_data)
+        config_yml = ruamel.yaml.round_trip_load(config_data, preserve_quotes=True)
 
         # virtual host setup
-        config_yml['hosts'] = [self.hostname]
+        config_yml['hosts'] = [DoubleQuotedScalarString(self.hostname)]
 
         # external authentication setup
         ext_auth_path = os.path.join(self._extauth_path, 'external_cloud.py')
-        config_yml['auth_method'] = 'external'
+        config_yml['auth_method'] = DoubleQuotedScalarString('external')
         config_yml['extauth_cache'] = 0
-        config_yml['extauth_program'] = '%s -t ejabberd -s %s -u %s' \
-                                        % (ext_auth_path, self.extauth_token, self.extauth_endpoint)
+        config_yml['extauth_program'] = DoubleQuotedScalarString('%s -t ejabberd -s %s -u %s' \
+                                        % (ext_auth_path, self.extauth_token, self.extauth_endpoint))
 
         with open(config_file, 'w') as fh:
             new_config = ruamel.yaml.round_trip_dump(config_yml)
