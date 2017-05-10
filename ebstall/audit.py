@@ -478,6 +478,44 @@ class AuditManager(object):
         self._kwargs_to_log(log, **kwargs)
         self._log(log)
 
+    def audit_chmod(self, fname, privs=None, recursive=None, *args, **kwargs):
+        """
+        Change of permissions
+        :param fname:
+        :param data:
+        :return:
+        """
+        def oct_hlp(x):
+            if x is None:
+                return None
+            if isinstance(x, types.IntType):
+                return oct(x)
+            return self._valueize(x)
+
+        log = self._newlog('chmod')
+        log['name'] = self._valueize(fname)
+        log['chmod'] = oct_hlp(privs)
+        log['recursive'] = self._valueize(recursive)
+
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
+    def audit_chown(self, fname, user=None, group=None, recursive=None, *args, **kwargs):
+        """
+        Change of owner
+        :param fname:
+        :param data:
+        :return:
+        """
+        log = self._newlog('chmod')
+        log['name'] = self._valueize(fname)
+        log['user'] = self._valueize(user)
+        log['group'] = self._valueize(group)
+        log['recursive'] = self._valueize(recursive)
+
+        self._kwargs_to_log(log, **kwargs)
+        self._log(log)
+
     def audit_file_read(self, fname, data=None, *args, **kwargs):
         """
         File read
