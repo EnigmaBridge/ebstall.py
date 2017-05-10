@@ -97,7 +97,7 @@ class Ejabberd(object):
 
             cfg_stat = os.stat(self._config_dir)
             self._user = cfg_stat.st_uid
-            self._group = cfg_stat.st_uid
+            self._group = cfg_stat.st_gid
             return
 
         raise errors.SetupError('Could not find Ejabberd folders')
