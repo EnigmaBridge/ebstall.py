@@ -28,6 +28,7 @@ class Certbot(object):
         Installs itself
         :return: installer return code
         """
-        cmd_exec = 'sudo pip install --upgrade certbot certbot-nginx'
-        return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
+        # cmd_exec = 'sudo pip install --upgrade certbot-nginx certbot==0.13.0'
+        # return self.sysconfig.exec_shell(cmd_exec, write_dots=self.write_dots)
+        pass
 
