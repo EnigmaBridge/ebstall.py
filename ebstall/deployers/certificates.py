@@ -88,6 +88,8 @@ class Certificates(object):
         """
         if self.subdomains is None:
             self.subdomains = []
+        if subdomains is None:
+            return
         if not isinstance(subdomains, types.ListType):
             subdomains = [subdomains]
         self.subdomains = sorted(list(set(list(subdomains))))
@@ -100,6 +102,8 @@ class Certificates(object):
         """
         if self.subdomains is None:
             self.subdomains = []
+        if subdomains is None:
+            return
         if not isinstance(subdomains, types.ListType):
             subdomains = [subdomains]
 
@@ -160,6 +164,7 @@ class Certificates(object):
         """
         if self.subdomains is None or len(self.subdomains) == 0:
             logger.debug('Subdomain registration skipped - no subdomains')
+            return
         logger.debug('Going to register subdomains: %s' % (', '.join(self.subdomains)))
         self.reg_svc.register_subdomains(self.subdomains)
 
