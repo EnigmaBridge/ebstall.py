@@ -212,7 +212,7 @@ def chown(path, user=None, group=None, follow_symlinks=False):
     # User resolve
     if user is None:
         uid = -1
-    if isinstance(user, types.IntType):
+    elif isinstance(user, types.IntType):
         uid = user
     else:
         uid = pwd.getpwnam(user).pw_uid
@@ -220,7 +220,7 @@ def chown(path, user=None, group=None, follow_symlinks=False):
     # Group resolve
     if group is None:
         gid = -1
-    if isinstance(group, types.IntType):
+    elif isinstance(group, types.IntType):
         gid = group
     else:
         gid = grp.getgrnam(group).gr_gid
