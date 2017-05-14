@@ -23,14 +23,15 @@ install_requires = [
     'humanfriendly>=2.1',
     'six',
     'future',
-    'certbot',
+    'certbot==0.13.0',
     'certbot-external-auth>=0.0.5',
     'SQLAlchemy',
     'shellescape',
     'jbossply',
     'nginxparser_eb',
     'yaql',
-    'ruamel.yaml'
+    'ruamel.yaml',
+    'configargparse==0.11.0'  # certbot-configargparse bug
 ]
 
 # env markers in extras_require cause problems with older pip: #517
