@@ -1757,7 +1757,8 @@ class Installer(InstallerBase):
             ejbca = self.ejbca
 
         self.tprint('\nInstalling LetsEncrypt certificate for: %s' % (', '.join(certificates.domains)))
-        self.tprint('\n .. subdomains: %s' % (', '.join(certificates.subdomains)))
+        if certificates.subdomains is not None:
+            self.tprint('\n .. subdomains: %s' % (', '.join(certificates.subdomains)))
         ret = certificates.le_enroll()
 
         if ret == 0:

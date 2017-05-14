@@ -36,7 +36,7 @@ class Certificates(object):
         self.lets_encrypt = None
         self.hostname = None
         self.domains = None
-        self.subdomains = None
+        self.subdomains = []
 
     def is_staging(self):
         """
@@ -86,6 +86,8 @@ class Certificates(object):
         :param subdomains: 
         :return: 
         """
+        if self.subdomains is None:
+            self.subdomains = []
         if not isinstance(subdomains, types.ListType):
             subdomains = [subdomains]
         self.subdomains = sorted(list(set(list(subdomains))))
@@ -156,6 +158,8 @@ class Certificates(object):
         Register subdomains in provider
         :return: 
         """
+        if self.subdomains is None or len(self.subdomains) == 0:
+            logger.debug('Subdomain registration skipped - no subdomains')
         logger.debug('Going to register subdomains: %s' % (', '.join(self.subdomains)))
         self.reg_svc.register_subdomains(self.subdomains)
 

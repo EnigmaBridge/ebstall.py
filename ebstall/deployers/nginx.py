@@ -69,6 +69,8 @@ class Nginx(object):
         :param subdomains: 
         :return: 
         """
+        if subdomains is None:
+            return
         if not isinstance(subdomains, types.ListType):
             subdomains = [subdomains]
         self.le_domains += subdomains
