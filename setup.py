@@ -24,7 +24,7 @@ install_requires = [
     'six',
     'future',
     'certbot==0.13.0',
-    'certbot-nginx==0.13.0'
+    'certbot-nginx==0.13.0',
     'certbot-external-auth>=0.0.5',
     'configargparse==0.11.0',  # certbot-configargparse bug
     'SQLAlchemy',
