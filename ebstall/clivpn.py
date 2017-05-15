@@ -39,6 +39,8 @@ class VpnInstaller(Installer):
         :return:
         """
         Installer.__init__(self, *args, **kwargs)
+        self.full_reinstall = True
+
         self.ovpn = None
         self.dnsmasq = None
         self.nginx = None
@@ -198,7 +200,7 @@ class VpnInstaller(Installer):
 
         self.tprint('')
 
-    def init_show_p12_info(self, new_p12, new_config):
+    def init_show_p12_info(self, new_p12, new_config=None):
         """
         Informs user where to get P12 file to log into EJBCA admin panel.
         :return:
@@ -262,11 +264,24 @@ class VpnInstaller(Installer):
 
         self.ejbca.openvpn = self.ovpn
 
+    def init_prepare_install(self):
+        """
+        Disable interfering services
+        :return: 
+        """
+        Installer.init_prepare_install(self)
+
+        # If VPN server was running, stop it now - easier port testing, minimal interference.
+        self.ovpn.switch(stop=True)
+        self.dnsmasq.switch(stop=True)
+        self.nginx.switch(stop=True)
+
     def init_main_try(self):
         """
         Main installer block, called from the global try:
         :return:
         """
+        self.full_reinstall = True
         self.init_config_new_install()
         self.init_services()
         self.ejbca.do_vpn = True
@@ -278,11 +293,6 @@ class VpnInstaller(Installer):
         res = self.init_prompt_user()
         if res != 0:
             return self.return_code(res)
-
-        # If VPN server was running, stop it now - easier port testing, minimal interference.
-        self.ovpn.switch(stop=True)
-        self.dnsmasq.switch(stop=True)
-        self.nginx.switch(stop=True)
 
         # Disable services which may interfere installation.
         self.init_prepare_install()
@@ -376,6 +386,15 @@ class VpnInstaller(Installer):
         # VPN setup - create CA, profiles, server keys, CRL
         self.init_ejbca_vpn()
 
+        # phase 2 - post EJBCA install
+        self.config = new_config
+        self.init_main_phase_2_try()
+
+    def init_main_phase_2_try(self):
+        """
+        Next phase of the installation - post EJBCA install.
+        :return: 
+        """
         # LetsEncrypt enrollment
         self.init_le_subdomains()
         res = self.init_le_install()
@@ -405,10 +424,11 @@ class VpnInstaller(Installer):
 
         # Finalize, P12 file & final instructions
         new_p12 = self.ejbca.copy_p12_file()
-        self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
+        self.init_show_p12_info(new_p12=new_p12)
 
         # Generate VPN client for the admin. openvpn link will be emailed
-        self.init_create_vpn_users()
+        if self.full_reinstall:
+            self.init_create_vpn_users()
 
         # Install to the OS - cron job & on boot service
         res = self.init_install_os_hooks()
@@ -475,7 +495,7 @@ class VpnInstaller(Installer):
         if ret != 0:
             raise errors.SetupError('Cannot install openvpn package')
 
-        ret = self.ovpn.generate_dh_group()
+        ret = self.ovpn.generate_dh_group(self.full_reinstall)
         if ret != 0:
             raise errors.SetupError('Cannot generate a new DH group for VPN server')
 
@@ -702,6 +722,17 @@ class VpnInstaller(Installer):
         self.syscfg.install_cron_renew(install_type=install_type)
         self.syscfg.install_cron_update(install_type=install_type)
         return 0
+
+    def reinstall_soft_body(self):
+        """
+        Reinstallation after initial checks
+        :return: 
+        """
+        self.vpn_keys = self.ejbca.vpn_get_server_cert_paths()
+        self.vpn_crl = self.ejbca.vpn_get_crl_path()
+        self.vpn_client_config = self.ejbca.vpn_get_vpn_client_config_path()
+        self.full_reinstall = False
+        return self.init_main_phase_2_try()
 
     def le_renewed(self):
         """

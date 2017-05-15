@@ -1003,7 +1003,17 @@ class Installer(InstallerBase):
         if res != 0:
             return self.return_code(res)
 
-        # LetsEncrypt enrollment
+        # phase 2 - post EJBCA install
+        self.config = new_config
+        self.init_main_phase_2_try()
+
+    def init_main_phase_2_try(self):
+        """
+        Next phase of the installation - post EJBCA install.
+        :return: 
+        """
+
+        # LetsEncrypt enrollment - hook here with upgrade
         self.init_le_subdomains()
         res = self.init_le_install()
         if res != 0:
@@ -1021,7 +1031,7 @@ class Installer(InstallerBase):
 
         # Finalize, P12 file & final instructions
         new_p12 = self.ejbca.copy_p12_file()
-        self.init_show_p12_info(new_p12=new_p12, new_config=new_config)
+        self.init_show_p12_info(new_p12=new_p12)
 
         # Test if main admin port of EJBCA is reachable.
         self.init_test_ejbca_ports_reachability()
@@ -1257,7 +1267,7 @@ class Installer(InstallerBase):
 
     def init_domains_check(self, reg_svc=None):
         """
-        Diplays domains registered for this host, checks if the domain registration went well.
+        Displays domains registered for this host, checks if the domain registration went well.
         :param reg_svc:
         :return:
         """
@@ -1410,53 +1420,121 @@ class Installer(InstallerBase):
         self.updater.update()
         return 0
 
+    def use_installation(self):
+        """
+        Use existing installation for next steps.
+         - load base settings, read configuration, check configuration
+        :return: 
+        """
+        self.audit.set_flush_enabled(True)
+        self.load_base_settings()
+        self.config = Core.read_configuration()
+        if self.config is None or not self.config.has_nonempty_config():
+            self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
+            self.tprint(' Cannot continue. Have you run init already?\n')
+            return self.return_code(1)
+
+        domains = self.config.domains
+        if domains is None or not isinstance(domains, types.ListType) or len(domains) == 0:
+            self.tprint('\nError! No domains found in the configuration.')
+            self.tprint(' Cannot continue. Did init complete successfully?')
+            return self.return_code(1)
+        return 0
+
+    def do_reinstall_soft(self, arg):
+        """
+        Soft Reinstall - preserving EJBCA identities 
+        :param arg: 
+        :return: 
+        """
+        # noinspection PyBroadException
+        try:
+            self.init_started_time = time.time()
+            if not self.check_root() or not self.check_pid():
+                return self.return_code(1)
+
+            self.use_installation()
+            self.init_services()
+
+            ret = self.reinstall_soft_main()
+            return self.return_code(ret)
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            self.audit.audit_exception(e)
+            self.init_exception = str(e)
+            self.tprint('Exception in the installation process, cannot continue.')
+            self.install_analysis_send()
+
+        return self.return_code(1)
+
+    def reinstall_soft_main(self):
+        """
+        Main reinstall block
+        :return: 
+        """
+
+        ret = self.reg_svc.load_identity()
+        if ret != 0:
+            self.tprint('\nError! Could not load identity (key-pair is missing)')
+            return self.return_code(3)
+
+        # Get registration options and choose one - network call.
+        self.reg_svc.load_auth_types()
+
+        # Disable services which may interfere installation.
+        self.init_prepare_install()
+
+        # Update the OS.
+        if not self.args.no_os_update:
+            self.update_main_try()
+
+        # Preferred LE method? If set...
+        self.last_is_vpc = False
+
+        # Lets encrypt reachability test, if preferred method is DNS - do only one attempt.
+        # We test this to detect VPC also. If 443 is reachable, we are not in VPC
+        res, args_le_preferred_method = self.init_le_vpc_check(self.get_args_le_verification(),
+                                                               self.get_args_vpc(), reg_svc=self.reg_svc)
+        if res != 0:
+            return self.return_code(res)
+
+        self.certificates.load_domains_config()
+        self.ejbca.load_from_config()
+        self.ejbca.set_domains(self.config.ejbca_domains)
+        self.ejbca.reg_svc = self.reg_svc
+
+        return self.reinstall_soft_body()
+
+    def reinstall_soft_body(self):
+        """
+        Reinstallation after initial checks
+        :return: 
+        """
+        return self.init_main_phase_2_try()
+
     def do_renew(self, arg):
         """Renews LetsEncrypt certificates used for the JBoss"""
         if not self.check_root() or not self.check_pid():
             return self.return_code(1)
 
-        self.audit.set_flush_enabled(True)
-        self.load_base_settings()
-        config = Core.read_configuration()
-        if config is None or not config.has_nonempty_config():
-            self.tprint('\nError! Enigma config file not found %s' % (Core.get_config_file_path()))
-            self.tprint(' Cannot continue. Have you run init already?\n')
-            return self.return_code(1)
-
-        domains = config.domains
-        if domains is None or not isinstance(domains, types.ListType) or len(domains) == 0:
-            self.tprint('\nError! No domains found in the configuration.')
-            self.tprint(' Cannot continue. Did init complete successfully?')
-            return self.return_code(1)
+        ret = self.use_installation()
+        if ret != 0:
+            return self.return_code(ret)
 
         # Argument override / reconfiguration
-        args_le_preferred_method = self.get_args_le_verification()
-        args_is_vpc = self.get_args_vpc()
-
-        if args_le_preferred_method is not None and args_le_preferred_method != config.le_preferred_verification:
-            self.tprint('\nOverriding LetsEncrypt preferred method, settings: %s, new: %s'
-                        % (config.le_preferred_verification, args_le_preferred_method))
-            config.le_preferred_verification = args_le_preferred_method
-
-        if args_is_vpc is not None and args_is_vpc != config.is_private_network:
-            self.tprint('\nOverriding is private network settings, settings.private: %s, new.private: %s'
-                        % (config.is_private_network, args_is_vpc))
-            config.is_private_network = args_is_vpc == 1
-
-        if config.is_private_network \
-                and args_le_preferred_method is not None \
-                and args_le_preferred_method != LE_VERIFY_DNS:
-            self.tprint('\nError, conflicting settings: VPC=1, LE method != DNS')
-            return self.return_code(1)
+        ret = self.le_check_method()
+        if ret != 0:
+            return self.return_code(ret)
 
         # Update configuration
-        Core.write_configuration(config)
+        Core.write_configuration(self.config)
 
         # If there is no hostname, enrollment probably failed.
         eb_cfg = Core.get_default_eb_config()
 
         # Registration - for domain updates. Identity should already exist.
-        reg_svc = Registration(email=config.email, eb_config=eb_cfg, config=config, debug=self.args.debug,
+        reg_svc = Registration(email=self.config.email, eb_config=eb_cfg, config=self.config, debug=self.args.debug,
                                audit=self.audit, sysconfig=self.syscfg)
         ret = reg_svc.load_identity()
         if ret != 0:
@@ -1464,11 +1542,10 @@ class Installer(InstallerBase):
                 return self.return_code(3)
 
         # services init
-        self.config = config
         self.init_services()
 
         self.certificates.load_domains_config()
-        self.ejbca.set_domains(config.ejbca_domains)
+        self.ejbca.set_domains(self.config.ejbca_domains)
         self.ejbca.reg_svc = reg_svc
 
         ejbca_host = self.certificates.hostname
@@ -1476,8 +1553,8 @@ class Installer(InstallerBase):
         le_test = LetsEncrypt(staging=self.args.le_staging, audit=self.audit, sysconfig=self.syscfg)
         enroll_new_cert = ejbca_host is None or len(ejbca_host) == 0 or ejbca_host == 'localhost'
         if enroll_new_cert:
-            self.certificates.set_domains(domains)
-            self.ejbca.set_domains(domains)
+            self.certificates.set_domains(self.config.domains)
+            self.ejbca.set_domains(self.config.domains)
             ejbca_host = self.ejbca.hostname
 
         if not enroll_new_cert:
@@ -1485,11 +1562,11 @@ class Installer(InstallerBase):
 
         # Test LetsEncrypt port - only if in non-private network
         require_443_test = True
-        if config.is_private_network:
+        if self.config.is_private_network:
             require_443_test = False
             self.tprint('\nInstallation done on private network, skipping TCP port 443 check')
 
-        if config.get_le_method() == LE_VERIFY_DNS:
+        if self.config.get_le_method() == LE_VERIFY_DNS:
             require_443_test = False
             self.tprint('\nPreferred LetsEncrypt verification method is DNS, skipping TCP port 443 check')
 
@@ -1692,6 +1769,32 @@ class Installer(InstallerBase):
     #
     # Helpers
     #
+
+    def le_check_method(self):
+        """
+        LE Validation method check & setup.
+        :return: 
+        """
+        # Argument override / reconfiguration
+        args_le_preferred_method = self.get_args_le_verification()
+        args_is_vpc = self.get_args_vpc()
+
+        if args_le_preferred_method is not None and args_le_preferred_method != self.config.le_preferred_verification:
+            self.tprint('\nOverriding LetsEncrypt preferred method, settings: %s, new: %s'
+                        % (self.config.le_preferred_verification, args_le_preferred_method))
+            self.config.le_preferred_verification = args_le_preferred_method
+
+        if args_is_vpc is not None and args_is_vpc != self.config.is_private_network:
+            self.tprint('\nOverriding is private network settings, settings.private: %s, new.private: %s'
+                        % (self.config.is_private_network, args_is_vpc))
+            self.config.is_private_network = args_is_vpc == 1
+
+        if self.config.is_private_network \
+                and args_le_preferred_method is not None \
+                and args_le_preferred_method != LE_VERIFY_DNS:
+            self.tprint('\nError, conflicting settings: VPC=1, LE method != DNS')
+            return self.return_code(1)
+        return 0
 
     def le_check_port(self, ip=None, letsencrypt=None, critical=False, one_attempt=False):
         if ip is None:
