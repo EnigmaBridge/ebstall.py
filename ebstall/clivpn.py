@@ -275,6 +275,7 @@ class VpnInstaller(Installer):
         self.ovpn.switch(stop=True)
         self.dnsmasq.switch(stop=True)
         self.nginx.switch(stop=True)
+        self.ejabberd.switch(stop=True)
 
     def init_main_try(self):
         """
