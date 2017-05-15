@@ -733,6 +733,7 @@ class VpnInstaller(Installer):
         self.vpn_crl = self.ejbca.vpn_get_crl_path()
         self.vpn_client_config = self.ejbca.vpn_get_vpn_client_config_path()
         self.full_reinstall = False
+        self.nextcloud.doing_reinstall = True
 
         if self.args.no_ejbca_install:
             self.ejbca.ejbca_install_result = 0  # Debugging path, without EJBCA installation
