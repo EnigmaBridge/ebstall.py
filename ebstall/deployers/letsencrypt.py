@@ -340,7 +340,8 @@ class LetsEncrypt(object):
                 and self.FALLBACK_EMAIL is not None and len(self.FALLBACK_EMAIL) > 0:
             email = self.FALLBACK_EMAIL
 
-        cmd = self.get_standalone_cmd(self.domains, email=email, expand=expand, staging=self.staging)
+        cmd = self.get_standalone_cmd(self.domains, email=email, expand=expand,
+                                      staging=self.staging, break_certs=self.staging)
         cmd_exec = 'sudo -E -H %s %s' % (self.CERTBOT_PATH, cmd)
         log_obj = self.CERTBOT_LOG
 
@@ -506,7 +507,7 @@ class LetsEncrypt(object):
             sys.stderr.write(msg)
 
     @staticmethod
-    def get_standalone_cmd(domain, email=None, expand=False, staging=False):
+    def get_standalone_cmd(domain, email=None, expand=False, staging=False, break_certs=False):
         """
         Returns Certbot standalone command for given settings (domains, staging, email, expand)
         
@@ -514,6 +515,7 @@ class LetsEncrypt(object):
         :param email: 
         :param expand: 
         :param staging: 
+        :param break_certs: --break-my-certs when going normal -> staging
         :return: 
         """
         cmd_email_part = LetsEncrypt.get_email_cmd(email)
@@ -524,9 +526,10 @@ class LetsEncrypt(object):
 
         cmd_expand_part = '' if not expand else ' --expand '
         cmd_staging = LetsEncrypt.get_staging_cmd(staging)
+        cmd_break_certs = '' if not break_certs else ' --break-my-certs '
 
-        cmd = 'certonly --standalone --text -n --agree-tos %s %s %s %s' \
-              % (cmd_email_part, cmd_expand_part, cmd_staging, cmd_domains_part)
+        cmd = 'certonly --standalone --text -n --agree-tos %s %s %s %s %s' \
+              % (cmd_email_part, cmd_expand_part, cmd_staging, cmd_break_certs, cmd_domains_part)
         return cmd
 
     @staticmethod
