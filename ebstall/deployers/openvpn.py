@@ -362,6 +362,7 @@ class OpenVpn(object):
         self.sysconfig = sysconfig
         self.write_dost = write_dots
         self.audit = audit
+        self.doing_reinstall = False
 
         # Result of load_config_file_lines
         self.config = None
@@ -374,6 +375,7 @@ class OpenVpn(object):
     #
     # Settings
     #
+
     def get_ip_net(self):
         """
         Network address for the VPN server
@@ -426,6 +428,7 @@ class OpenVpn(object):
     #
     # server.conf reading & modification
     #
+
     def get_config_dir(self):
         return self.SETTINGS_DIR
 
@@ -477,6 +480,15 @@ class OpenVpn(object):
     #
     # Configuration
     #
+
+    def load_from_config(self):
+        """
+        Loads configuration from settings - for already configured VPN server
+        Can load IP addresses and so on.
+        :return: 
+        """
+        pass
+
     def generate_dh_group(self, overwrite=True):
         """
         Generates a new Diffie-Hellman group for the server.
@@ -662,6 +674,7 @@ class OpenVpn(object):
     #
     # Installation
     #
+
     def install(self):
         """
         Installs itself
