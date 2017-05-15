@@ -32,6 +32,7 @@ class Jboss(object):
     JBOSS_CLI = 'bin/jboss-cli.sh'
     JBOSS_KEYSTORE = 'standalone/configuration/keystore/keystore.jks'
     JBOSS_CONFIG = 'standalone/configuration/standalone.xml'
+    JBOSS_DEPLOY = 'standalone/deployments'
 
     def __init__(self, sysconfig=None, audit=None, write_dots=False, eb_config=None, config=None, *args, **kwargs):
         self.sysconfig = sysconfig
@@ -79,6 +80,13 @@ class Jboss(object):
         :return:
         """
         return os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_KEYSTORE))
+
+    def get_deploy_path(self):
+        """
+        Returns path to the jboss keystore - https
+        :return:
+        """
+        return os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_DEPLOY))
 
     def configure_server(self):
         """
@@ -345,4 +353,36 @@ class Jboss(object):
         for rule_id in rules_list:
             self.remove_rewrite_rule(rule_id)
 
+    def undeploy_fs(self, name, wait_indicator=True, wait_timeout=10.0):
+        """
+        Undeploys by removing from the deployment dir
+        :param name: 
+        :param wait_indicator: 
+        :param wait_timeout: 
+        :return: 
+        """
+        deployed_path = os.path.join(self.get_deploy_path(), name)
+        undeployed_path = os.path.join(self.get_deploy_path(), '%s.undeployed' % name)
+
+        if not os.path.exists(deployed_path):
+            logger.debug('Deployed path does not exist, skipping: %s' % deployed_path)
+            return 1
+
+        os.remove(deployed_path)
+
+        # wait for undeployed file indicator
+        if not wait_indicator:
+            logger.debug('Waiting for undeploy finish skipped')
+            return 0
+
+        undeployed_detected = False
+        check_start = time.time()
+        while time.time() - check_start <= wait_timeout:
+            time.sleep(0.25)
+            if os.path.exists(undeployed_path):
+                logger.debug('Detected undeployed indicator')
+                return 0
+
+        logger.debug('Undeploy indicator presence check timeout.')
+        return 0
 
