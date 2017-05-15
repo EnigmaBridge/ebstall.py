@@ -536,7 +536,7 @@ class VpnInstaller(Installer):
         Starts VPN server
         :return:
         """
-        if self.args.no_ejbca_install:
+        if self.args.no_ejbca_install and self.full_reinstall:
             logger.warning('EJBCA disabled, VPN wont be started')
             return
 
