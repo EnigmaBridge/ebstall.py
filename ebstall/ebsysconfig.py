@@ -883,6 +883,18 @@ class SysConfig(object):
             out = update_status.out()
             logger.debug('Out: %s' % out)
 
+            # Is already terminated?
+            try:
+                ret_code = update_status.p.commands[0].returncode
+                if ret_code is not None:
+                    logger.debug('Task already finished: %s' % ret_code)
+                return 0
+
+            except Exception as e:
+                logger.error('Exception in finished detection %s' % e)
+                return
+
+            # Check for the question block
             eqlines_cnt = len([x for x in out.split('\n') if '=======' in x])
             if eqlines_cnt >= 3:
                 logger.debug('QUESTION')
@@ -906,13 +918,13 @@ class SysConfig(object):
                     update_status.feeder.feed('n\n')
                 except Exception as e:
                     logger.error('Exception in sending n: %s' % e)
+                    logger.debug(traceback.format_exc())
 
                 time.sleep(2)
                 try:
                     update_status.p.terminate()
                 except Exception as e:
                     logger.error('Exception in terminating: %s' % e)
-
 
         # noinspection PyUnusedLocal
         def yum_answer(out, feeder, p=None, *args, **kwargs):
