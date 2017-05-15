@@ -737,7 +737,7 @@ class Installer(InstallerBase):
         """
         self.tprint(self.t.underline_green('[OK] System installation is completed'))
 
-    def init_show_p12_info(self, new_p12, new_config):
+    def init_show_p12_info(self, new_p12, new_config=None):
         """
         Informs user where to get P12 file to log into EJBCA admin panel.
         :return:
