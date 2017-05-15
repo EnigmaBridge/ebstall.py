@@ -1321,6 +1321,42 @@ class Ejbca(object):
         self.jboss_reload()
         return self.ejbca_install_result
 
+    def reinstall(self):
+        """
+        Soft re-installation with preserving user data.
+        :return: 
+        """
+        # Restart jboss - to make sure it is running
+        if self.print_output:
+            print("\n - Undeploying, please wait")
+        self.jboss_undeploy_fs()
+
+        jboss_works = self.jboss_restart()
+        if not jboss_works:
+            print("\n Application server (JBoss) could not be restarted. Please, resolve the problem and start again")
+            raise errors.SetupError('JBoss restart failed')
+
+        # Updating from the provisioning server
+        print("\n - Updating to the latest revision")
+        self.update_installation()
+        self.update_properties()
+        self.jboss_fix_privileges()
+
+        # 3. deploy, 5 attempts
+        for i in range(0, 5):
+            if self.print_output:
+                print("\n - Deploying the PKI system" if i == 0 else
+                      "\n - Deploying the PKI system, attempt %d" % (i + 1))
+            res, out, err = self.ant_deploy()
+            self.ejbca_install_result = res
+            if res == 0:
+                break
+
+        self.ant_client_tools()
+        self.jboss_fix_privileges()
+        self.jboss_reload()
+        return self.ejbca_install_result
+
     def test_port_open(self, host, timeout=5, attempts=3, port=None):
         """
         Tests if port is open to the public
