@@ -1404,3 +1404,40 @@ def untar_get_single_dir(archive_path, sysconfig):
     archive_dir = os.path.join(basedir, folders[0])
     return archive_dir
 
+
+def strip_leading_slash(x):
+    """
+    Strips leading slash
+    :param x: 
+    :return: 
+    """
+    if x is None:
+        return None
+    return re.sub(r'/\s*$', '', x)
+
+
+def strip_ending_slash(x):
+    """
+    Strips last slash from the path if there is any
+    :param x: 
+    :return: 
+    """
+    if x is None:
+        return None
+    if x.endswith('/'):
+        return x[:-1]
+    return x
+
+
+def add_ending_slash(x):
+    """
+    Adds ending slash if not present
+    :param x: 
+    :return: 
+    """
+    if x is None:
+        return None
+    if x.endswith('/'):
+        return x
+    return '%s/' % x
+
