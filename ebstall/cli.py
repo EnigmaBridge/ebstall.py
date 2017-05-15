@@ -320,7 +320,8 @@ class Installer(InstallerBase):
         self.updater = Updater(sysconfig=self.syscfg, audit=self.audit,
                                config=self.config, ebstall_version=self.version)
         self.certificates = Certificates(sysconfig=self.syscfg, audit=self.audit,
-                                         config=self.config, reg_svc=self.reg_svc)
+                                         config=self.config, reg_svc=self.reg_svc,
+                                         cmdargs=self.args, staging=self.args.le_staging)
         return 0
 
     def init_prompt_user(self):
