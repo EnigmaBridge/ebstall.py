@@ -226,6 +226,16 @@ class Ejbca(object):
     def set_config(self, config):
         self.config = config
 
+    def load_from_config(self):
+        """
+        Restores passwords and other configuration variables from the config
+        :return: 
+        """
+        self.http_pass = self.config.ejbca_jks_password
+        self.db_pass = self.config.ejbca_db_password
+        self.master_p12_pass = self.config.ejbca_p12master_password
+        self.do_vpn = self.config.vpn_installed
+
     def _setup_database_properties(self):
         """
         Setting up database properties from the internal state
@@ -281,6 +291,10 @@ class Ejbca(object):
             self.set_hostname(primary)
 
     def check_hostname_domains_consistency(self):
+        """
+        Checks if hostname is the first domain in the domain list.
+        :return: 
+        """
         return self.domains is not None \
                 and isinstance(self.domains, types.ListType) \
                 and self.hostname == self.domains[0]
