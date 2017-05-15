@@ -27,6 +27,7 @@ class NextCloud(object):
     Nextcloud module
     """
     WEBROOT = '/var/www/nextcloud'
+    EXCLUDE_REINSTALL = ['data']
 
     def __init__(self, sysconfig=None, audit=None, write_dots=False, mysql=None, config=None, nginx=None, *args, **kwargs):
         self.sysconfig = sysconfig
@@ -40,6 +41,7 @@ class NextCloud(object):
         self.webroot = self.WEBROOT
         self.user = 'nginx'
         self.hostname = None
+        self.doing_reinstall = False
 
         self._file_nextcloud = 'nextcloud-11.0.3.zip'
         self._file_ojsxc = 'https://github.com/EnigmaBridge/jsxc-nc/archive/v3.2.0-2a.tar.gz'
@@ -201,7 +203,19 @@ class NextCloud(object):
         archive_slash = util.add_ending_slash(archive_dir)
         dest_slash = util.add_ending_slash(self.webroot)
 
-        cmd = 'sudo rsync -av --delete "%s" "%s"' % (archive_slash, dest_slash)
+        # reinstall - preserve user data
+        excludes = ''
+        if self.doing_reinstall:
+            full_excludes = [os.path.join(dest_slash, x) for x in self.EXCLUDE_REINSTALL]
+            if os.path.exists(dest_slash):
+                for d in [x for x in full_excludes if not os.path.exists(x)]:
+                    os.makedirs(d)
+
+            excludes = ' '.join(['--exclude %s' % util.escape_shell(util.add_ending_slash(x))
+                                 for x in full_excludes])
+
+        cmd = 'sudo rsync -av --delete %s %s %s' \
+              % (excludes, util.escape_shell(archive_slash), util.escape_shell(dest_slash))
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
         if ret != 0:
             raise errors.SetupError('nextcloud sync failed')
