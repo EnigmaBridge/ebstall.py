@@ -47,6 +47,7 @@ class Ejbca(object):
     EJBCA_PROPERTIES_FILE = 'conf/ejbca.properties'
     MAIL_PROPERTIES_FILE = 'conf/mail.properties'
     P12_FILE = 'p12/superadmin.p12'
+    EXCLUDE_REINSTALL = ['vpn', 'vpn_templates', 'p12']
 
     # Storage paths
     PASSWORDS_FILE = '/root/ejbca.passwords'
@@ -145,6 +146,7 @@ class Ejbca(object):
             self.audit = AuditManager(disabled=True)
 
         self.skip_installation = False
+        self.doing_reinstall = False
 
         # Remove secrets from audit logging
         self.audit.add_secrets([self.http_pass, self.superadmin_pass, self.db_pass, self.master_p12_pass])
@@ -1150,11 +1152,16 @@ class Ejbca(object):
         if not os.path.exists(os.path.join(archive_dir, 'build.xml')):
             raise errors.SetupError('Invalid update archive, build.xml not found in %s' % archive_dir)
 
-        archive_slash = archive_dir if archive_dir.endswith('/') else archive_dir + '/'
-        dest_slash = self.get_ejbca_home()
-        dest_slash = dest_slash if dest_slash.endswith('/') else dest_slash + '/'
+        archive_slash = util.add_ending_slash(archive_dir)
+        dest_slash = util.add_ending_slash(self.get_ejbca_home())
 
-        cmd = 'sudo rsync -av --delete "%s" "%s"' % (archive_slash, dest_slash)
+        excludes = ''
+        if self.doing_reinstall:
+            excludes = ' '.join(['--exclude %s' % util.escape_shell(util.add_ending_slash(x))
+                                 for x in self.EXCLUDE_REINSTALL])
+
+        cmd = 'sudo rsync -av --delete %s %s %s' \
+              % (excludes, util.escape_shell(archive_slash), util.escape_shell(dest_slash))
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
         if ret != 0:
             raise errors.SetupError('EJBCA sync failed')
@@ -1231,9 +1238,18 @@ class Ejbca(object):
         :return:
         """
         self.jboss_undeploy()
+        self.jboss_undeploy_fs()
         self.jboss_remove_datasource()
         self.jboss_rollback_ejbca()
         self.jboss_reload()
+
+    def undeploy_fast(self):
+        """
+        Undeploys EJBCA installation - faster, keeps datasource & results of "ant install"
+        :return:
+        """
+        self.jboss_undeploy_fs()
+        self.jboss_restart()
 
     def configure(self):
         """
@@ -1326,7 +1342,7 @@ class Ejbca(object):
         Soft re-installation with preserving user data.
         :return: 
         """
-        # Restart jboss - to make sure it is running
+        self.doing_reinstall = True
         if self.print_output:
             print("\n - Undeploying, please wait")
         self.jboss_undeploy_fs()
