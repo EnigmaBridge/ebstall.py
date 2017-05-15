@@ -211,8 +211,8 @@ class NextCloud(object):
                 for d in [x for x in full_excludes if not os.path.exists(x)]:
                     os.makedirs(d)
 
-            excludes = ' '.join(['--exclude %s' % util.escape_shell(util.add_ending_slash(x))
-                                 for x in full_excludes])
+                excludes = ' '.join(['--exclude %s' % util.escape_shell(util.add_ending_slash(x))
+                                     for x in full_excludes])
 
         cmd = 'sudo rsync -av --delete %s %s %s' \
               % (excludes, util.escape_shell(archive_slash), util.escape_shell(dest_slash))
