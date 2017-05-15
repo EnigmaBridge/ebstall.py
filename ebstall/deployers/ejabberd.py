@@ -354,7 +354,7 @@ class Ejabberd(object):
                 shutil.move(unpacked_dir, self._extauth_path)
 
                 # Setup log dir for ext auth
-                if os.path.exists(self._extauth_log_dir):
+                if not os.path.exists(self._extauth_log_dir):
                     util.make_or_verify_dir(self._extauth_log_dir)
                 self.sysconfig.chown_recursive(self._extauth_log_dir, self._user, self._group, throw_on_error=False)
 
