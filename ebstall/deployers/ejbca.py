@@ -406,6 +406,11 @@ class Ejbca(object):
         return ret, out, err
 
     def ant_deploy(self):
+        """
+        ant deploy command
+        Basic build & deployment to JBoss
+        :return: 
+        """
         return self.ant_cmd('deploy', log_obj='/tmp/ant-deploy.log', write_dots=self.print_output)
 
     def ant_deployear(self):
@@ -437,13 +442,17 @@ class Ejbca(object):
 
     def ant_install(self):
         """
-        Installation
+        Installation - env setup, data source setup
         :return:
         """
         return self.ant_cmd('install', log_obj='/tmp/ant-install.log', write_dots=self.print_output,
                             on_out=self.ant_install_answer)
 
     def ant_client_tools(self):
+        """
+        Builds toolbox utilities
+        :return: 
+        """
         return self.ant_cmd('clientToolBox', log_obj='/tmp/ant-clientToolBox.log', write_dots=self.print_output)
 
     #
