@@ -477,7 +477,7 @@ class OpenVpn(object):
     #
     # Configuration
     #
-    def generate_dh_group(self):
+    def generate_dh_group(self, overwrite=True):
         """
         Generates a new Diffie-Hellman group for the server.
         openssl dhparam -out dh2048.pem 2048
@@ -485,6 +485,10 @@ class OpenVpn(object):
         """
         size = 2048  # constant for now
         dh_file = os.path.join(self.SETTINGS_DIR, 'dh%d.pem' % size)
+        if not overwrite and os.path.exists(dh_file):
+            logger.debug('VPN DH file exists, skipping')
+            return 0
+
         cmd = 'sudo openssl dhparam -out \'%s\' %d' % (dh_file, size)
         return self.sysconfig.exec_shell(cmd, write_dots=self.write_dost)
 
