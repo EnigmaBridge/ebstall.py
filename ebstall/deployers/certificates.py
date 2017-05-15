@@ -31,8 +31,8 @@ class Certificates(object):
         self.config = config
         self.reg_svc = reg_svc
 
-        self.staging = None
-        self.cmdargs = None
+        self.staging = staging
+        self.cmdargs = cmdargs
         self.lets_encrypt = None
         self.hostname = None
         self.domains = None
