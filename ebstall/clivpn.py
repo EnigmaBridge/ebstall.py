@@ -734,12 +734,15 @@ class VpnInstaller(Installer):
         self.vpn_client_config = self.ejbca.vpn_get_vpn_client_config_path()
         self.full_reinstall = False
         self.nextcloud.doing_reinstall = True
+        self.ovpn.doing_reinstall = True
 
         if self.args.no_ejbca_install:
             self.ejbca.ejbca_install_result = 0  # Debugging path, without EJBCA installation
             logger.warning('EJBCA Installation is disabled, no reinstall')
         else:
             self.ejbca.reinstall()
+
+        self.ovpn.load_from_config()
 
         return self.init_main_phase_2_try()
 
