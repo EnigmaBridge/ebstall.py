@@ -752,7 +752,12 @@ class VpnInstaller(Installer):
 
         self.ovpn.load_from_config()
 
-        return self.init_main_phase_2_try()
+        ret = self.init_main_phase_2_try()
+        if ret != 0:
+            raise errors.SetupError('Reinstall failed')
+        Core.write_configuration(self.config)
+
+        return ret
 
     def le_renewed(self):
         """

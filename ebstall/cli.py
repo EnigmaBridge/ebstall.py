@@ -1518,7 +1518,12 @@ class Installer(InstallerBase):
         else:
             self.ejbca.reinstall()
 
-        return self.init_main_phase_2_try()
+        ret = self.init_main_phase_2_try()
+        if ret != 0:
+            raise errors.SetupError('Reinstall failed')
+        Core.write_configuration(self.config)
+
+        return ret
 
     def do_renew(self, arg):
         """Renews LetsEncrypt certificates used for the JBoss"""
