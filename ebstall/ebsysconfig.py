@@ -888,7 +888,7 @@ class SysConfig(object):
                 ret_code = update_status.p.commands[0].returncode
                 if ret_code is not None:
                     logger.debug('Task already finished: %s' % ret_code)
-                return 0
+                    return 0
 
             except Exception as e:
                 logger.error('Exception in finished detection %s' % e)
