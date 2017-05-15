@@ -198,9 +198,8 @@ class NextCloud(object):
         if not os.path.exists(os.path.join(archive_dir, 'robots.txt')):
             raise errors.SetupError('Invalid update archive, robots.txt not found in %s' % archive_dir)
 
-        archive_slash = archive_dir if archive_dir.endswith('/') else archive_dir + '/'
-        dest_slash = self.webroot
-        dest_slash = dest_slash if dest_slash.endswith('/') else dest_slash + '/'
+        archive_slash = util.add_ending_slash(archive_dir)
+        dest_slash = util.add_ending_slash(self.webroot)
 
         cmd = 'sudo rsync -av --delete "%s" "%s"' % (archive_slash, dest_slash)
         ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
