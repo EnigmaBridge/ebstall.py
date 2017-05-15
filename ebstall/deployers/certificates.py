@@ -278,7 +278,7 @@ class Certificates(object):
             ret, out, err = mdns.start()
 
         else:
-            ret, out, err = self.lets_encrypt.certonly()
+            ret, out, err = self.lets_encrypt.certonly(expand=True)
 
         if ret != 0:
             raise errors.SetupError('Certificate could not be created, return code: %s' % ret)
