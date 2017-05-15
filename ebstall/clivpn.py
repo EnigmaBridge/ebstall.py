@@ -417,6 +417,7 @@ class VpnInstaller(Installer):
 
         self.init_nginx_start()
         self.init_vpn_start()
+        self.init_dnsmasq_restart()
 
         self.tprint('')
         self.init_celebrate()
@@ -562,6 +563,13 @@ class VpnInstaller(Installer):
         if ret != 0:
             raise errors.SetupError('Error with setting dnsmasq to start after boot')
 
+        self.dnsmasq.switch(restart=True)
+
+    def init_dnsmasq_restart(self):
+        """
+        Restarts dns masq
+        :return: 
+        """
         ret = self.dnsmasq.switch(restart=True)
         if ret != 0:
             raise errors.SetupError('Error in starting dnsmasq daemon')
