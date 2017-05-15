@@ -457,6 +457,13 @@ class Ejbca(object):
         """
         return self.jboss.reload()
 
+    def jboss_undeploy_fs(self):
+        """
+        Undeploys by removing from the FS
+        :return: 
+        """
+        return self.jboss.undeploy_fs('ejbca.ear')
+
     def jboss_undeploy(self):
         """
         Undeploys EJBCA from JBoss via CLI command
