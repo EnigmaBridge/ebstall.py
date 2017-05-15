@@ -1511,6 +1511,12 @@ class Installer(InstallerBase):
         Reinstallation after initial checks
         :return: 
         """
+        if self.args.no_ejbca_install:
+            self.ejbca.ejbca_install_result = 0  # Debugging path, without EJBCA installation
+            logger.warning('EJBCA Installation is disabled, no reinstall')
+        else:
+            self.ejbca.reinstall()
+
         return self.init_main_phase_2_try()
 
     def do_renew(self, arg):
