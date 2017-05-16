@@ -9,6 +9,7 @@ import sys
 import time
 import json
 import traceback
+from functools import wraps
 
 import argparse
 import coloredlogs
@@ -32,7 +33,6 @@ from clibase import InstallerBase
 from config import Config, EBSettings
 from consts import *
 from core import Core
-
 
 
 logger = logging.getLogger(__name__)
@@ -1337,90 +1337,6 @@ class Installer(InstallerBase):
     # Other CLI actions, renew, on boot, ...
     #
 
-    def do_check_memory(self, args):
-        """Check if there is enough memory in the system, adds a new swapfile if not"""
-        self.install_check_memory(self.syscfg)
-
-    def do_list_packages(self, arg):
-        """
-        List all installed packages
-        :param arg: 
-        :return: 
-        """
-        pkgs = self.syscfg.get_installed_packages()
-        js = [x.to_json() for x in pkgs]
-        logger.info('Total number of packages: %s' % len(js))
-        print(json.dumps(js))
-
-    def do_yaql_cli(self, arg):
-        """
-        Provides yaql interface for testing update clauses
-        :param arg: 
-        :return: 
-        """
-        # noinspection PyBroadException
-        try:
-            self.init_started_time = time.time()
-            if not self.check_root() or not self.check_pid():
-                return self.return_code(1)
-
-            self.load_base_settings()
-            self.init_config()
-            self.init_services()
-
-            self.updater.yaql_cli()
-            return self.return_code(0)
-
-        except Exception as e:
-            logger.debug(traceback.format_exc())
-            self.audit.audit_exception(e)
-            self.init_exception = str(e)
-            self.tprint('Exception in the installation process, cannot continue.')
-            self.install_analysis_send()
-
-        return self.return_code(1)
-
-    def do_update(self, arg):
-        """
-        Update call, should be called after wrapper updates the installer
-        :param arg: 
-        :return: 
-        """
-        # noinspection PyBroadException
-        try:
-            self.init_started_time = time.time()
-            if not self.check_root() or not self.check_pid():
-                return self.return_code(1)
-
-            self.load_base_settings()
-            self.init_config()
-            self.init_services()
-
-            ret = self.update_main_try()
-            return self.return_code(ret)
-
-        except Exception as e:
-            logger.debug(traceback.format_exc())
-            self.audit.audit_exception(e)
-            self.init_exception = str(e)
-            self.tprint('Exception in the installation process, cannot continue.')
-            self.install_analysis_send()
-
-        return self.return_code(1)
-
-    def update_main_try(self):
-        """
-        Main update block, after init.
-        
-        Ebstall could probably updated from the previous run so the migration can be done here (version diff between
-        current version and version stored in the config file)
-        
-        Then system update might be performed.
-        :return: 
-        """
-        self.updater.update()
-        return 0
-
     def use_installation(self):
         """
         Use existing installation for next steps.
@@ -1442,36 +1358,122 @@ class Installer(InstallerBase):
             return self.return_code(1)
         return 0
 
+    def dec_method(require_root=True, exception_msg=None, send_analysis=True, check_inst=False, new_config=False):
+        """
+        Simple wrapper / decorator for using existing installation 
+        :param require_root: 
+        :param exception_msg: 
+        :param send_analysis: 
+        :param check_inst: 
+        :return: 
+        """
+        def dec_meth(*args):
+            f = args[0]
+            @wraps(f)
+            def wrapper(*args, **kwds):
+                # noinspection PyBroadException
+                self = args[0]
+                try:
+                    self.init_started_time = time.time()
+                    if require_root and (not self.check_root() or not self.check_pid()):
+                        return self.return_code(1)
+
+                    if new_config:
+                        self.load_base_settings()
+                        self.init_config_new_install()
+                    elif check_inst:
+                        self.use_installation()
+                    else:
+                        self.load_base_settings()
+                        self.init_config()
+
+                    self.init_services()
+
+                    ret = f(*args, **kwds)
+                    return self.return_code(ret)
+
+                except Exception as e:
+                    logger.debug(traceback.format_exc())
+                    self.audit.audit_exception(e)
+                    self.init_exception = str(e)
+                    self.tprint(exception_msg if exception_msg is not None else 'Exception, cannot continue.')
+                    if send_analysis:
+                        self.install_analysis_send()
+
+                return self.return_code(1)
+            return wrapper
+        return dec_meth
+
+    def do_check_memory(self, args):
+        """Check if there is enough memory in the system, adds a new swapfile if not"""
+        self.install_check_memory(self.syscfg)
+
+    def do_list_packages(self, arg):
+        """
+        List all installed packages
+        :param arg: 
+        :return: 
+        """
+        pkgs = self.syscfg.get_installed_packages()
+        js = [x.to_json() for x in pkgs]
+        logger.info('Total number of packages: %s' % len(js))
+        print(json.dumps(js))
+
+    @dec_method()
+    def do_yaql_cli(self, arg):
+        """
+        Provides yaql interface for testing update clauses
+        :param arg: 
+        :return: 
+        """
+        self.updater.yaql_cli()
+        return 0
+
+    @dec_method()
+    def do_update(self, arg):
+        """
+        Update call, should be called after wrapper updates the installer
+        :param arg: 
+        :return: 
+        """
+        ret = self.update_main_try()
+        return self.return_code(ret)
+
+    def update_main_try(self):
+        """
+        Main update block, after init.
+        
+        Ebstall could probably updated from the previous run so the migration can be done here (version diff between
+        current version and version stored in the config file)
+        
+        Then system update might be performed.
+        :return: 
+        """
+        self.updater.update()
+        return 0
+
+    @dec_method(check_inst=True)
     def do_reinstall_soft(self, arg):
         """
         Soft Reinstall - preserving EJBCA identities 
         :param arg: 
         :return: 
         """
-        # noinspection PyBroadException
-        try:
-            self.init_started_time = time.time()
-            if not self.check_root() or not self.check_pid():
-                return self.return_code(1)
+        self.reinstall_base_main()
+        return self.reinstall_soft_body()
 
-            self.use_installation()
-            self.init_services()
-
-            ret = self.reinstall_soft_main()
-            return self.return_code(ret)
-
-        except Exception as e:
-            logger.debug(traceback.format_exc())
-            self.audit.audit_exception(e)
-            self.init_exception = str(e)
-            self.tprint('Exception in the installation process, cannot continue.')
-            self.install_analysis_send()
-
-        return self.return_code(1)
-
-    def reinstall_soft_main(self):
+    @dec_method(check_inst=True)
+    def do_reinstall_ejbca(self, arg):
         """
-        Main reinstall block
+        Reinstalls only EJBCA
+        :return: 
+        """
+        self.reinstall_base_main()
+        return self.reinstall_ejbca()
+
+    def reinstall_base_main(self):
+        """
+        Main reinstall block - init env. 
         :return: 
         """
 
@@ -1504,12 +1506,11 @@ class Installer(InstallerBase):
         self.ejbca.load_from_config()
         self.ejbca.set_domains(self.config.ejbca_domains)
         self.ejbca.reg_svc = self.reg_svc
+        return 0
 
-        return self.reinstall_soft_body()
-
-    def reinstall_soft_body(self):
+    def reinstall_ejbca(self):
         """
-        Reinstallation after initial checks
+        Reinstall ejbca
         :return: 
         """
         if self.args.no_ejbca_install:
@@ -1518,12 +1519,34 @@ class Installer(InstallerBase):
         else:
             self.ejbca.reinstall()
 
+    def reinstall_soft_body(self):
+        """
+        Reinstallation after initial checks
+        :return: 
+        """
+        self.reinstall_ejbca()
+
         ret = self.init_main_phase_2_try()
         if ret != 0:
             raise errors.SetupError('Reinstall failed')
         Core.write_configuration(self.config)
 
         return ret
+
+    @dec_method()
+    def do_restart_services(self, args):
+        """
+        Restarts all services
+        :return: 
+        """
+        self.restart_main()
+
+    def restart_main(self):
+        """
+        Main restart method
+        :return: 
+        """
+        self.jboss.jboss_restart()
 
     def do_renew(self, arg):
         """Renews LetsEncrypt certificates used for the JBoss"""
@@ -1705,44 +1728,39 @@ class Installer(InstallerBase):
                     ' - call renew command')
         return self.return_code(1)
 
+    @dec_method(new_config=True)
     def do_undeploy_ejbca(self, line):
-        """Undeploys EJBCA without any backup left"""
-        if not self.check_root() or not self.check_pid():
+        """
+        Undeploys EJBCA - without uninstalling
+        :param line: 
+        :return: 
+        """
+        self.ejbca.undeploy_fast()
+
+    @dec_method()
+    def do_uninstall_ejbca(self, line):
+        """
+        Uninstalls EJBCA without any backup left
+        :param line: 
+        :return: 
+        """
+        self.tprint('Going to undeploy and remove EJBCA from the system')
+        self.tprint('WARNING! This is a destructive process!')
+        should_continue = self.ask_proceed(support_non_interactive=True)
+        if not should_continue:
             return self.return_code(1)
 
-        try:
-            self.load_base_settings()
-            self.audit.set_flush_enabled(True)
-            self.tprint('Going to undeploy and remove EJBCA from the system')
-            self.tprint('WARNING! This is a destructive process!')
-            should_continue = self.ask_proceed(support_non_interactive=True)
-            if not should_continue:
-                return self.return_code(1)
+        self.tprint('WARNING! This is the last chance.')
+        should_continue = self.ask_proceed(support_non_interactive=True)
+        if not should_continue:
+            return self.return_code(1)
 
-            self.tprint('WARNING! This is the last chance.')
-            should_continue = self.ask_proceed(support_non_interactive=True)
-            if not should_continue:
-                return self.return_code(1)
+        self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
+        self.ejbca.undeploy()
+        self.ejbca.jboss_restart()
 
-            config = Core.read_configuration()
-            mysql = MySQL(sysconfig=self.syscfg, audit=self.audit, config=self.config,
-                          write_dots=True, root_passwd=self.get_db_root_password())
-            jboss = Jboss(config=config, eb_config=self.eb_settings, sysconfig=self.syscfg, audit=self.audit)
-            ejbca = Ejbca(print_output=True, staging=self.args.le_staging, config=config, eb_config=self.eb_settings,
-                          sysconfig=self.syscfg, audit=self.audit, jboss=jboss, mysql=mysql)
-
-            self.tprint(' - Undeploying PKI System (EJBCA) from the application server')
-            ejbca.undeploy()
-            ejbca.jboss_restart()
-
-            self.tprint('\nDone.')
-            return self.return_code(0)
-
-        except Exception as ex:
-            logger.debug(traceback.format_exc())
-            self.audit.audit_exception(ex)
-            self.tprint('Exception in the undeploy process.')
-            raise
+        self.tprint('\nDone.')
+        return self.return_code(0)
 
     def do_test443(self, line):
         """Tests LetsEncrypt 443 port"""

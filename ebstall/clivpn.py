@@ -746,11 +746,7 @@ class VpnInstaller(Installer):
         self.nextcloud.doing_reinstall = True
         self.ovpn.doing_reinstall = True
 
-        if self.args.no_ejbca_install:
-            self.ejbca.ejbca_install_result = 0  # Debugging path, without EJBCA installation
-            logger.warning('EJBCA Installation is disabled, no reinstall')
-        else:
-            self.ejbca.reinstall()
+        self.reinstall_ejbca()
 
         self.ovpn.load_from_config()
 
@@ -760,6 +756,21 @@ class VpnInstaller(Installer):
         Core.write_configuration(self.config)
 
         return ret
+
+    def restart_main(self):
+        """
+        Restarts all services
+        :return: 
+        """
+        Installer.restart_main(self)
+
+        self.php.switch(restart=True)
+        self.nginx.switch(restart=True)
+        self.ovpn.switch(restart=True)
+        self.ejabberd.switch(restart=True)
+        self.dnsmasq.switch(restart=True)
+        self.supervisord.switch(restart=True)
+        self.vpnauth.switch(restart=True)
 
     def le_renewed(self):
         """
