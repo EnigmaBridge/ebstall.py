@@ -319,7 +319,7 @@ class LetsEncrypt(object):
         else:
             return self.sysconfig.cli_cmd_sync(*args, **kwargs)
 
-    def certonly(self, email=None, domains=None, expand=False):
+    def certonly(self, email=None, domains=None, expand=False, force=False):
         """
         Calls certbot certonly command.
         Used in the intial certbot enrollment. 
@@ -328,6 +328,7 @@ class LetsEncrypt(object):
         :param email: 
         :param domains: 
         :param expand: 
+        :param force: 
         :return: 
         """
         if email is not None:
@@ -341,7 +342,7 @@ class LetsEncrypt(object):
             email = self.FALLBACK_EMAIL
 
         cmd = self.get_standalone_cmd(self.domains, email=email, expand=expand,
-                                      staging=self.staging, break_certs=self.staging)
+                                      staging=self.staging, break_certs=self.staging, force=force)
         cmd_exec = 'sudo -E -H %s %s' % (self.CERTBOT_PATH, cmd)
         log_obj = self.CERTBOT_LOG
 
@@ -507,7 +508,7 @@ class LetsEncrypt(object):
             sys.stderr.write(msg)
 
     @staticmethod
-    def get_standalone_cmd(domain, email=None, expand=False, staging=False, break_certs=False):
+    def get_standalone_cmd(domain, email=None, expand=False, staging=False, break_certs=False, force=False):
         """
         Returns Certbot standalone command for given settings (domains, staging, email, expand)
         
@@ -516,6 +517,7 @@ class LetsEncrypt(object):
         :param expand: 
         :param staging: 
         :param break_certs: --break-my-certs when going normal -> staging
+        :param force: 
         :return: 
         """
         cmd_email_part = LetsEncrypt.get_email_cmd(email)
@@ -527,9 +529,10 @@ class LetsEncrypt(object):
         cmd_expand_part = '' if not expand else ' --expand '
         cmd_staging = LetsEncrypt.get_staging_cmd(staging)
         cmd_break_certs = '' if not break_certs else ' --break-my-certs '
+        cmd_force = '' if not force else ' --force '
 
-        cmd = 'certonly --standalone --text -n --agree-tos %s %s %s %s %s' \
-              % (cmd_email_part, cmd_expand_part, cmd_staging, cmd_break_certs, cmd_domains_part)
+        cmd = 'certonly --standalone --text -n --agree-tos %s %s %s %s %s %s' \
+              % (cmd_email_part, cmd_expand_part, cmd_staging, cmd_break_certs, cmd_force, cmd_domains_part)
         return cmd
 
     @staticmethod
