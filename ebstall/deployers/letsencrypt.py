@@ -517,7 +517,7 @@ class LetsEncrypt(object):
         :param expand: 
         :param staging: 
         :param break_certs: --break-my-certs when going normal -> staging
-        :param force: 
+        :param force: --force-renewal
         :return: 
         """
         cmd_email_part = LetsEncrypt.get_email_cmd(email)
@@ -529,7 +529,7 @@ class LetsEncrypt(object):
         cmd_expand_part = '' if not expand else ' --expand '
         cmd_staging = LetsEncrypt.get_staging_cmd(staging)
         cmd_break_certs = '' if not break_certs else ' --break-my-certs '
-        cmd_force = '' if not force else ' --force '
+        cmd_force = '' if not force else ' --force-renewal '
 
         cmd = 'certonly --standalone --text -n --agree-tos %s %s %s %s %s %s' \
               % (cmd_email_part, cmd_expand_part, cmd_staging, cmd_break_certs, cmd_force, cmd_domains_part)
