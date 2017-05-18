@@ -121,16 +121,22 @@ class VpnAuth(object):
 
         self.supervisor.ctl_refresh()
 
-    def switch(self, start=None, stop=None, restart=None):
+    def switch(self, start=None, stop=None, restart=None, ignore_error=False):
         """
         Starts/stops/restarts the service
         :param start:
         :param stop:
         :param restart:
+        :param ignore_error:
         :return:
         """
-        if restart or stop:
-            self.supervisor.ctl_stop(self.SUPERVISOR_CMD)
-        if restart or start:
-            return self.supervisor.ctl_start(self.SUPERVISOR_CMD)
+        try:
+            if restart or stop:
+                self.supervisor.ctl_stop(self.SUPERVISOR_CMD)
+            if restart or start:
+                return self.supervisor.ctl_start(self.SUPERVISOR_CMD)
+        except errors.SetupError as e:
+            if ignore_error:
+                return 1
+            raise
 
