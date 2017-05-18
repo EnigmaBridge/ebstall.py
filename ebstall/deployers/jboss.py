@@ -16,6 +16,7 @@ import sys
 import shutil
 import pkg_resources
 
+from ebstall.consts import PROVISIONING_SERVERS
 
 __author__ = 'dusanklinec'
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ class Jboss(object):
     """
     Jboss managing class
     """
+    JBOSS_OPT = '/opt'
     JBOSS_HOME = '/opt/jboss-eap-6.4.0'
     JBOSS_USER = 'jboss'
 
@@ -33,6 +35,8 @@ class Jboss(object):
     JBOSS_KEYSTORE = 'standalone/configuration/keystore/keystore.jks'
     JBOSS_CONFIG = 'standalone/configuration/standalone.xml'
     JBOSS_DEPLOY = 'standalone/deployments'
+
+    JBOSS_ARCHIVE = 'jboss-eap-6.4.0.tgz'
 
     def __init__(self, sysconfig=None, audit=None, write_dots=False, eb_config=None, config=None, *args, **kwargs):
         self.sysconfig = sysconfig
@@ -106,12 +110,104 @@ class Jboss(object):
     # Installation
     #
 
+    def _download_file(self, url, filename, attempts=3):
+        """
+        Downloads binary file, saves to the file
+        :param url:
+        :param filename:
+        :return:
+        """
+        return util.download_file(url, filename, attempts)
+
+    def _deploy_downloaded(self, archive_path, basedir):
+        """
+        Analyzes downloaded file, deploys to the install dir
+        :param archive_path:
+        :param basedir:
+        :return:
+        """
+        cmd = 'sudo tar -xzvf %s' % util.escape_shell(archive_path)
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
+        if ret != 0:
+            raise errors.SetupError('Could not extract update archive')
+
+        folders = [f for f in os.listdir(basedir) if not os.path.isfile(os.path.join(basedir, f))
+                   and f != '.' and f != '..']
+
+        if len(folders) != 1:
+            raise errors.SetupError('Invalid folder structure after update extraction')
+
+        archive_dir = os.path.join(basedir, folders[0])
+        if not os.path.exists(archive_dir):
+            raise errors.SetupError('Directory with jboss not found in the install archive: %s' % archive_dir)
+
+        archive_slash = util.add_ending_slash(archive_dir)
+        dest_slash = util.add_ending_slash(self.get_jboss_home())
+
+        # reinstall - preserve user data
+        excludes = ''
+        cmd = 'sudo rsync -av --delete %s %s %s' \
+              % (excludes, util.escape_shell(archive_slash), util.escape_shell(dest_slash))
+        ret, out, err = self.sysconfig.cli_cmd_sync(cmd, write_dots=True, cwd=basedir)
+        if ret != 0:
+            raise errors.SetupError('jboss sync failed')
+
+        self.fix_privileges()
+
+    def _install(self, attempts=3):
+        """
+        Downloads JBoss installation file from provisioning server.
+        :return:
+        """
+        base_file = self.JBOSS_ARCHIVE
+        try:
+            logger.debug('Going to download JBoss from the provisioning servers')
+            for provserver in PROVISIONING_SERVERS:
+                url = 'https://%s/jboss/%s' % (provserver, base_file)
+                tmpdir = util.safe_new_dir('/tmp/jboss-install')
+
+                try:
+                    self.audit.audit_evt('prov-jboss', url=url)
+
+                    # Download archive.
+                    archive_path = os.path.join(tmpdir, base_file)
+                    self._download_file(url, archive_path, attempts=attempts)
+
+                    # Install
+                    self._deploy_downloaded(archive_path, tmpdir)
+                    return 0
+
+                except errors.SetupError as e:
+                    logger.debug('SetupException in fetching JBoss from the provisioning server: %s' % e)
+                    self.audit.audit_exception(e, process='prov-jboss')
+
+                except Exception as e:
+                    logger.debug('Exception in fetching JBoss from the provisioning server: %s' % e)
+                    self.audit.audit_exception(e, process='prov-jboss')
+
+                finally:
+                    if os.path.exists(tmpdir):
+                        shutil.rmtree(tmpdir)
+
+                return 0
+
+        except Exception as e:
+            logger.debug('Exception when fetching jBoss')
+            self.audit.audit_exception(e)
+            raise errors.SetupError('Could not install jBoss', cause=e)
+
     def install(self):
         """
         Installs itself
         Jboss installer is not supported yet, has to be already present on the system.
         :return: installer return code
         """
+
+        # TODO: full install on clean image:
+        # TODO:  - create jboss user
+        # TODO:  - _install to download jboss image, symlink /opt/jboss -> /opt/jboss-eap.6.4.0
+        # TODO:  - start script for jboss
+
         home = self.get_jboss_home()
         if not os.path.exists(home):
             raise errors.SetupError('JBoss not found in %s' % home)
@@ -200,10 +296,14 @@ class Jboss(object):
         :return:
         """
         cli = os.path.abspath(os.path.join(self.get_jboss_home(), self.JBOSS_CLI))
+        if not os.path.exists(cli):
+            logger.debug('CLI does not exist')
+            return 1
+
         cli_cmd = 'sudo -E -H -u %s %s -c \'%s\'' % (self.JBOSS_USER, cli, cmd)
 
-        with open('/tmp/jboss-cli.log', 'a+') as logger:
-            ret, out, err = self.sysconfig.cli_cmd_sync(cli_cmd, log_obj=logger, write_dots=self.write_dots,
+        with open('/tmp/jboss-cli.log', 'a+') as logger_obj:
+            ret, out, err = self.sysconfig.cli_cmd_sync(cli_cmd, log_obj=logger_obj, write_dots=self.write_dots,
                                                         cwd=self.get_jboss_home())
             return ret, out, err
 
@@ -253,7 +353,7 @@ class Jboss(object):
         Fixes JBoss privileges in the Jboss home dir
         :return:
         """
-        self.sysconfig.exec_shell('sudo chown -R %s:%s %s' % (self.JBOSS_USER, self.JBOSS_USER, self.get_jboss_home()))
+        self.sysconfig.chown_recursive(self.get_jboss_home(), self.JBOSS_USER, self.JBOSS_USER)
 
     #
     # CLI config
