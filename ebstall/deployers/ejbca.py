@@ -600,6 +600,9 @@ class Ejbca(object):
         :return:
         """
         jboss_dir = self.jboss.get_jboss_home()
+        if not os.path.exists(jboss_dir):
+            return None, None, None
+
         db1 = os.path.join(jboss_dir, 'ejbcadb.h2.db')
         db2 = os.path.join(jboss_dir, 'ejbcadb.trace.db')
         db3 = os.path.join(jboss_dir, 'ejbcadb.lock.db')
