@@ -1373,6 +1373,7 @@ class Ejbca(object):
 
         self.ant_client_tools()
         self.jboss_fix_privileges()
+        self.jboss_wait_after_deploy()
         self.jboss_reload()
         return self.ejbca_install_result
 
