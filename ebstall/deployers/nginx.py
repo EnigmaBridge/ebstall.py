@@ -189,7 +189,7 @@ class Nginx(object):
         :param le_domains domains for TLS SNI letsencrypt domain validation - used for default http server host
         :return: 
         """
-        hostnames = ['private.space'] if include_local else []
+        hostnames = ['theprivate.space', 'private.space'] if include_local else []
 
         tmp = list(self.domains)
         if self.hostname is not None:
