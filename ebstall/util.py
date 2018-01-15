@@ -706,17 +706,6 @@ def normalize_string(orig):
 # Just make sure we don't get pwned... Make sure that it also doesn't
 # start with a period or have two consecutive periods <- this needs to
 # be done in addition to the regex
-EMAIL_REGEX = re.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+$")
-
-
-def safe_email(email):
-    """Scrub email address before using it."""
-    if EMAIL_REGEX.match(email) is not None:
-        return not email.startswith(".") and ".." not in email
-    else:
-        logger.warning("Invalid email address: %s.", email)
-        return False
-
 
 def get_utc_sec():
     return time.time()
