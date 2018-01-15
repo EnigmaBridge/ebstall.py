@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+from past.builtins import basestring    # pip install future
+from past.builtins import long
+
 from threading import Lock as Lock
 import json
 import collections
@@ -9,7 +13,6 @@ import util
 import os
 import sys
 import traceback
-import types
 from six import iteritems
 
 
@@ -126,9 +129,9 @@ class AuditManager(object):
         :param key:
         :return:
         """
-        if isinstance(key, types.StringTypes):
+        if isinstance(key, basestring):
             return key
-        if isinstance(key, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
+        if isinstance(key, (bool, int, long, float)):
             return key
         return '%s' % key
 
@@ -139,9 +142,9 @@ class AuditManager(object):
         :param value:
         :return:
         """
-        if isinstance(value, types.StringTypes):
+        if isinstance(value, basestring):
             return value
-        if isinstance(value, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
+        if isinstance(value, (bool, int, long, float)):
             return value
 
         # Try JSON serialize
@@ -152,15 +155,15 @@ class AuditManager(object):
             pass
 
         # Tuple - convert to list
-        if isinstance(value, types.TupleType):
+        if isinstance(value, tuple):
             value = list(value)
 
         # Special support for lists and dictionaries
         # Preserve type, encode sub-values
-        if isinstance(value, types.ListType):
+        if isinstance(value, list):
             return [self._valueize(x) for x in value]
 
-        elif isinstance(value, types.DictionaryType):
+        elif isinstance(value, dict):
             return {self._valueize_key(key): self._valueize(value[key]) for key in value}
 
         else:
@@ -175,14 +178,14 @@ class AuditManager(object):
         """
         if value is None:
             return value
-        if isinstance(value, (types.BooleanType, types.IntType, types.LongType, types.FloatType)):
+        if isinstance(value, (bool, int, long, float)):
             return value
 
         if secrets is None:
             with self.secrets_lock:
                 secrets = list(self.secrets)
 
-        if isinstance(value, types.StringTypes):
+        if isinstance(value, basestring):
             for sec in secrets:
                 try:
                     value = value.encode('utf-8').replace(sec, '***')
@@ -191,15 +194,15 @@ class AuditManager(object):
             return value
 
         # Tuple - convert to list
-        if isinstance(value, types.TupleType):
+        if isinstance(value, tuple):
             value = list(value)
 
         # Special support for lists and dictionaries
         # Preserve type, encode sub-values
-        if isinstance(value, types.ListType):
+        if isinstance(value, list):
             return [self._sec_fix(x) for x in value]
 
-        elif isinstance(value, types.DictionaryType):
+        elif isinstance(value, dict):
             return {self._valueize_key(key): self._sec_fix(value[key]) for key in value}
 
         else:
@@ -292,7 +295,7 @@ class AuditManager(object):
         :param secrets:
         :return:
         """
-        if not isinstance(secrets, types.ListType):
+        if not isinstance(secrets, list):
             secrets = [secrets]
 
         with self.secrets_lock:
@@ -307,7 +310,7 @@ class AuditManager(object):
         :param secrets:
         :return:
         """
-        if not isinstance(secrets, types.ListType):
+        if not isinstance(secrets, list):
             secrets = [secrets]
 
         with self.secrets_lock:
@@ -488,7 +491,7 @@ class AuditManager(object):
         def oct_hlp(x):
             if x is None:
                 return None
-            if isinstance(x, types.IntType):
+            if isinstance(x, (int, long)):
                 return oct(x)
             return self._valueize(x)
 
@@ -733,7 +736,7 @@ class AuditManager(object):
         if value is not None:
             log['value'] = self._valueize(value)
         if as_dict is not None:
-            if not isinstance(as_dict, (types.DictionaryType, types.ListType, types.StringType)):
+            if not isinstance(as_dict, (dict, list, basestring)):
                 log['value'] = self._valueize(self._as_dict(as_dict))
             else:
                 log['value'] = self._valueize(as_dict)
